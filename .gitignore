@@ -82,3 +82,6 @@ yarn-error.log*
 
 # Separate Chinese README (merged into main README.md)
 README.zh-CN.md
+
+# CodeBuddy project memory and configuration
+.codebuddy/

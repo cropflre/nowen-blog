@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import Hero from '../components/Hero';
+import HeroRefactor from '../components/HeroRefactor';
 import FeaturedPosts from '../components/FeaturedPosts';
 import FeaturedProjects from '../components/FeaturedProjects';
 import SectionDivider from '../components/SectionDivider';
@@ -15,7 +15,7 @@ export default function HomePage() {
 
   return (
     <main className="relative z-10">
-      <Hero />
+      <HeroRefactor />
       <SectionDivider />
       <FeaturedPosts posts={posts} />
       <SectionDivider />

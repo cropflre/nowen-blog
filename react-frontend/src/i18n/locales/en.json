@@ -1,0 +1,87 @@
+{
+  "nav": {
+    "home": "Home",
+    "blog": "Blog",
+    "projects": "Projects",
+    "github": "GitHub ↗",
+    "switchToLight": "Switch to light mode",
+    "switchToDark": "Switch to dark mode",
+    "lightMode": "Light Mode",
+    "darkMode": "Dark Mode"
+  },
+  "hero": {
+    "status": "Available for collaboration",
+    "name": "Cropflre",
+    "roles": {
+      "fullStack": "Full-Stack Engineer",
+      "architect": "System Architect",
+      "creator": "Open Source Creator",
+      "goEnthusiast": "Go Enthusiast"
+    },
+    "skills": {
+      "go": "Go",
+      "react": "React",
+      "typescript": "TypeScript",
+      "docker": "Docker",
+      "postgresql": "PostgreSQL",
+      "grpc": "gRPC"
+    },
+    "cta": {
+      "viewProjects": "View Projects",
+      "readBlog": "Read Blog"
+    },
+    "bio": "Building high-performance systems with <1>Go</1> and elegant interfaces with <3>React</3>. Passionate about distributed systems, developer tools, and open-source software."
+  },
+  "featuredPosts": {
+    "sectionTitle": "Latest Writings",
+    "heading": "From the Blog",
+    "viewAll": "View All Posts",
+    "readTime": "{{time}} min read",
+    "readMore": "Read →"
+  },
+  "featuredProjects": {
+    "sectionTitle": "Open Source",
+    "heading": "Featured Projects",
+    "viewAll": "View All Projects",
+    "featured": "Featured",
+    "source": "Source",
+    "liveDemo": "Live Demo ↗"
+  },
+  "blog": {
+    "sectionTitle": "Blog",
+    "heading": "Writings & Thoughts",
+    "description": "Exploring ideas in software engineering, system design, and the craft of building things that matter.",
+    "all": "All",
+    "noPosts": "No posts found for this tag.",
+    "readTime": "{{time}} min read",
+    "readMore": "Read →"
+  },
+  "blogPost": {
+    "back": "Back to Blog",
+    "notFound": "Post not found",
+    "demoContent": "This is a demo blog post. In a real application, this content would be fetched from the Go backend API and rendered with full markdown support, code syntax highlighting, and interactive elements."
+  },
+  "projects": {
+    "sectionTitle": "Portfolio",
+    "heading": "Open Source Projects",
+    "description": "A curated collection of projects I've built — from developer tools to creative applications. Each one crafted with performance and developer experience in mind.",
+    "all": "All Projects",
+    "noProjects": "No projects found in this category.",
+    "stats": {
+      "projects": "Projects",
+      "featured": "Featured",
+      "categories": "Categories",
+      "technologies": "Technologies"
+    },
+    "featured": "Featured",
+    "source": "Source",
+    "liveDemo": "Live Demo"
+  },
+  "footer": {
+    "copyright": "© 2026 Cropflre. All rights reserved.",
+    "builtWith": "Built with React & Go",
+    "tagline": "Building systems that scale. Writing code that ships.",
+    "navigation": "Navigation",
+    "connect": "Connect"
+  }
+}

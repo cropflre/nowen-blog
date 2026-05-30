@@ -35,22 +35,22 @@ export default function AdminPage() {
   return (
     <div className="min-h-screen bg-[#050505]">
       {/* 顶部导航栏 */}
-      <div className="h-12 border-b border-zinc-800/50 flex items-center justify-between px-4 bg-zinc-950/80 backdrop-blur-sm">
+      <div className="h-12 border-b border-[var(--color-border-surface)] flex items-center justify-between px-4 bg-[var(--color-bg-secondary)] backdrop-blur-sm">
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">
             <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
-            <span className="text-xs font-mono text-zinc-400">SYSTEM</span>
+            <span className="text-xs font-mono text-[var(--color-text-muted)]">SYSTEM</span>
           </div>
           
-          <div className="w-px h-6 bg-zinc-800" />
+          <div className="w-px h-6 bg-[var(--color-border-surface)]" />
           
           <nav className="flex items-center gap-1">
             <button
               onClick={() => setView('dashboard')}
               className={`px-3 py-1.5 text-xs font-mono rounded transition-all ${
                 view === 'dashboard' 
-                  ? 'bg-zinc-800 text-white' 
-                  : 'text-zinc-500 hover:text-zinc-300'
+                  ? 'bg-[var(--color-bg-card)] text-[var(--color-text-primary)]' 
+                  : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)]'
               }`}
             >
               DASHBOARD
@@ -59,8 +59,8 @@ export default function AdminPage() {
               onClick={handleNewPost}
               className={`px-3 py-1.5 text-xs font-mono rounded transition-all ${
                 view === 'editor' 
-                  ? 'bg-zinc-800 text-white' 
-                  : 'text-zinc-500 hover:text-zinc-300'
+                  ? 'bg-[var(--color-bg-card)] text-[var(--color-text-primary)]' 
+                  : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)]'
               }`}
             >
               EDITOR
@@ -69,17 +69,17 @@ export default function AdminPage() {
         </div>
 
         <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2 text-xs text-zinc-500">
+          <div className="flex items-center gap-2 text-xs text-[var(--color-text-muted)]">
             <UserIcon size={12} />
             <span className="font-mono">{user?.username || 'admin'}</span>
           </div>
           
-          <div className="w-px h-4 bg-zinc-800" />
+          <div className="w-px h-4 bg-[var(--color-border-surface)]" />
           
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
-            className="p-1.5 text-zinc-500 hover:text-zinc-300 transition-colors"
+            className="p-1.5 text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)] transition-colors"
           >
             <Settings size={14} />
           </motion.button>
@@ -88,7 +88,7 @@ export default function AdminPage() {
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             onClick={handleLogout}
-            className="p-1.5 text-zinc-500 hover:text-red-400 transition-colors"
+            className="p-1.5 text-[var(--color-text-muted)] hover:text-red-400 transition-colors"
           >
             <LogOut size={14} />
           </motion.button>

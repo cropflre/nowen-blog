@@ -11,7 +11,7 @@
   },
   "hero": {
     "status": "Available for collaboration",
-    "name": "Cropflre",
+    "name": "nowen-blog",
     "roles": {
       "fullStack": "Full-Stack Engineer",
       "architect": "System Architect",
@@ -30,7 +30,7 @@
       "viewProjects": "View Projects",
       "readBlog": "Read Blog"
     },
-    "bio": "Building high-performance systems with <1>Go</1> and elegant interfaces with <3>React</3>. Passionate about distributed systems, developer tools, and open-source software."
+    "bio": "Building high-performance systems with <strong>Go</strong> and elegant interfaces with <strong>React</strong>. Passionate about distributed systems, developer tools, and open-source software."
   },
   "featuredPosts": {
     "sectionTitle": "Latest Writings",
@@ -53,6 +53,7 @@
     "description": "Exploring ideas in software engineering, system design, and the craft of building things that matter.",
     "all": "All",
     "noPosts": "No posts found for this tag.",
+    "noPostsDesc": "There are no articles for this tag yet. Check other tags or wait for new posts.",
     "readTime": "{{time}} min read",
     "readMore": "Read →"
   },
@@ -67,6 +68,7 @@
     "description": "A curated collection of projects I've built — from developer tools to creative applications. Each one crafted with performance and developer experience in mind.",
     "all": "All Projects",
     "noProjects": "No projects found in this category.",
+    "noProjectsDesc": "There are no projects in this category yet. Check other categories or wait for new projects.",
     "stats": {
       "projects": "Projects",
       "featured": "Featured",
@@ -78,7 +80,7 @@
     "liveDemo": "Live Demo"
   },
   "footer": {
-    "copyright": "© 2026 Cropflre. All rights reserved.",
+    "copyright": "© 2026 nowen-blog. All rights reserved.",
     "builtWith": "Built with React & Go",
     "tagline": "Building systems that scale. Writing code that ships.",
     "navigation": "Navigation",

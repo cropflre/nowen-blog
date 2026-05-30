@@ -42,8 +42,8 @@ const GlowCard = forwardRef<HTMLDivElement, { project: Project; index: number; l
       transition={{ duration: 0.7, delay: index * 0.1, ease: [0.16, 1, 0.3, 1] }}
       whileHover={{ y: -4, transition: { type: 'spring', stiffness: 300, damping: 20 } }}
       onMouseMove={handleMouseMove}
-      className={`group relative rounded-2xl overflow-hidden cursor-pointer ${
-        large ? 'md:col-span-2 md:row-span-2' : ''
+      className={`group relative rounded-2xl overflow-hidden cursor-pointer flex-1 min-w-[300px] ${
+        large ? 'md:min-w-[620px]' : ''
       }`}
     >
       {/* Border glow layer */}
@@ -176,7 +176,7 @@ function StatsBar({ projects }: { projects: Project[] }) {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.6, delay: 0.2 }}
-      className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-12"
+      className="flex flex-wrap justify-center gap-4 mb-12"
     >
       {stats.map((stat, i) => (
         <motion.div
@@ -184,10 +184,10 @@ function StatsBar({ projects }: { projects: Project[] }) {
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ delay: 0.3 + i * 0.1 }}
-          className="glass rounded-xl p-4 border border-[var(--color-border-surface)] text-center"
+          className="glass rounded-xl p-5 border border-[var(--color-border-surface)] text-center group hover:border-cyan-500/30 transition-colors duration-300 flex-1 min-w-[140px]"
         >
-          <div className="text-lg mb-1">{stat.icon}</div>
-          <div className="text-2xl font-bold gradient-text mb-1">{stat.value}</div>
+          <div className="text-xl mb-2 text-cyan-400">{stat.icon}</div>
+          <div className="text-3xl font-bold gradient-text mb-1">{stat.value}</div>
           <div className="text-xs font-mono text-[var(--color-text-muted)] uppercase tracking-wider">{stat.label}</div>
         </motion.div>
       ))}
@@ -219,24 +219,24 @@ export default function ProjectsPage() {
     : projects;
 
   return (
-    <main className="relative z-10 pt-28 pb-24 px-6">
-      <div className="max-w-6xl mx-auto">
+    <main className="relative pb-24 px-6 flex flex-col items-center" style={{ paddingTop: '200px', zIndex: 5 }}>
+      <div className="w-full max-w-6xl" style={{ position: 'relative', zIndex: 5 }}>
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
-          className="mb-8"
+          className="mb-16 flex flex-col items-center text-center"
         >
-          <div className="flex items-center gap-3 mb-3">
-            <div className="h-px flex-1 max-w-[60px] bg-gradient-to-r from-transparent to-cyan-500" />
+          <div className="flex items-center gap-3 mb-4">
+            <div className="h-px flex-1 max-w-[80px] bg-gradient-to-r from-transparent to-cyan-500" />
             <span className="text-sm font-mono text-cyan-400 tracking-wider uppercase">{t('projects.sectionTitle')}</span>
-            <div className="h-px flex-1 max-w-[60px] bg-gradient-to-l from-transparent to-cyan-500" />
+            <div className="h-px flex-1 max-w-[80px] bg-gradient-to-l from-transparent to-cyan-500" />
           </div>
-          <h1 className="text-4xl md:text-5xl font-bold mb-4">
+          <h1 className="text-5xl md:text-6xl font-bold mb-6">
             <span className="gradient-text">{t('projects.heading')}</span>
           </h1>
-          <p className="text-[var(--color-text-secondary)] max-w-xl">
+          <p className="text-lg text-[var(--color-text-secondary)] max-w-xl leading-relaxed">
             {t('projects.description')}
           </p>
         </motion.div>
@@ -249,14 +249,14 @@ export default function ProjectsPage() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.4 }}
-          className="flex flex-wrap gap-2 mb-10"
+          className="flex flex-wrap justify-center gap-3 mb-12"
         >
           <button
             onClick={() => setActiveCategory('')}
-            className={`px-4 py-1.5 rounded-full text-sm font-mono transition-all duration-300 ${
+            className={`px-5 py-2 rounded-full text-sm font-medium transition-all duration-300 ${
               activeCategory === ''
-                ? 'bg-cyan-500/15 text-cyan-400 border border-cyan-500/40'
-                : 'text-[var(--color-text-muted)] border border-[var(--color-border-surface)] hover:border-cyan-500/50 hover:text-[var(--color-text-primary)]'
+                ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/40 shadow-lg shadow-cyan-500/10'
+                : 'text-[var(--color-text-muted)] border border-[var(--color-border-surface)] hover:border-cyan-500/50 hover:text-[var(--color-text-primary)] hover:shadow-md'
             }`}
           >
             {t('projects.all')}
@@ -265,10 +265,10 @@ export default function ProjectsPage() {
             <button
               key={cat}
               onClick={() => setActiveCategory(cat === activeCategory ? '' : cat)}
-              className={`px-4 py-1.5 rounded-full text-sm font-mono transition-all duration-300 ${
+              className={`px-5 py-2 rounded-full text-sm font-medium transition-all duration-300 ${
                 activeCategory === cat
-                  ? 'bg-cyan-500/15 text-cyan-400 border border-cyan-500/40'
-                  : 'text-[var(--color-text-muted)] border border-[var(--color-border-surface)] hover:border-cyan-500/50 hover:text-[var(--color-text-primary)]'
+                  ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/40 shadow-lg shadow-cyan-500/10'
+                  : 'text-[var(--color-text-muted)] border border-[var(--color-border-surface)] hover:border-cyan-500/50 hover:text-[var(--color-text-primary)] hover:shadow-md'
               }`}
             >
               {cat}
@@ -277,7 +277,7 @@ export default function ProjectsPage() {
         </motion.div>
 
         {/* Bento Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+        <div className="flex flex-wrap justify-center gap-5 w-full">
           <AnimatePresence mode="popLayout">
             {filtered.map((project, i) => (
               <GlowCard
@@ -291,13 +291,19 @@ export default function ProjectsPage() {
         </div>
 
         {filtered.length === 0 && (
-          <motion.p
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="text-center text-[var(--color-text-muted)] py-20"
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex flex-col items-center justify-center py-24 w-full"
           >
-            {t('projects.noProjects')}
-          </motion.p>
+            <div className="w-16 h-16 rounded-full glass border border-[var(--color-border-surface)] flex items-center justify-center mb-6">
+              <svg className="w-8 h-8 text-[var(--color-text-muted)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+              </svg>
+            </div>
+            <h3 className="text-lg font-semibold text-[var(--color-text-secondary)] mb-2">{t('projects.noProjects')}</h3>
+            <p className="text-sm text-[var(--color-text-muted)]">{t('projects.noProjectsDesc')}</p>
+          </motion.div>
         )}
       </div>
     </main>

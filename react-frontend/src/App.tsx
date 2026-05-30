@@ -46,6 +46,7 @@ function AnimatedRoutes() {
 function AppContent() {
   const location = useLocation();
   const isAdminRoute = location.pathname.startsWith('/admin') || location.pathname === '/login';
+  const isHomePage = location.pathname === '/';
 
   if (isAdminRoute) {
     return (
@@ -64,11 +65,14 @@ function AppContent() {
   }
 
   return (
-    <div className="min-h-screen grid-bg scanline">
+    <div className="flex flex-col min-h-screen grid-bg scanline">
       <ParticleField />
       <div className="noise-overlay" />
-      <Navbar />
-      <AnimatedRoutes />
+      {/* 首页使用 HeroRefactor 内置的胶囊导航，其他页面使用 Navbar */}
+      {!isHomePage && <Navbar />}
+      <div className="flex-1">
+        <AnimatedRoutes />
+      </div>
       <Footer />
     </div>
   );

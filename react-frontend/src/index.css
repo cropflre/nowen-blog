@@ -29,6 +29,18 @@
   --color-accent-rgb: 99, 102, 241;
   --color-cyan-rgb: 8, 145, 178;
   --color-purple-rgb: 147, 51, 234;
+
+  /* Hero Refactor 专用变量 - 亮色主题 */
+  --color-hero-bg: #f8fafc;
+  --color-hero-text: #0f172a;
+  --color-hero-text-secondary: #475569;
+  --color-hero-accent: #6366f1;
+  --color-hero-accent-light: #818cf8;
+  --color-hero-border: rgba(226, 232, 240, 0.6);
+  --color-hero-card: rgba(255, 255, 255, 0.8);
+  --color-hero-overlay: rgba(248, 250, 252, 0.95);
+  --color-hero-emerald: #10b981;
+  --color-hero-emerald-light: #34d399;
 }
 
 [data-theme="dark"] {
@@ -54,6 +66,18 @@
   --color-accent-rgb: 99, 102, 241;
   --color-cyan-rgb: 34, 211, 238;
   --color-purple-rgb: 168, 85, 247;
+  
+  /* Hero Refactor 专用变量 */
+  --color-hero-bg: #050505;
+  --color-hero-text: #ffffff;
+  --color-hero-text-secondary: #94a3b8;
+  --color-hero-accent: #6366f1;
+  --color-hero-accent-light: #818cf8;
+  --color-hero-border: rgba(30, 30, 50, 0.6);
+  --color-hero-card: rgba(15, 15, 25, 0.6);
+  --color-hero-overlay: rgba(5, 5, 8, 0.95);
+  --color-hero-emerald: #10b981;
+  --color-hero-emerald-light: #34d399;
 }
 
 * {
@@ -407,4 +431,95 @@ article pre code {
 
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
   background: rgba(113, 113, 122, 0.5);
+}
+
+/* Hero Refactor 专用样式 */
+.hero-nav {
+  background: var(--color-hero-card);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--color-hero-border);
+}
+
+.hero-nav-link {
+  color: var(--color-hero-text-secondary);
+  transition: color 0.2s ease;
+}
+
+.hero-nav-link:hover {
+  color: var(--color-hero-text);
+}
+
+.hero-nav-link-active {
+  color: var(--color-hero-text);
+}
+
+.hero-badge {
+  background: rgba(16, 185, 129, 0.1);
+  border: 1px solid rgba(16, 185, 129, 0.2);
+}
+
+.hero-badge-dot {
+  background: var(--color-hero-emerald);
+}
+
+.hero-badge-text {
+  color: var(--color-hero-emerald-light);
+}
+
+.hero-avatar-border {
+  background: linear-gradient(to bottom, var(--color-hero-border), var(--color-bg-primary));
+  border: 1px solid var(--color-hero-border);
+}
+
+.hero-avatar-inner {
+  background: var(--color-bg-primary);
+  border: 1px solid var(--color-hero-border);
+}
+
+.hero-role-text {
+  color: var(--color-text-secondary);
+}
+
+.hero-role-accent {
+  background: var(--color-accent);
+}
+
+.hero-bio-text {
+  color: var(--color-text-muted);
+}
+
+.hero-tech-tag {
+  color: var(--color-text-muted);
+  background: var(--color-hero-card);
+  border: 1px solid var(--color-hero-border);
+}
+
+.hero-tech-tag:hover {
+  border-color: var(--color-border);
+  color: var(--color-text-primary);
+}
+
+.hero-cta-primary {
+  background: var(--color-text-primary);
+  color: var(--color-bg-primary);
+}
+
+.hero-cta-primary:hover {
+  background: var(--color-text-secondary);
+}
+
+.hero-cta-secondary {
+  background: var(--color-bg-secondary);
+  color: var(--color-text-secondary);
+  border: 1px solid var(--color-hero-border);
+}
+
+.hero-cta-secondary:hover {
+  background: var(--color-bg-card);
+  color: var(--color-text-primary);
+}
+
+.hero-gradient-overlay {
+  background: linear-gradient(to top, var(--color-bg-primary), transparent);
 }

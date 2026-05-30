@@ -141,7 +141,7 @@ export const api = {
     fetchJSON<{ message: string }>(`/api/admin/contents/${id}`, createAuthOptions('DELETE')),
 
   // 图片上传 API
-  uploadImage: async (file: File): Promise<{ id: number; url: string; filename: string; markdown: string }> => {
+  uploadImage: async (file: File): Promise<{ id: number; url: string; filename: string; original: string; markdown: string }> => {
     const token = getAuthToken();
     const formData = new FormData();
     formData.append('image', file);
@@ -158,7 +158,8 @@ export const api = {
     }
 
     const data = await res.json();
-    return data.data;
+    // 合并 data.data（id, url, filename 等）和顶层 markdown 字段
+    return { ...data.data, markdown: data.markdown };
   },
 
   getImages: (page = 1, pageSize = 20) =>

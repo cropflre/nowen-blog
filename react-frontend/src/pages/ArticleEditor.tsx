@@ -1,11 +1,12 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Save, Eye, Code, Tag, Clock, Zap, Cpu, Image as ImageIcon } from 'lucide-react';
+import { ArrowLeft, Save, Eye, Code, Tag, Clock, Zap, Cpu, Image as ImageIcon, Upload } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { debounce } from 'lodash-es';
 import { api } from '../api';
 import type { Post, PostRequest } from '../types';
 import ImageUploader from '../components/ImageUploader';
+import { toastEvent } from '../components/CyberToast';
 
 interface ArticleEditorProps {
   postId?: number;
@@ -25,6 +26,8 @@ export default function ArticleEditor({ postId, onBack }: ArticleEditorProps) {
   const [saving, setSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [showImageUploader, setShowImageUploader] = useState(false);
+  const [isInlineUploading, setIsInlineUploading] = useState(false);
+  const [isTextareaDragging, setIsTextareaDragging] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // 防抖同步预览层：停顿 200ms 后启动 AST 编译
@@ -107,7 +110,7 @@ export default function ArticleEditor({ postId, onBack }: ArticleEditorProps) {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [title, slug, summary, content, tags, status]);
 
-  // 插入图片 Markdown
+  // 插入图片 Markdown（从 ImageUploader 面板）
   const handleImageUpload = useCallback((markdown: string) => {
     const textarea = textareaRef.current;
     if (!textarea) return;
@@ -125,6 +128,103 @@ export default function ArticleEditor({ postId, onBack }: ArticleEditorProps) {
       textarea.setSelectionRange(newPos, newPos);
     }, 0);
   }, [content]);
+
+  // === 内联图片上传管道（直觉级 Ctrl+V / Drag & Drop） ===
+  const inlineUploadImage = useCallback(async (file: File) => {
+    if (!file.type.startsWith('image/')) {
+      toastEvent.emit('ERROR: 仅支持图片文件');
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      toastEvent.emit('ERROR: 文件过大 (最大 10MB)');
+      return;
+    }
+
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+
+    const startPos = textarea.selectionStart;
+    const endPos = textarea.selectionEnd;
+
+    // 在光标处插入极客占位符
+    const placeholder = `![UPLOADING_SYS_IMG...]()\n`;
+    const before = content.substring(0, startPos);
+    const after = content.substring(endPos);
+    const withPlaceholder = before + placeholder + after;
+    setContent(withPlaceholder);
+    setIsInlineUploading(true);
+
+    // 移动光标到占位符之后
+    setTimeout(() => {
+      textarea.focus();
+      const cursorPos = startPos + placeholder.length;
+      textarea.setSelectionRange(cursorPos, cursorPos);
+    }, 0);
+
+    try {
+      const result = await api.uploadImage(file);
+      const imageMark = result.markdown || `![${result.original || file.name}](${result.url})`;
+
+      setContent(prev => prev.replace(placeholder, imageMark + '\n'));
+      debouncedSync(content.replace(placeholder, imageMark + '\n'));
+      toastEvent.emit(`UPLOAD_COMPLETE: ${file.name}`);
+    } catch (err) {
+      // 上传失败，移除占位符
+      setContent(prev => prev.replace(placeholder, ''));
+      const message = err instanceof Error ? err.message : 'Upload failed';
+      toastEvent.emit(`ERROR: ${message}`);
+    } finally {
+      setIsInlineUploading(false);
+    }
+  }, [content, debouncedSync]);
+
+  // textarea 粘贴拦截
+  const handleTextareaPaste = useCallback((e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+
+    for (let i = 0; i < items.length; i++) {
+      if (items[i].type.startsWith('image/')) {
+        e.preventDefault();
+        const file = items[i].getAsFile();
+        if (file) {
+          inlineUploadImage(file);
+        }
+        break;
+      }
+    }
+  }, [inlineUploadImage]);
+
+  // textarea 拖拽拦截
+  const handleTextareaDragOver = useCallback((e: React.DragEvent<HTMLTextAreaElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.dataTransfer.types.includes('Files')) {
+      setIsTextareaDragging(true);
+    }
+  }, []);
+
+  const handleTextareaDragLeave = useCallback((e: React.DragEvent<HTMLTextAreaElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsTextareaDragging(false);
+  }, []);
+
+  const handleTextareaDrop = useCallback((e: React.DragEvent<HTMLTextAreaElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsTextareaDragging(false);
+
+    const files = e.dataTransfer.files;
+    if (files && files.length > 0) {
+      const file = files[0];
+      if (file.type.startsWith('image/')) {
+        inlineUploadImage(file);
+      } else {
+        toastEvent.emit('ERROR: 仅支持图片文件');
+      }
+    }
+  }, [inlineUploadImage]);
 
   return (
     <div className="h-screen bg-[#050505] text-zinc-300 flex flex-col overflow-hidden">
@@ -153,6 +253,18 @@ export default function ArticleEditor({ postId, onBack }: ArticleEditorProps) {
         </div>
 
         <div className="flex items-center gap-3">
+          {/* 内联上传状态灯 */}
+          {isInlineUploading && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="flex items-center gap-2 text-xs font-mono"
+            >
+              <Upload size={12} className="text-amber-400 animate-pulse" />
+              <span className="text-amber-400 animate-pulse">UP_LINKING...</span>
+            </motion.div>
+          )}
+
           {/* 编译状态指示 */}
           <div className="flex items-center gap-2 text-xs text-zinc-500 font-mono">
             <Cpu size={12} className={isCompiling ? "text-amber-400 animate-spin" : "text-zinc-600"} />
@@ -294,20 +406,40 @@ export default function ArticleEditor({ postId, onBack }: ArticleEditorProps) {
               </motion.div>
             )}
             
-            {/* 内容编辑 */}
-            <textarea
-              ref={textareaRef}
-              value={content}
-              onChange={(e) => {
-                const val = e.target.value;
-                setContent(val);
-                setIsCompiling(true); // 亮起编译状态灯
-                debouncedSync(val);
-              }}
-              placeholder={`# 开始你的 Markdown 极客构建...\n\n## 功能特性\n\n- 支持完整的 Markdown 语法\n- 实时预览\n- 自动保存\n\n> 提示: 使用 Ctrl+S 快速保存`}
-              className="w-full h-[calc(100%-5rem)] bg-transparent font-mono text-sm leading-relaxed text-zinc-300 focus:outline-none resize-none placeholder-zinc-700"
-              autoFocus
-            />
+            {/* 内容编辑（支持 Ctrl+V 粘贴图片 + 拖拽图片） */}
+            <div className="relative w-full h-[calc(100%-5rem)]">
+              <textarea
+                ref={textareaRef}
+                value={content}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setContent(val);
+                  setIsCompiling(true); // 亮起编译状态灯
+                  debouncedSync(val);
+                }}
+                onPaste={handleTextareaPaste}
+                onDragOver={handleTextareaDragOver}
+                onDragLeave={handleTextareaDragLeave}
+                onDrop={handleTextareaDrop}
+                placeholder={`# 开始你的 Markdown 极客构建...\n\n## 功能特性\n\n- 支持完整的 Markdown 语法\n- 实时预览\n- 自动保存\n- Ctrl+V / 拖拽 直接粘贴图片\n\n> 提示: 使用 Ctrl+S 快速保存`}
+                className="w-full h-full bg-transparent font-mono text-sm leading-relaxed text-zinc-300 focus:outline-none resize-none placeholder-zinc-700"
+                autoFocus
+              />
+
+              {/* 拖拽悬浮遮罩 */}
+              {isTextareaDragging && (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="absolute inset-0 flex items-center justify-center bg-emerald-500/5 border-2 border-dashed border-emerald-500/40 rounded-lg pointer-events-none z-10"
+                >
+                  <div className="flex flex-col items-center gap-2">
+                    <Upload className="w-8 h-8 text-emerald-400 animate-bounce" />
+                    <span className="text-xs font-mono text-emerald-400">DROP TO UPLOAD</span>
+                  </div>
+                </motion.div>
+              )}
+            </div>
           </div>
         </div>
 

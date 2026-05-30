@@ -39,17 +39,17 @@ export default function LoginPage() {
       >
         {/* Logo / Header */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-xl mb-4 bg-zinc-900 border border-zinc-800">
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-xl mb-4 bg-[var(--color-bg-card)] border border-[var(--color-border-surface)]">
             <span className="text-2xl font-bold text-emerald-500">&gt;_</span>
           </div>
-          <h1 className="text-2xl font-bold text-white mb-2 tracking-wider">SYSTEM_ACCESS</h1>
-          <p className="text-sm text-zinc-500">
-            <span className="text-zinc-600">//</span> 身份验证协议启动中...
+          <h1 className="text-2xl font-bold text-[var(--color-text-primary)] mb-2 tracking-wider">SYSTEM_ACCESS</h1>
+          <p className="text-sm text-[var(--color-text-muted)]">
+            <span className="text-[var(--color-text-muted)] opacity-60">//</span> 身份验证协议启动中...
           </p>
         </div>
 
         {/* Login Form */}
-        <div className="rounded-xl p-8 bg-zinc-900/50 border border-zinc-800">
+        <div className="rounded-xl p-8 bg-[var(--color-bg-card)] border border-[var(--color-border-surface)]">
           <form onSubmit={handleSubmit} className="space-y-6">
             {error && (
               <motion.div
@@ -62,7 +62,7 @@ export default function LoginPage() {
             )}
 
             <div>
-              <label htmlFor="username" className="block text-xs font-medium mb-2 text-zinc-500 tracking-wider">
+              <label htmlFor="username" className="block text-xs font-medium mb-2 text-[var(--color-text-muted)] tracking-wider">
                 USERNAME
               </label>
               <input
@@ -73,13 +73,13 @@ export default function LoginPage() {
                 required
                 autoComplete="username"
                 autoFocus
-                className="w-full px-4 py-3 rounded-lg text-sm outline-none transition-all duration-200 bg-[#030303] border border-zinc-800 text-zinc-300 focus:border-zinc-600 placeholder-zinc-700"
+                className="w-full px-4 py-3 rounded-lg text-sm outline-none transition-all duration-200 bg-[var(--color-bg-primary)] border border-[var(--color-border-surface)] text-[var(--color-text-secondary)] focus:border-[var(--color-accent)] placeholder-[var(--color-text-muted)]"
                 placeholder="admin"
               />
             </div>
 
             <div>
-              <label htmlFor="password" className="block text-xs font-medium mb-2 text-zinc-500 tracking-wider">
+              <label htmlFor="password" className="block text-xs font-medium mb-2 text-[var(--color-text-muted)] tracking-wider">
                 PASSWORD
               </label>
               <input
@@ -89,7 +89,7 @@ export default function LoginPage() {
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 autoComplete="current-password"
-                className="w-full px-4 py-3 rounded-lg text-sm outline-none transition-all duration-200 bg-[#030303] border border-zinc-800 text-zinc-300 focus:border-zinc-600 placeholder-zinc-700"
+                className="w-full px-4 py-3 rounded-lg text-sm outline-none transition-all duration-200 bg-[var(--color-bg-primary)] border border-[var(--color-border-surface)] text-[var(--color-text-secondary)] focus:border-[var(--color-accent)] placeholder-[var(--color-text-muted)]"
                 placeholder="••••••••"
               />
             </div>
@@ -119,10 +119,10 @@ export default function LoginPage() {
 
         {/* Footer */}
         <div className="text-center mt-6 space-y-2">
-          <p className="text-xs text-zinc-600 font-mono">
-            <span className="text-zinc-700">DEFAULT:</span> admin / admin123
+          <p className="text-xs text-[var(--color-text-muted)] font-mono">
+            <span className="opacity-60">DEFAULT:</span> admin / admin123
           </p>
-          <p className="text-xs text-zinc-700 font-mono">
+          <p className="text-xs text-[var(--color-text-muted)] opacity-50 font-mono">
             PROTECTED_ZONE // UNAUTHORIZED_ACCESS_PROHIBITED
           </p>
         </div>

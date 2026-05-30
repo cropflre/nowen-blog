@@ -11,7 +11,7 @@
   },
   "hero": {
     "status": "可接受合作",
-    "name": "Cropflre",
+    "name": "nowen-blog",
     "roles": {
       "fullStack": "全栈工程师",
       "architect": "系统架构师",
@@ -30,7 +30,7 @@
       "viewProjects": "查看项目",
       "readBlog": "阅读博客"
     },
-    "bio": "使用 <1>Go</1> 构建高性能系统，使用 <3>React</3> 打造优雅界面。热衷于分布式系统、开发者工具和开源软件。"
+    "bio": "使用 <strong>Go</strong> 构建高性能系统，使用 <strong>React</strong> 打造优雅界面。热衷于分布式系统、开发者工具和开源软件。"
   },
   "featuredPosts": {
     "sectionTitle": "最新文章",
@@ -52,7 +52,8 @@
     "heading": "文章与思考",
     "description": "探索软件工程、系统设计以及构建重要事物的技艺。",
     "all": "全部",
-    "noPosts": "未找到相关标签的文章。",
+    "noPosts": "未找到相关标签的文章",
+    "noPostsDesc": "该标签下暂无文章，你可以查看其他标签或等待新文章发布。",
     "readTime": "{{time}} 分钟阅读",
     "readMore": "阅读全文 →"
   },
@@ -66,7 +67,8 @@
     "heading": "开源项目",
     "description": "精心策划的项目集合——从开发者工具到创意应用。每个项目都注重性能和开发者体验。",
     "all": "所有项目",
-    "noProjects": "未找到该分类的项目。",
+    "noProjects": "未找到该分类的项目",
+    "noProjectsDesc": "该分类下暂无项目，你可以查看其他分类或等待新项目发布。",
     "stats": {
       "projects": "项目数",
       "featured": "精选数",
@@ -78,7 +80,7 @@
     "liveDemo": "在线演示"
   },
   "footer": {
-    "copyright": "© 2026 Cropflre。保留所有权利。",
+    "copyright": "© 2026 nowen-blog。保留所有权利。",
     "builtWith": "使用 React 和 Go 构建",
     "tagline": "构建可扩展的系统。编写可交付的代码。",
     "navigation": "导航",

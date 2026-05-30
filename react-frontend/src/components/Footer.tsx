@@ -66,7 +66,7 @@ export default function Footer() {
               <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-cyan-400 flex items-center justify-center">
                 <span className="text-white font-bold text-xs">C</span>
               </div>
-              <span className="text-lg font-semibold gradient-text">Cropflre</span>
+              <span className="text-lg font-semibold gradient-text">nowen-blog</span>
             </div>
             <p className="text-sm text-[var(--color-text-muted)] leading-relaxed">
               {t('footer.tagline')}
@@ -114,7 +114,7 @@ export default function Footer() {
           <p className="text-xs text-[var(--color-text-muted)] font-mono">
             {t('footer.copyright')}
           </p>
-          <p className="text-xs text-slate-700 font-mono flex items-center gap-1.5">
+          <p className="text-xs text-[var(--color-text-muted)] font-mono flex items-center gap-1.5">
             <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
             {t('footer.builtWith')}
           </p>

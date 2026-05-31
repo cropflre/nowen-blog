@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { ArrowRight, BookOpen, Languages, Menu, Moon, Sun, X, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ArrowRight, BookOpen, Languages, LogIn, Menu, Moon, Sun, X, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../contexts/ThemeContext';
@@ -100,6 +100,9 @@ export default function HeroRefactor() {
           </div>
 
           <div className="hidden items-center gap-2 md:flex">
+            <Link to="/login" className="minimal-button h-9 min-h-9 w-9 p-0" aria-label="Login">
+              <LogIn size={16} />
+            </Link>
             <a href="https://github.com/cropflre" target="_blank" rel="noopener noreferrer" className="minimal-button h-9 min-h-9 w-9 p-0" aria-label="GitHub">
               <GithubMark />
             </a>
@@ -209,3 +212,4 @@ export default function HeroRefactor() {
     </section>
   );
 }
+

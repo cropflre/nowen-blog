@@ -159,6 +159,13 @@
     "docOrder": "Order",
     "noProjectDocs": "No project docs yet",
     "createFirstDoc": "Create first doc",
-    "docCount": "Doc Count"
+    "docCount": "Doc Count",
+    "newProject": "NEW_PROJECT",
+    "noProjects": "NO_PROJECTS",
+    "optional": "optional",
+    "cancel": "CANCEL",
+    "create": "CREATE",
+    "creating": "CREATING...",
+    "noDocsFound": "NO_DOCS_FOUND"
   }
 }

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
-import { Plus, Trash2, Edit3, Eye, Search, RefreshCw, FolderOpen, FileText, ExternalLink } from 'lucide-react';
+import { Plus, Trash2, Edit3, Eye, Search, RefreshCw, FolderOpen, FileText, ExternalLink, X } from 'lucide-react';
 import { api } from '../api';
 import type { Content, ProjectInfo } from '../types';
 
@@ -18,6 +18,12 @@ export default function ProjectDocsDashboard({ onEditDoc, onNewDoc }: ProjectDoc
   const [selectedProject, setSelectedProject] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState('');
   const [refreshKey, setRefreshKey] = useState(0);
+  
+  // New project modal state
+  const [showNewProjectModal, setShowNewProjectModal] = useState(false);
+  const [newProjectName, setNewProjectName] = useState('');
+  const [newProjectGithubUrl, setNewProjectGithubUrl] = useState('');
+  const [creating, setCreating] = useState(false);
 
   useEffect(() => {
     const loadProjects = async () => {
@@ -71,6 +77,39 @@ export default function ProjectDocsDashboard({ onEditDoc, onNewDoc }: ProjectDoc
     }
   };
 
+  const handleCreateProject = async () => {
+    if (!newProjectName.trim()) return;
+    
+    setCreating(true);
+    try {
+      // Create a placeholder doc for the new project
+      await api.adminCreateContent({
+        type: 'doc',
+        project_name: newProjectName.trim(),
+        github_url: newProjectGithubUrl.trim(),
+        title: `${newProjectName.trim()} - README`,
+        slug: 'readme',
+        summary: `Documentation for ${newProjectName.trim()}`,
+        content: `# ${newProjectName.trim()}\n\nWelcome to the project documentation.`,
+        status: 'draft',
+      });
+      
+      // Refresh projects list
+      const data = await api.getProjectsList();
+      setProjects(data);
+      setSelectedProject(newProjectName.trim());
+      
+      // Reset and close modal
+      setNewProjectName('');
+      setNewProjectGithubUrl('');
+      setShowNewProjectModal(false);
+    } catch (error) {
+      console.error('Failed to create project:', error);
+    } finally {
+      setCreating(false);
+    }
+  };
+
   const filteredContents = contents.filter(c =>
     c.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
     c.slug.toLowerCase().includes(searchQuery.toLowerCase())
@@ -93,6 +132,16 @@ export default function ProjectDocsDashboard({ onEditDoc, onNewDoc }: ProjectDoc
           </div>
           
           <div className="flex items-center gap-4">
+            <motion.button
+              whileHover={{ scale: 1.02, boxShadow: "0 0 20px rgba(16, 185, 129, 0.2)" }}
+              whileTap={{ scale: 0.98 }}
+              onClick={() => setShowNewProjectModal(true)}
+              className="flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 px-5 py-2.5 rounded-lg text-sm font-medium hover:bg-emerald-500/20 transition-all"
+            >
+              <FolderOpen size={16} />
+              <span>{t('admin.newProject')}</span>
+            </motion.button>
+            
             <motion.button
               whileHover={{ scale: 1.02, boxShadow: "0 0 20px rgba(59, 130, 246, 0.2)" }}
               whileTap={{ scale: 0.98 }}
@@ -125,15 +174,15 @@ export default function ProjectDocsDashboard({ onEditDoc, onNewDoc }: ProjectDoc
                 >
                   <div className="flex items-center gap-2">
                     <FolderOpen size={14} />
-                    <span className="text-sm">{project.project_name}</span>
+                    <span className="text-sm truncate">{project.project_name}</span>
                   </div>
-                  <span className="text-xs text-[var(--color-text-muted)]">{project.doc_count}</span>
+                  <span className="text-xs opacity-60">{project.doc_count}</span>
                 </motion.button>
               ))}
+              
               {projects.length === 0 && (
-                <div className="text-center py-8 text-[var(--color-text-muted)]">
-                  <FolderOpen size={24} className="mx-auto mb-2 opacity-50" />
-                  <p className="text-xs">NO_PROJECTS</p>
+                <div className="text-center py-8 text-[var(--color-text-muted)] text-sm">
+                  {t('admin.noProjects')}
                 </div>
               )}
             </div>
@@ -141,8 +190,8 @@ export default function ProjectDocsDashboard({ onEditDoc, onNewDoc }: ProjectDoc
 
           {/* 文档列表 */}
           <div className="lg:col-span-3">
-            {/* 搜索和操作栏 */}
-            <div className="flex flex-col md:flex-row gap-4 mb-6">
+            {/* 搜索栏 */}
+            <div className="flex items-center gap-4 mb-6">
               <div className="relative flex-1">
                 <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)]" />
                 <input
@@ -150,56 +199,39 @@ export default function ProjectDocsDashboard({ onEditDoc, onNewDoc }: ProjectDoc
                   placeholder={t('admin.searchPlaceholder')}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full bg-[var(--color-bg-card)] border border-[var(--color-border-surface)] rounded-lg pl-10 pr-4 py-2.5 text-sm text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus:outline-none focus:border-[var(--color-accent)] transition-colors"
+                  className="w-full bg-[var(--color-bg-card)] border border-[var(--color-border-surface)] rounded-lg pl-10 pr-4 py-2.5 text-sm text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:outline-none focus:border-[var(--color-accent)] transition-colors"
                 />
               </div>
-              
-              <div className="flex items-center gap-2">
-                {currentProject?.github_url && (
-                  <a
-                    href={currentProject.github_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-2 px-3 py-2 bg-[var(--color-bg-card)] border border-[var(--color-border-surface)] rounded-lg text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)] transition-colors"
-                  >
-                    <ExternalLink size={14} />
-                    <span className="text-xs">GitHub</span>
-                  </a>
-                )}
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={() => setRefreshKey(k => k + 1)}
-                  className="p-2 bg-[var(--color-bg-card)] border border-[var(--color-border-surface)] rounded-lg text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)] transition-colors"
-                >
-                  <RefreshCw size={14} />
-                </motion.button>
-              </div>
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => setRefreshKey(k => k + 1)}
+                className="p-2.5 bg-[var(--color-bg-card)] border border-[var(--color-border-surface)] rounded-lg text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] hover:border-[var(--color-accent)] transition-all"
+              >
+                <RefreshCw size={16} />
+              </motion.button>
             </div>
 
             {/* 文档列表 */}
-            <div className="space-y-3">
-              {loading ? (
-                <div className="flex items-center justify-center py-20">
-                  <div className="flex flex-col items-center gap-4">
-                    <div className="w-8 h-8 border-2 border-blue-500/30 border-t-blue-500 rounded-full animate-spin" />
-                    <p className="text-[var(--color-text-muted)] font-mono text-sm">{t('admin.loadingData')}</p>
-                  </div>
-                </div>
-              ) : filteredContents.length === 0 ? (
-                <div className="text-center py-20 text-[var(--color-text-muted)]">
-                  <FileText size={48} className="mx-auto mb-4 opacity-50" />
-                  <p className="font-mono text-sm mb-2">{t('admin.noProjectDocs')}</p>
-                  <motion.button
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                    onClick={onNewDoc}
-                    className="mt-4 px-4 py-2 bg-blue-500/10 border border-blue-500/30 text-blue-400 rounded-lg text-sm hover:bg-blue-500/20 transition-all"
+            {loading ? (
+              <div className="flex items-center justify-center py-20">
+                <div className="flex items-center gap-3 text-[var(--color-text-muted)]">
+                  <motion.div
+                    animate={{ rotate: 360 }}
+                    transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
                   >
-                    {t('admin.createFirstDoc')}
-                  </motion.button>
+                    <RefreshCw size={16} />
+                  </motion.div>
+                  <span className="text-sm font-mono">{t('admin.loadingData')}</span>
                 </div>
-              ) : (
+              </div>
+            ) : filteredContents.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-20 text-[var(--color-text-muted)]">
+                <FileText size={48} className="mb-4 opacity-30" />
+                <p className="text-sm font-mono">{t('admin.noDocsFound')}</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
                 <AnimatePresence>
                   {filteredContents.map((doc, index) => (
                     <motion.div
@@ -284,8 +316,8 @@ export default function ProjectDocsDashboard({ onEditDoc, onNewDoc }: ProjectDoc
                     </motion.div>
                   ))}
                 </AnimatePresence>
-              )}
-            </div>
+              </div>
+            )}
           </div>
         </div>
 
@@ -303,6 +335,95 @@ export default function ProjectDocsDashboard({ onEditDoc, onNewDoc }: ProjectDoc
           </span>
         </div>
       </div>
+
+      {/* New Project Modal */}
+      <AnimatePresence>
+        {showNewProjectModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+            onClick={() => setShowNewProjectModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-md bg-[var(--color-bg-secondary)] border border-[var(--color-border-surface)] rounded-xl p-6 shadow-2xl"
+            >
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-lg font-semibold text-[var(--color-text-primary)]">
+                  {t('admin.newProject')}
+                </h2>
+                <button
+                  onClick={() => setShowNewProjectModal(false)}
+                  className="p-1 text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] transition-colors"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm text-[var(--color-text-muted)] mb-2">
+                    {t('admin.projectName')} *
+                  </label>
+                  <input
+                    type="text"
+                    value={newProjectName}
+                    onChange={(e) => setNewProjectName(e.target.value)}
+                    placeholder="my-awesome-project"
+                    className="w-full bg-[var(--color-bg-card)] border border-[var(--color-border-surface)] rounded-lg px-4 py-2.5 text-sm text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:outline-none focus:border-[var(--color-accent)] transition-colors"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm text-[var(--color-text-muted)] mb-2">
+                    GitHub URL ({t('admin.optional')})
+                  </label>
+                  <input
+                    type="text"
+                    value={newProjectGithubUrl}
+                    onChange={(e) => setNewProjectGithubUrl(e.target.value)}
+                    placeholder="https://github.com/username/repo"
+                    className="w-full bg-[var(--color-bg-card)] border border-[var(--color-border-surface)] rounded-lg px-4 py-2.5 text-sm text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:outline-none focus:border-[var(--color-accent)] transition-colors"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3 mt-6">
+                <button
+                  onClick={() => setShowNewProjectModal(false)}
+                  className="flex-1 px-4 py-2.5 text-sm text-[var(--color-text-muted)] bg-[var(--color-bg-card)] border border-[var(--color-border-surface)] rounded-lg hover:border-[var(--color-accent)] transition-colors"
+                >
+                  {t('admin.cancel')}
+                </button>
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={handleCreateProject}
+                  disabled={!newProjectName.trim() || creating}
+                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 rounded-lg hover:bg-emerald-500/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {creating ? (
+                    <motion.div
+                      animate={{ rotate: 360 }}
+                      transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                    >
+                      <RefreshCw size={16} />
+                    </motion.div>
+                  ) : (
+                    <FolderOpen size={16} />
+                  )}
+                  <span>{creating ? t('admin.creating') : t('admin.create')}</span>
+                </motion.button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

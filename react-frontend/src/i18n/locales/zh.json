@@ -159,6 +159,13 @@
     "docOrder": "排序序号",
     "noProjectDocs": "暂无项目文档",
     "createFirstDoc": "创建第一篇文档",
-    "docCount": "文档数量"
+    "docCount": "文档数量",
+    "newProject": "新建项目",
+    "noProjects": "暂无项目",
+    "optional": "可选",
+    "cancel": "取消",
+    "create": "创建",
+    "creating": "创建中...",
+    "noDocsFound": "未找到文档"
   }
 }

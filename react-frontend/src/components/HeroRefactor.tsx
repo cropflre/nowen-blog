@@ -107,9 +107,11 @@ export default function HeroRefactor() {
                 <Settings size={16} />
               </Link>
             )}
-            <Link to="/login" className="minimal-button h-9 min-h-9 w-9 p-0" aria-label="Login">
-              <LogIn size={16} />
-            </Link>
+            {!isAuthenticated && (
+              <Link to="/login" className="minimal-button h-9 min-h-9 w-9 p-0" aria-label="Login">
+                <LogIn size={16} />
+              </Link>
+            )}
             <a href="https://github.com/cropflre" target="_blank" rel="noopener noreferrer" className="minimal-button h-9 min-h-9 w-9 p-0" aria-label="GitHub">
               <GithubMark />
             </a>
@@ -219,5 +221,6 @@ export default function HeroRefactor() {
     </section>
   );
 }
+
 
 

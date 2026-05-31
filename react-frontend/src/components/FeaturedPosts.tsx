@@ -52,7 +52,7 @@ function PostCard({ post, index }: { post: Post; index: number }) {
               </div>
 
               {/* Title */}
-              <h3 className="text-lg font-semibold mb-2 text-[var(--color-text-primary)] group-hover:text-cyan-400 transition-colors duration-300 line-clamp-2">
+              <h3 className="text-lg font-bold mb-2 bg-gradient-to-r from-purple-400 to-indigo-400 bg-clip-text text-transparent group-hover:from-purple-300 group-hover:to-indigo-300 transition-all duration-300 line-clamp-2">
                 {post.title}
               </h3>
 
@@ -72,7 +72,7 @@ function PostCard({ post, index }: { post: Post; index: number }) {
 
             {/* Hover glow */}
             <div className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"
-                 style={{ boxShadow: 'inset 0 0 60px rgba(99,102,241,0.08)' }} />
+                 style={{ boxShadow: '0 0 40px rgba(139,92,246,0.15), inset 0 0 60px rgba(139,92,246,0.08)' }} />
           </div>
         </Link>
       </Card3D>
@@ -105,10 +105,12 @@ export default function FeaturedPosts({ posts }: { posts: Post[] }) {
           </h2>
         </motion.div>
 
-        {/* Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {/* Flex container */}
+        <div className="flex flex-wrap justify-center gap-6">
           {posts.map((post, i) => (
-            <PostCard key={post.id} post={post} index={i} />
+            <div key={post.id} className="w-full md:w-[calc(50%-12px)] lg:w-[calc(33.333%-16px)]">
+              <PostCard post={post} index={i} />
+            </div>
           ))}
         </div>
 
@@ -121,7 +123,7 @@ export default function FeaturedPosts({ posts }: { posts: Post[] }) {
         >
           <Link
             to="/blog"
-            className="inline-flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-medium text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] border border-[var(--color-border-surface)] hover:border-indigo-500/50 transition-all duration-300 hover:shadow-[0_0_20px_rgba(99,102,241,0.15)]"
+            className="inline-flex items-center gap-2 px-8 py-3.5 rounded-2xl text-sm font-medium bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm text-gray-600 dark:text-gray-300 hover:text-purple-600 dark:hover:text-purple-400 border border-gray-200 dark:border-gray-700 hover:border-purple-300 dark:hover:border-purple-600 transition-all duration-300 hover:shadow-[0_8px_30px_rgba(139,92,246,0.15)] hover:-translate-y-0.5"
           >
             {t('featuredPosts.viewAll')}
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">

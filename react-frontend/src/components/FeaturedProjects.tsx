@@ -43,7 +43,7 @@ function ProjectCard({ project, index }: { project: Project; index: number }) {
 
         {/* Content */}
         <div className="p-6 flex-1 flex flex-col">
-          <h3 className="text-xl font-bold mb-2 text-[var(--color-text-primary)] group-hover:text-cyan-400 transition-colors duration-300">
+          <h3 className="text-xl font-bold mb-2 bg-gradient-to-r from-purple-400 to-indigo-400 bg-clip-text text-transparent group-hover:from-purple-300 group-hover:to-indigo-300 transition-all duration-300">
             {project.title}
           </h3>
 
@@ -56,7 +56,7 @@ function ProjectCard({ project, index }: { project: Project; index: number }) {
             {project.tech.map((t) => (
               <span
                 key={t}
-                className="px-2.5 py-1 rounded-lg text-xs font-mono bg-[var(--color-bg-secondary)] text-[var(--color-text-secondary)] border border-[var(--color-border-surface)]"
+                className="px-2.5 py-1 rounded-lg text-xs font-mono bg-purple-500/10 text-purple-400 border border-purple-500/20 hover:bg-purple-500/20 transition-colors duration-200"
               >
                 {t}
               </span>
@@ -95,7 +95,7 @@ function ProjectCard({ project, index }: { project: Project; index: number }) {
 
         {/* Hover border glow */}
         <div className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"
-             style={{ boxShadow: '0 0 40px rgba(99,102,241,0.1), inset 0 0 40px rgba(99,102,241,0.05)' }} />
+             style={{ boxShadow: '0 0 40px rgba(139,92,246,0.15), inset 0 0 40px rgba(139,92,246,0.08)' }} />
       </div>
     </motion.div>
   );
@@ -126,10 +126,12 @@ export default function FeaturedProjects({ projects }: { projects: Project[] }) 
           </h2>
         </motion.div>
 
-        {/* Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {/* Flex container */}
+        <div className="flex flex-wrap justify-center gap-6">
           {projects.map((project, i) => (
-            <ProjectCard key={project.id} project={project} index={i} />
+            <div key={project.id} className="w-full md:w-[calc(50%-12px)] lg:w-[calc(33.333%-16px)]">
+              <ProjectCard project={project} index={i} />
+            </div>
           ))}
         </div>
 

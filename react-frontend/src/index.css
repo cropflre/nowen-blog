@@ -433,25 +433,97 @@ article pre code {
   background: rgba(113, 113, 122, 0.5);
 }
 
-/* Hero Refactor 专用样式 */
+/* Hero Refactor 专用样式 - 毛玻璃科技风 */
 .hero-nav {
-  background: var(--color-hero-card);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid var(--color-hero-border);
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+  border-radius: 14px;
+  padding: 10px 24px;
+}
+
+.hero-nav.scrolled {
+  background: rgba(255, 255, 255, 0.85);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+}
+
+[data-theme="dark"] .hero-nav {
+  background: rgba(15, 15, 25, 0.7);
+  border: 1px solid rgba(30, 30, 50, 0.8);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.2);
+}
+
+[data-theme="dark"] .hero-nav.scrolled {
+  background: rgba(15, 15, 25, 0.85);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
 }
 
 .hero-nav-link {
-  color: var(--color-hero-text-secondary);
-  transition: color 0.2s ease;
+  color: #6b7280;
+  transition: all 0.2s ease;
 }
 
 .hero-nav-link:hover {
-  color: var(--color-hero-text);
+  color: #374151;
+  background: rgba(0, 0, 0, 0.05);
 }
 
 .hero-nav-link-active {
-  color: var(--color-hero-text);
+  color: #8b5cf6;
+  background: rgba(139, 92, 246, 0.1);
+  font-weight: 600;
+}
+
+[data-theme="dark"] .hero-nav-link {
+  color: #94a3b8;
+}
+
+[data-theme="dark"] .hero-nav-link:hover {
+  color: #e2e8f0;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+[data-theme="dark"] .hero-nav-link-active {
+  color: #8b5cf6;
+  background: rgba(139, 92, 246, 0.2);
+}
+
+/* 导航图标样式 */
+.nav-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #6b7280;
+  transition: all 0.2s ease;
+}
+
+.nav-icon:hover {
+  color: #374151;
+  background: rgba(0, 0, 0, 0.05);
+}
+
+/* 导航操作组 */
+.nav-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-left: auto;
+}
+
+/* 滚动状态样式 */
+.navbar.scrolled {
+  background: rgba(255, 255, 255, 0.85);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+}
+
+[data-theme="dark"] .navbar.scrolled {
+  background: rgba(15, 15, 25, 0.85);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
 }
 
 .hero-badge {

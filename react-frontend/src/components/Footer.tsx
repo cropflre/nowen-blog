@@ -49,9 +49,9 @@ export default function Footer() {
   const isInView = useInView(ref, { once: true, margin: '-50px' });
 
   return (
-    <footer ref={ref} className="relative py-16 px-6 border-t border-[var(--color-border-surface)]">
+    <footer ref={ref} className="relative py-16 px-6 bg-gray-900 dark:bg-gray-950 border-t border-gray-800 dark:border-gray-800">
       {/* Ambient glow */}
-      <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-96 h-32 bg-indigo-600/5 blur-3xl rounded-full" />
+      <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-96 h-32 bg-purple-600/10 blur-3xl rounded-full" />
 
       <motion.div
         initial={{ opacity: 0, y: 20 }}
@@ -59,29 +59,29 @@ export default function Footer() {
         transition={{ duration: 0.6 }}
         className="max-w-6xl mx-auto relative"
       >
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-12 mb-12">
+        <div className="flex flex-wrap justify-center gap-12 mb-12">
           {/* Brand */}
-          <div>
+          <div className="w-full md:w-[calc(33.333%-32px)]">
             <div className="flex items-center gap-3 mb-4">
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-cyan-400 flex items-center justify-center">
-                <span className="text-white font-bold text-xs">C</span>
+              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500 to-indigo-400 flex items-center justify-center">
+                <span className="text-white font-bold text-xs">N</span>
               </div>
-              <span className="text-lg font-semibold gradient-text">nowen-blog</span>
+              <span className="text-lg font-semibold bg-gradient-to-r from-purple-400 to-indigo-400 bg-clip-text text-transparent">nowen-blog</span>
             </div>
-            <p className="text-sm text-[var(--color-text-muted)] leading-relaxed">
+            <p className="text-sm text-gray-400 dark:text-gray-500 leading-relaxed">
               {t('footer.tagline')}
             </p>
           </div>
 
           {/* Navigation */}
-          <div>
-            <h4 className="text-sm font-semibold text-[var(--color-text-primary)] mb-4 tracking-wider uppercase">{t('footer.navigation')}</h4>
+          <div className="w-full md:w-[calc(33.333%-32px)]">
+            <h4 className="text-sm font-semibold text-white dark:text-gray-200 mb-4 tracking-wider uppercase">{t('footer.navigation')}</h4>
             <div className="flex flex-col gap-3">
               {footerLinks.map((link) => (
                 <Link
                   key={link.path}
                   to={link.path}
-                  className="text-sm text-[var(--color-text-muted)] hover:text-cyan-400 transition-colors duration-200 w-fit"
+                  className="text-sm text-gray-400 hover:text-purple-400 transition-colors duration-200 w-fit"
                 >
                   {link.label}
                 </Link>
@@ -90,8 +90,8 @@ export default function Footer() {
           </div>
 
           {/* Social */}
-          <div>
-            <h4 className="text-sm font-semibold text-[var(--color-text-primary)] mb-4 tracking-wider uppercase">{t('footer.connect')}</h4>
+          <div className="w-full md:w-[calc(33.333%-32px)]">
+            <h4 className="text-sm font-semibold text-white dark:text-gray-200 mb-4 tracking-wider uppercase">{t('footer.connect')}</h4>
             <div className="flex gap-3">
               {socialLinks.map((link) => (
                 <a
@@ -99,7 +99,7 @@ export default function Footer() {
                   href={link.href}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="w-10 h-10 rounded-lg glass flex items-center justify-center text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] hover:border-indigo-500/30 transition-all duration-300"
+                  className="w-10 h-10 rounded-lg bg-gray-800 dark:bg-gray-800 border border-gray-700 dark:border-gray-700 flex items-center justify-center text-gray-400 hover:text-purple-400 hover:border-purple-500/30 hover:bg-gray-700 dark:hover:bg-gray-700 transition-all duration-300"
                   title={link.label}
                 >
                   {link.icon}
@@ -110,12 +110,12 @@ export default function Footer() {
         </div>
 
         {/* Bottom bar */}
-        <div className="pt-8 border-t border-[var(--color-border-surface)] flex flex-col sm:flex-row items-center justify-between gap-4">
-          <p className="text-xs text-[var(--color-text-muted)] font-mono">
+        <div className="pt-8 border-t border-gray-800 dark:border-gray-800 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <p className="text-xs text-gray-500 dark:text-gray-600 font-mono">
             {t('footer.copyright')}
           </p>
-          <p className="text-xs text-[var(--color-text-muted)] font-mono flex items-center gap-1.5">
-            <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+          <p className="text-xs text-gray-500 dark:text-gray-600 font-mono flex items-center gap-1.5">
+            <span className="inline-block w-1.5 h-1.5 rounded-full bg-purple-500 animate-pulse" />
             {t('footer.builtWith')}
           </p>
         </div>

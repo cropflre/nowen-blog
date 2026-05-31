@@ -5,7 +5,6 @@ import { useTranslation } from 'react-i18next';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { LogOut, Settings, User as UserIcon, Sun, Moon, Globe, FileText, FolderOpen, Home } from 'lucide-react';
-import { Home } from 'lucide-react';
 import Dashboard from './Dashboard';
 import ProjectDocsDashboard from './ProjectDocsDashboard';
 import ArticleEditor from './ArticleEditor';
@@ -190,6 +189,7 @@ export default function AdminPage() {
     </div>
   );
 }
+
 
 
 

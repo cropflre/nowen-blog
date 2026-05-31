@@ -109,7 +109,7 @@ export default function ProjectDocsDashboard({ onEditDoc, onNewDoc }: ProjectDoc
         slug: slug,
         summary: 'Documentation for ' + projectName,
         content: '# ' + projectName + '\n\nWelcome to the project documentation.',
-        status: 'draft',
+        status: 'published',
       });
       
       const data = await api.getProjectsList();
@@ -441,4 +441,5 @@ export default function ProjectDocsDashboard({ onEditDoc, onNewDoc }: ProjectDoc
     </div>
   );
 }
+
 

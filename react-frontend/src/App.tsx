@@ -1,9 +1,7 @@
 import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import Navbar from './components/Navbar';
-import ParticleField from './components/ParticleField';
 import Footer from './components/Footer';
-import AmbientGlow from './components/AmbientGlow';
 import CommandPalette from './components/CommandPalette';
 import CyberToast from './components/CyberToast';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -65,10 +63,7 @@ function AppContent() {
   }
 
   return (
-    <div className="flex flex-col min-h-screen grid-bg scanline">
-      <ParticleField />
-      <div className="noise-overlay" />
-      {/* 首页使用 HeroRefactor 内置的胶囊导航，其他页面使用 Navbar */}
+    <div className="flex min-h-screen flex-col bg-[var(--color-bg-primary)] text-[var(--color-text-primary)]">
       {!isHomePage && <Navbar />}
       <div className="flex-1">
         <AnimatedRoutes />
@@ -83,12 +78,8 @@ export default function App() {
     <ThemeProvider>
       <AuthProvider>
         <BrowserRouter>
-          {/* 全局交互层 */}
-          <AmbientGlow />
           <CommandPalette />
           <CyberToast />
-          
-          {/* 路由层 */}
           <AppContent />
         </BrowserRouter>
       </AuthProvider>

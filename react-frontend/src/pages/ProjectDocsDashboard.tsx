@@ -1,0 +1,308 @@
+import { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { useTranslation } from 'react-i18next';
+import { Plus, Trash2, Edit3, Eye, Search, RefreshCw, FolderOpen, FileText, ExternalLink } from 'lucide-react';
+import { api } from '../api';
+import type { Content, ProjectInfo } from '../types';
+
+interface ProjectDocsDashboardProps {
+  onEditDoc?: (id: number) => void;
+  onNewDoc?: () => void;
+}
+
+export default function ProjectDocsDashboard({ onEditDoc, onNewDoc }: ProjectDocsDashboardProps) {
+  const { t, i18n } = useTranslation();
+  const [contents, setContents] = useState<Content[]>([]);
+  const [projects, setProjects] = useState<ProjectInfo[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedProject, setSelectedProject] = useState<string>('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  useEffect(() => {
+    const loadProjects = async () => {
+      try {
+        const data = await api.getProjectsList();
+        setProjects(data);
+        if (data.length > 0 && !selectedProject) {
+          setSelectedProject(data[0].project_name);
+        }
+      } catch (error) {
+        console.error('Failed to fetch projects:', error);
+      }
+    };
+    loadProjects();
+  }, []);
+
+  useEffect(() => {
+    if (!selectedProject) return;
+    
+    let cancelled = false;
+    const loadContents = async () => {
+      setLoading(true);
+      try {
+        const response = await api.getContents({
+          type: 'doc',
+          project: selectedProject,
+          pageSize: 50,
+        });
+        if (!cancelled) {
+          setContents(response.data);
+          setLoading(false);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          console.error('Failed to fetch contents:', error);
+          setLoading(false);
+        }
+      }
+    };
+    loadContents();
+    return () => { cancelled = true; };
+  }, [selectedProject, refreshKey]);
+
+  const deleteDoc = async (id: number) => {
+    if (!confirm(t('admin.confirmDelete'))) return;
+    try {
+      await api.adminDeleteContent(id);
+      setContents(contents.filter(c => c.id !== id));
+    } catch (error) {
+      console.error('Failed to delete doc:', error);
+    }
+  };
+
+  const filteredContents = contents.filter(c =>
+    c.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    c.slug.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const currentProject = projects.find(p => p.project_name === selectedProject);
+
+  return (
+    <div className="min-h-screen bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] p-8 font-mono">
+      <div className="max-w-7xl mx-auto">
+        {/* 顶部控制栏 */}
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-12 border-b border-[var(--color-border-surface)] pb-6">
+          <div>
+            <h1 className="text-3xl font-bold tracking-wider text-[var(--color-text-primary)] mb-2">
+              <span className="text-blue-500">&gt;</span> {t('admin.projectDocs')}
+            </h1>
+            <p className="text-[var(--color-text-muted)] text-sm">
+              <span className="text-[var(--color-text-muted)]">//</span> {t('admin.coreConsoleDesc')}
+            </p>
+          </div>
+          
+          <div className="flex items-center gap-4">
+            <motion.button
+              whileHover={{ scale: 1.02, boxShadow: "0 0 20px rgba(59, 130, 246, 0.2)" }}
+              whileTap={{ scale: 0.98 }}
+              onClick={onNewDoc}
+              className="flex items-center gap-2 bg-blue-500/10 border border-blue-500/30 text-blue-400 px-5 py-2.5 rounded-lg text-sm font-medium hover:bg-blue-500/20 transition-all"
+            >
+              <Plus size={16} />
+              <span>{t('admin.newArticle')}</span>
+            </motion.button>
+          </div>
+        </div>
+
+        {/* 项目选择和统计 */}
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-8">
+          {/* 项目列表 */}
+          <div className="lg:col-span-1">
+            <h3 className="text-sm text-[var(--color-text-muted)] mb-3">{t('admin.selectProject')}</h3>
+            <div className="space-y-2">
+              {projects.map((project) => (
+                <motion.button
+                  key={project.project_name}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => setSelectedProject(project.project_name)}
+                  className={`w-full flex items-center justify-between p-3 rounded-lg text-left transition-all ${
+                    selectedProject === project.project_name
+                      ? 'bg-blue-500/10 border border-blue-500/30 text-blue-400'
+                      : 'bg-[var(--color-bg-card)] border border-[var(--color-border-surface)] text-[var(--color-text-secondary)] hover:border-[var(--color-accent)]'
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <FolderOpen size={14} />
+                    <span className="text-sm">{project.project_name}</span>
+                  </div>
+                  <span className="text-xs text-[var(--color-text-muted)]">{project.doc_count}</span>
+                </motion.button>
+              ))}
+              {projects.length === 0 && (
+                <div className="text-center py-8 text-[var(--color-text-muted)]">
+                  <FolderOpen size={24} className="mx-auto mb-2 opacity-50" />
+                  <p className="text-xs">NO_PROJECTS</p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* 文档列表 */}
+          <div className="lg:col-span-3">
+            {/* 搜索和操作栏 */}
+            <div className="flex flex-col md:flex-row gap-4 mb-6">
+              <div className="relative flex-1">
+                <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)]" />
+                <input
+                  type="text"
+                  placeholder={t('admin.searchPlaceholder')}
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full bg-[var(--color-bg-card)] border border-[var(--color-border-surface)] rounded-lg pl-10 pr-4 py-2.5 text-sm text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus:outline-none focus:border-[var(--color-accent)] transition-colors"
+                />
+              </div>
+              
+              <div className="flex items-center gap-2">
+                {currentProject?.github_url && (
+                  <a
+                    href={currentProject.github_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 px-3 py-2 bg-[var(--color-bg-card)] border border-[var(--color-border-surface)] rounded-lg text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)] transition-colors"
+                  >
+                    <ExternalLink size={14} />
+                    <span className="text-xs">GitHub</span>
+                  </a>
+                )}
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => setRefreshKey(k => k + 1)}
+                  className="p-2 bg-[var(--color-bg-card)] border border-[var(--color-border-surface)] rounded-lg text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)] transition-colors"
+                >
+                  <RefreshCw size={14} />
+                </motion.button>
+              </div>
+            </div>
+
+            {/* 文档列表 */}
+            <div className="space-y-3">
+              {loading ? (
+                <div className="flex items-center justify-center py-20">
+                  <div className="flex flex-col items-center gap-4">
+                    <div className="w-8 h-8 border-2 border-blue-500/30 border-t-blue-500 rounded-full animate-spin" />
+                    <p className="text-[var(--color-text-muted)] font-mono text-sm">{t('admin.loadingData')}</p>
+                  </div>
+                </div>
+              ) : filteredContents.length === 0 ? (
+                <div className="text-center py-20 text-[var(--color-text-muted)]">
+                  <FileText size={48} className="mx-auto mb-4 opacity-50" />
+                  <p className="font-mono text-sm mb-2">{t('admin.noProjectDocs')}</p>
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={onNewDoc}
+                    className="mt-4 px-4 py-2 bg-blue-500/10 border border-blue-500/30 text-blue-400 rounded-lg text-sm hover:bg-blue-500/20 transition-all"
+                  >
+                    {t('admin.createFirstDoc')}
+                  </motion.button>
+                </div>
+              ) : (
+                <AnimatePresence>
+                  {filteredContents.map((doc, index) => (
+                    <motion.div
+                      key={doc.id}
+                      initial={{ opacity: 0, y: 15 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, height: 0, padding: 0, marginBottom: 0 }}
+                      transition={{ duration: 0.3, ease: [0.25, 1, 0.5, 1], delay: index * 0.05 }}
+                      className="group relative flex items-center justify-between p-5 bg-[var(--color-bg-card)] border border-[var(--color-border-surface)] rounded-xl overflow-hidden hover:border-[var(--color-accent)] transition-all duration-300"
+                    >
+                      {/* 悬浮光效 */}
+                      <div className="absolute inset-0 bg-gradient-to-r from-blue-500/0 via-blue-500/5 to-blue-500/0 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                      
+                      <div className="relative flex items-center gap-4">
+                        {/* 状态指示灯 */}
+                        <div className="relative">
+                          <span className={`w-2.5 h-2.5 rounded-full ${
+                            doc.status === 'published' 
+                              ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]' 
+                              : 'bg-amber-500 shadow-[0_0_10px_rgba(245,158,11,0.3)]'
+                          }`} />
+                        </div>
+                        
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <h3 className="font-medium text-[var(--color-text-primary)] group-hover:text-[var(--color-accent)] transition-colors text-lg">
+                              {doc.title}
+                            </h3>
+                            {doc.order > 0 && (
+                              <span className="text-xs bg-blue-500/10 text-blue-400 px-2 py-0.5 rounded">
+                                #{doc.order}
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-4 mt-1.5">
+                            <span className="text-xs text-[var(--color-text-muted)] font-mono">
+                              <span className="text-[var(--color-text-muted)]">{t('admin.slug')}:</span> {doc.slug}
+                            </span>
+                            <span className="text-xs text-[var(--color-text-muted)]">•</span>
+                            <span className="text-xs text-[var(--color-text-muted)]">
+                              {doc.tags && doc.tags.split(',').map(tag => (
+                                <span key={tag} className="inline-block bg-[var(--color-bg-secondary)] px-2 py-0.5 rounded mr-1 text-[var(--color-text-secondary)]">
+                                  #{tag.trim()}
+                                </span>
+                              ))}
+                            </span>
+                          </div>
+                          <p className="text-xs text-[var(--color-text-muted)] mt-1.5 font-mono">
+                            {t('admin.syncedAt')}: {new Date(doc.updated_at).toLocaleString(i18n.language === 'zh' ? 'zh-CN' : 'en-US')}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="relative flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                        <motion.button
+                          whileHover={{ scale: 1.1 }}
+                          whileTap={{ scale: 0.9 }}
+                          className="p-2 hover:bg-[var(--color-bg-secondary)] rounded-lg text-[var(--color-text-muted)] hover:text-emerald-400 transition-colors"
+                          title={t('admin.preview')}
+                        >
+                          <Eye size={16} />
+                        </motion.button>
+                        <motion.button
+                          whileHover={{ scale: 1.1 }}
+                          whileTap={{ scale: 0.9 }}
+                          onClick={() => onEditDoc?.(doc.id)}
+                          className="p-2 hover:bg-[var(--color-bg-secondary)] rounded-lg text-[var(--color-text-muted)] hover:text-blue-400 transition-colors"
+                          title={t('admin.edit')}
+                        >
+                          <Edit3 size={16} />
+                        </motion.button>
+                        <motion.button
+                          whileHover={{ scale: 1.1 }}
+                          whileTap={{ scale: 0.9 }}
+                          onClick={() => deleteDoc(doc.id)}
+                          className="p-2 hover:bg-[var(--color-bg-secondary)] rounded-lg text-[var(--color-text-muted)] hover:text-red-400 transition-colors"
+                          title={t('admin.delete')}
+                        >
+                          <Trash2 size={16} />
+                        </motion.button>
+                      </div>
+                    </motion.div>
+                  ))}
+                </AnimatePresence>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* 底部状态栏 */}
+        <div className="mt-8 pt-4 border-t border-[var(--color-border-surface)] flex justify-between items-center text-xs text-[var(--color-text-muted)] font-mono">
+          <span>{t('admin.sysStatus')}: <span className="text-emerald-500">{t('admin.online')}</span></span>
+          <span>
+            {selectedProject && (
+              <>
+                <span className="text-[var(--color-text-secondary)]">{selectedProject}</span>
+                <span className="mx-2">•</span>
+                <span>{t('admin.docCount')}: <span className="text-[var(--color-text-secondary)]">{contents.length}</span></span>
+              </>
+            )}
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}

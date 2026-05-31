@@ -1,36 +1,44 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Save, Eye, Code, Tag, Clock, Zap, Cpu, Image as ImageIcon, Upload } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import { ArrowLeft, Save, Eye, Code, Tag, Image as ImageIcon, Upload, FileText, FolderOpen } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { debounce } from 'lodash-es';
 import { api } from '../api';
-import type { Post, PostRequest } from '../types';
+import type { Post, PostRequest, Content, ProjectInfo } from '../types';
 import ImageUploader from '../components/ImageUploader';
 import { toastEvent } from '../components/CyberToast';
 
 interface ArticleEditorProps {
   postId?: number;
   onBack: () => void;
+  contentType?: 'blog' | 'doc';
 }
 
-export default function ArticleEditor({ postId, onBack }: ArticleEditorProps) {
+export default function ArticleEditor({ postId, onBack, contentType = 'blog' }: ArticleEditorProps) {
+  const { t } = useTranslation();
   const [title, setTitle] = useState('');
   const [slug, setSlug] = useState('');
   const [summary, setSummary] = useState('');
   const [content, setContent] = useState('');
-  const [previewContent, setPreviewContent] = useState(''); // 防抖后的预览内容
+  const [previewContent, setPreviewContent] = useState('');
   const [isCompiling, setIsCompiling] = useState(false);
   const [tags, setTags] = useState('');
   const [status, setStatus] = useState<'draft' | 'published'>('draft');
   const [showPreview, setShowPreview] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [showImageUploader, setShowImageUploader] = useState(false);
-  const [isInlineUploading, setIsInlineUploading] = useState(false);
   const [isTextareaDragging, setIsTextareaDragging] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // 防抖同步预览层：停顿 200ms 后启动 AST 编译
+  // 项目文档相关状态
+  const [type, setType] = useState<'blog' | 'doc'>(contentType);
+  const [projects, setProjects] = useState<ProjectInfo[]>([]);
+  const [selectedProject, setSelectedProject] = useState<string>('');
+  const [githubUrl, setGithubUrl] = useState<string>('');
+  const [order, setOrder] = useState<number>(0);
+
+  // 防抖同步预览层
   const debouncedSync = useRef(
     debounce((text: string) => {
       setPreviewContent(text);
@@ -38,19 +46,50 @@ export default function ArticleEditor({ postId, onBack }: ArticleEditorProps) {
     }, 200)
   ).current;
 
-  // 加载现有文章
+  // 加载项目列表
+  useEffect(() => {
+    if (type === 'doc') {
+      api.getProjectsList().then((data) => {
+        setProjects(data);
+        if (data.length > 0 && !selectedProject) {
+          setSelectedProject(data[0].project_name);
+          setGithubUrl(data[0].github_url || '');
+        }
+      }).catch(console.error);
+    }
+  }, [type]);
+
+  // 加载现有内容
   useEffect(() => {
     if (postId) {
-      api.adminGetPost(postId).then((post: Post) => {
-        setTitle(post.title);
-        setSlug(post.slug);
-        setSummary(post.summary);
-        setContent(post.content);
-        setTags(post.tags);
-        setStatus(post.status);
-      });
+      if (type === 'blog') {
+        api.adminGetPost(postId).then((post: Post) => {
+          setTitle(post.title);
+          setSlug(post.slug);
+          setSummary(post.summary);
+          setContent(post.content);
+          setTags(post.tags);
+          setStatus(post.status);
+        });
+      } else {
+        // 对于 doc 类型，需要从 contents 列表中找到
+        api.getContents({ type: 'doc', pageSize: 100 }).then((response) => {
+          const doc = response.data.find(c => c.id === postId);
+          if (doc) {
+            setTitle(doc.title);
+            setSlug(doc.slug);
+            setSummary(doc.summary);
+            setContent(doc.content);
+            setTags(doc.tags);
+            setStatus(doc.status);
+            setSelectedProject(doc.project_name);
+            setGithubUrl(doc.github_url);
+            setOrder(doc.order);
+          }
+        });
+      }
     }
-  }, [postId]);
+  }, [postId, type]);
 
   // 自动生成 slug
   const handleTitleChange = useCallback((value: string) => {
@@ -62,37 +101,63 @@ export default function ArticleEditor({ postId, onBack }: ArticleEditorProps) {
     }
   }, [postId]);
 
-  // 计算阅读时间
-  const readTime = Math.max(1, Math.ceil(content.length / 200));
+  // 处理项目选择
+  const handleProjectChange = (projectName: string) => {
+    setSelectedProject(projectName);
+    const project = projects.find(p => p.project_name === projectName);
+    if (project) {
+      setGithubUrl(project.github_url || '');
+    }
+  };
 
-  // 保存文章
+  // 保存内容
   const handleSave = async () => {
     if (!title || !slug) {
-      alert('标题和 slug 不能为空');
+      alert(t('admin.titleRequired'));
       return;
     }
 
     setSaving(true);
     try {
-      const data: PostRequest = {
-        title,
-        slug,
-        summary,
-        content,
-        tags: tags.split(',').map(t => t.trim()).filter(Boolean),
-        status,
-      };
+      if (type === 'blog') {
+        const data: PostRequest = {
+          title,
+          slug,
+          summary,
+          content,
+          tags: tags.split(',').map(t => t.trim()).filter(Boolean),
+          status,
+        };
 
-      if (postId) {
-        await api.updatePost(postId, data);
+        if (postId) {
+          await api.updatePost(postId, data);
+        } else {
+          await api.createPost(data);
+        }
       } else {
-        await api.createPost(data);
-      }
+        // 项目文档
+        const data: Partial<Content> = {
+          type: 'doc',
+          project_name: selectedProject,
+          github_url: githubUrl,
+          title,
+          slug,
+          summary,
+          content,
+          tags: tags.split(',').map(t => t.trim()).filter(Boolean).join(','),
+          status,
+          order,
+        };
 
-      setLastSaved(new Date());
+        if (postId) {
+          await api.adminUpdateContent(postId, data);
+        } else {
+          await api.adminCreateContent(data);
+        }
+      }
     } catch (error) {
       console.error('Save failed:', error);
-      alert('保存失败: ' + (error as Error).message);
+      alert(t('admin.saveFailed') + ': ' + (error as Error).message);
     } finally {
       setSaving(false);
     }
@@ -108,9 +173,9 @@ export default function ArticleEditor({ postId, onBack }: ArticleEditorProps) {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [title, slug, summary, content, tags, status]);
+  }, [title, slug, summary, content, tags, status, selectedProject, githubUrl, order, type]);
 
-  // 插入图片 Markdown（从 ImageUploader 面板）
+  // 插入图片 Markdown
   const handleImageUpload = useCallback((markdown: string) => {
     const textarea = textareaRef.current;
     if (!textarea) return;
@@ -121,7 +186,6 @@ export default function ArticleEditor({ postId, onBack }: ArticleEditorProps) {
     setContent(newContent);
     setShowImageUploader(false);
 
-    // 重新设置光标位置
     setTimeout(() => {
       textarea.focus();
       const newPos = start + markdown.length + 2;
@@ -129,14 +193,14 @@ export default function ArticleEditor({ postId, onBack }: ArticleEditorProps) {
     }, 0);
   }, [content]);
 
-  // === 内联图片上传管道（直觉级 Ctrl+V / Drag & Drop） ===
+  // 内联图片上传
   const inlineUploadImage = useCallback(async (file: File) => {
     if (!file.type.startsWith('image/')) {
-      toastEvent.emit('ERROR: 仅支持图片文件');
+      toastEvent.emit(t('admin.onlyImagesSupported'));
       return;
     }
     if (file.size > 10 * 1024 * 1024) {
-      toastEvent.emit('ERROR: 文件过大 (最大 10MB)');
+      toastEvent.emit(t('admin.fileTooLarge'));
       return;
     }
 
@@ -146,169 +210,222 @@ export default function ArticleEditor({ postId, onBack }: ArticleEditorProps) {
     const startPos = textarea.selectionStart;
     const endPos = textarea.selectionEnd;
 
-    // 在光标处插入极客占位符
     const placeholder = `![UPLOADING_SYS_IMG...]()\n`;
     const before = content.substring(0, startPos);
     const after = content.substring(endPos);
-    const withPlaceholder = before + placeholder + after;
-    setContent(withPlaceholder);
-    setIsInlineUploading(true);
-
-    // 移动光标到占位符之后
-    setTimeout(() => {
-      textarea.focus();
-      const cursorPos = startPos + placeholder.length;
-      textarea.setSelectionRange(cursorPos, cursorPos);
-    }, 0);
+    setContent(before + placeholder + after);
 
     try {
       const result = await api.uploadImage(file);
-      const imageMark = result.markdown || `![${result.original || file.name}](${result.url})`;
-
-      setContent(prev => prev.replace(placeholder, imageMark + '\n'));
-      debouncedSync(content.replace(placeholder, imageMark + '\n'));
-      toastEvent.emit(`UPLOAD_COMPLETE: ${file.name}`);
+      setContent(prev => {
+        const idx = prev.indexOf(placeholder);
+        if (idx === -1) return prev;
+        const b = prev.substring(0, idx);
+        const a = prev.substring(idx + placeholder.length);
+        const realMd = `![${file.name}](${result.url})\n`;
+        return b + realMd + a;
+      });
+      toastEvent.emit(t('admin.imageUploaded'));
     } catch (err) {
-      // 上传失败，移除占位符
       setContent(prev => prev.replace(placeholder, ''));
-      const message = err instanceof Error ? err.message : 'Upload failed';
-      toastEvent.emit(`ERROR: ${message}`);
+      toastEvent.emit(t('admin.uploadFailed') + ': ' + (err as Error).message);
     } finally {
-      setIsInlineUploading(false);
+      setTimeout(() => {
+        textarea.focus();
+      }, 0);
     }
-  }, [content, debouncedSync]);
+  }, [content, t]);
 
-  // textarea 粘贴拦截
-  const handleTextareaPaste = useCallback((e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+  const handleTextareaPaste = useCallback((e: React.ClipboardEvent) => {
     const items = e.clipboardData?.items;
     if (!items) return;
 
-    for (let i = 0; i < items.length; i++) {
-      if (items[i].type.startsWith('image/')) {
+    for (const item of Array.from(items)) {
+      if (item.type.startsWith('image/')) {
         e.preventDefault();
-        const file = items[i].getAsFile();
-        if (file) {
-          inlineUploadImage(file);
-        }
-        break;
+        const file = item.getAsFile();
+        if (file) inlineUploadImage(file);
+        return;
       }
     }
   }, [inlineUploadImage]);
 
-  // textarea 拖拽拦截
-  const handleTextareaDragOver = useCallback((e: React.DragEvent<HTMLTextAreaElement>) => {
+  const handleTextareaDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
-    e.stopPropagation();
     if (e.dataTransfer.types.includes('Files')) {
       setIsTextareaDragging(true);
     }
   }, []);
 
-  const handleTextareaDragLeave = useCallback((e: React.DragEvent<HTMLTextAreaElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
+  const handleTextareaDragLeave = useCallback(() => {
     setIsTextareaDragging(false);
   }, []);
 
-  const handleTextareaDrop = useCallback((e: React.DragEvent<HTMLTextAreaElement>) => {
+  const handleTextareaDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
-    e.stopPropagation();
     setIsTextareaDragging(false);
-
-    const files = e.dataTransfer.files;
+    
+    const files = e.dataTransfer?.files;
     if (files && files.length > 0) {
       const file = files[0];
       if (file.type.startsWith('image/')) {
         inlineUploadImage(file);
       } else {
-        toastEvent.emit('ERROR: 仅支持图片文件');
+        toastEvent.emit(t('admin.onlyImagesSupported'));
       }
     }
-  }, [inlineUploadImage]);
+  }, [inlineUploadImage, t]);
 
   return (
-    <div className="h-screen bg-[#050505] text-zinc-300 flex flex-col overflow-hidden">
-      {/* 编辑器头部 */}
-      <div className="h-14 border-b border-zinc-800 flex items-center justify-between px-4 bg-zinc-950/80 backdrop-blur-sm">
+    <div className="h-screen bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] flex flex-col overflow-hidden">
+      {/* 顶部工具栏 */}
+      <div className="h-12 border-b border-[var(--color-border-surface)] flex items-center justify-between px-4 bg-[var(--color-bg-secondary)]">
         <div className="flex items-center gap-4">
           <motion.button
-            whileHover={{ x: -2 }}
+            whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             onClick={onBack}
-            className="flex items-center gap-2 text-zinc-500 hover:text-zinc-300 transition-colors"
+            className="p-1.5 text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] transition-colors"
           >
             <ArrowLeft size={16} />
-            <span className="text-xs font-mono">BACK</span>
           </motion.button>
           
-          <div className="w-px h-6 bg-zinc-800" />
+          <div className="w-px h-6 bg-[var(--color-border-surface)]" />
           
-          <input
-            type="text"
-            placeholder="// 输入文章标题..."
-            value={title}
-            onChange={(e) => handleTitleChange(e.target.value)}
-            className="bg-transparent text-white font-medium text-sm focus:outline-none w-64 placeholder-zinc-600"
-          />
+          <div className="flex items-center gap-2 text-xs text-[var(--color-text-muted)]">
+            <Code size={12} />
+            <span className="font-mono">{t('admin.editor')}</span>
+          </div>
+
+          {/* 内容类型切换 */}
+          <div className="flex items-center gap-1 ml-2">
+            <button
+              onClick={() => setType('blog')}
+              className={`flex items-center gap-1 px-2 py-1 text-xs font-mono rounded transition-all ${
+                type === 'blog'
+                  ? 'bg-emerald-500/10 text-emerald-400'
+                  : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)]'
+              }`}
+            >
+              <FileText size={12} />
+              {t('admin.blog')}
+            </button>
+            <button
+              onClick={() => setType('doc')}
+              className={`flex items-center gap-1 px-2 py-1 text-xs font-mono rounded transition-all ${
+                type === 'doc'
+                  ? 'bg-blue-500/10 text-blue-400'
+                  : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)]'
+              }`}
+            >
+              <FolderOpen size={12} />
+              {t('admin.doc')}
+            </button>
+          </div>
+          
+          {isCompiling && (
+            <div className="flex items-center gap-2 text-xs text-emerald-400">
+              <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+              <span className="font-mono">{t('admin.compileStatus')}</span>
+            </div>
+          )}
         </div>
 
         <div className="flex items-center gap-3">
-          {/* 内联上传状态灯 */}
-          {isInlineUploading && (
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className="flex items-center gap-2 text-xs font-mono"
-            >
-              <Upload size={12} className="text-amber-400 animate-pulse" />
-              <span className="text-amber-400 animate-pulse">UP_LINKING...</span>
-            </motion.div>
+          {/* 项目选择（仅文档类型显示） */}
+          {type === 'doc' && (
+            <>
+              <select
+                value={selectedProject}
+                onChange={(e) => handleProjectChange(e.target.value)}
+                className="bg-[var(--color-bg-card)] border border-[var(--color-border-surface)] rounded px-2 py-1 text-xs text-[var(--color-text-primary)] focus:outline-none focus:border-[var(--color-accent)]"
+              >
+                <option value="">{t('admin.selectProject')}</option>
+                {projects.map((project) => (
+                  <option key={project.project_name} value={project.project_name}>
+                    {project.project_name}
+                  </option>
+                ))}
+              </select>
+
+              {/* 排序 */}
+              <div className="flex items-center gap-1">
+                <span className="text-xs text-[var(--color-text-muted)]">{t('admin.docOrder')}:</span>
+                <input
+                  type="number"
+                  value={order}
+                  onChange={(e) => setOrder(parseInt(e.target.value) || 0)}
+                  className="w-16 bg-transparent border-b border-[var(--color-border-surface)] focus:border-[var(--color-accent)] px-1 py-0.5 text-xs text-[var(--color-text-primary)] focus:outline-none font-mono"
+                />
+              </div>
+
+              <div className="w-px h-6 bg-[var(--color-border-surface)]" />
+            </>
           )}
 
-          {/* 编译状态指示 */}
-          <div className="flex items-center gap-2 text-xs text-zinc-500 font-mono">
-            <Cpu size={12} className={isCompiling ? "text-amber-400 animate-spin" : "text-zinc-600"} />
-            <span>{isCompiling ? "COMPILING..." : "READY"}</span>
+          {/* 标题输入 */}
+          <input
+            type="text"
+            value={title}
+            onChange={(e) => handleTitleChange(e.target.value)}
+            placeholder={t('admin.articleTitle')}
+            className="w-64 bg-transparent border-b border-[var(--color-border-surface)] focus:border-[var(--color-accent)] px-2 py-1 text-sm text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus:outline-none transition-colors"
+          />
+
+          <div className="w-px h-6 bg-[var(--color-border-surface)]" />
+
+          {/* Slug */}
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-[var(--color-text-muted)] font-mono">{t('admin.slug')}:</span>
+            <input
+              type="text"
+              value={slug}
+              onChange={(e) => setSlug(e.target.value)}
+              placeholder="article-slug"
+              className="w-32 bg-transparent border-b border-[var(--color-border-surface)] focus:border-[var(--color-accent)] px-2 py-1 text-xs text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus:outline-none font-mono transition-colors"
+            />
           </div>
 
-          {/* 状态指示 */}
-          <div className="flex items-center gap-2 text-xs text-zinc-500 font-mono">
-            <Clock size={12} />
-            <span>{readTime} min read</span>
+          <div className="w-px h-6 bg-[var(--color-border-surface)]" />
+
+          {/* 标签 */}
+          <div className="flex items-center gap-2">
+            <Tag size={12} className="text-[var(--color-text-muted)]" />
+            <input
+              type="text"
+              value={tags}
+              onChange={(e) => setTags(e.target.value)}
+              placeholder="tag1, tag2"
+              className="w-32 bg-transparent border-b border-[var(--color-border-surface)] focus:border-[var(--color-accent)] px-2 py-1 text-xs text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus:outline-none font-mono transition-colors"
+            />
           </div>
+
+          <div className="w-px h-6 bg-[var(--color-border-surface)]" />
 
           {/* 状态切换 */}
-          <div className="bg-zinc-900 border border-zinc-800 p-0.5 rounded-md flex gap-0.5 text-xs">
-            <button
-              onClick={() => setStatus('draft')}
-              className={`px-3 py-1.5 rounded transition-all ${
-                status === 'draft' ? 'bg-zinc-800 text-white' : 'text-zinc-500 hover:text-zinc-300'
-              }`}
-            >
-              草稿
-            </button>
-            <button
-              onClick={() => setStatus('published')}
-              className={`px-3 py-1.5 rounded transition-all ${
-                status === 'published' ? 'bg-emerald-500/10 text-emerald-400' : 'text-zinc-500 hover:text-zinc-300'
-              }`}
-            >
-              发布
-            </button>
-          </div>
+          <button
+            onClick={() => setStatus(status === 'draft' ? 'published' : 'draft')}
+            className={`px-3 py-1 text-xs font-mono rounded-lg transition-all ${
+              status === 'published'
+                ? 'bg-emerald-500/10 border border-emerald-500/30 text-emerald-400'
+                : 'bg-amber-500/10 border border-amber-500/30 text-amber-400'
+            }`}
+          >
+            {t(`admin.${status === 'published' ? 'publishedStatus' : 'draft'}`)}
+          </button>
 
           {/* 预览切换 */}
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             onClick={() => setShowPreview(!showPreview)}
-            className={`p-2 rounded-lg border transition-all ${
-              showPreview 
-                ? 'bg-blue-500/10 border-blue-500/30 text-blue-400' 
-                : 'bg-zinc-900 border-zinc-800 text-zinc-400 hover:text-white'
+            className={`p-2 rounded-lg transition-colors ${
+              showPreview
+                ? 'bg-[var(--color-accent)] text-[var(--color-bg-primary)]'
+                : 'bg-[var(--color-bg-card)] text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]'
             }`}
           >
-            {showPreview ? <Code size={16} /> : <Eye size={16} />}
+            <Eye size={16} />
           </motion.button>
 
           {/* 图片上传 */}
@@ -316,10 +433,10 @@ export default function ArticleEditor({ postId, onBack }: ArticleEditorProps) {
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             onClick={() => setShowImageUploader(!showImageUploader)}
-            className={`p-2 rounded-lg border transition-all ${
-              showImageUploader 
-                ? 'bg-purple-500/10 border-purple-500/30 text-purple-400' 
-                : 'bg-zinc-900 border-zinc-800 text-zinc-400 hover:text-white'
+            className={`p-2 rounded-lg transition-colors ${
+              showImageUploader
+                ? 'bg-blue-500/10 text-blue-400'
+                : 'bg-[var(--color-bg-card)] text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]'
             }`}
           >
             <ImageIcon size={16} />
@@ -327,71 +444,33 @@ export default function ArticleEditor({ postId, onBack }: ArticleEditorProps) {
 
           {/* 保存按钮 */}
           <motion.button
-            whileHover={{ scale: 1.02, boxShadow: "0 0 15px rgba(16, 185, 129, 0.2)" }}
+            whileHover={{ scale: 1.02, boxShadow: "0 0 20px rgba(16, 185, 129, 0.2)" }}
             whileTap={{ scale: 0.98 }}
             onClick={handleSave}
             disabled={saving}
-            className="flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 px-4 py-2 rounded-lg text-xs font-mono font-semibold tracking-wider transition-all disabled:opacity-50"
+            className="flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 px-4 py-1.5 rounded-lg text-sm font-medium hover:bg-emerald-500/20 transition-all disabled:opacity-50"
           >
             {saving ? (
-              <motion.div
-                animate={{ rotate: 360 }}
-                transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                className="w-3 h-3 border-2 border-emerald-500/30 border-t-emerald-500 rounded-full"
-              />
+              <div className="w-4 h-4 border-2 border-emerald-500/30 border-t-emerald-500 rounded-full animate-spin" />
             ) : (
-              <Save size={14} />
+              <Save size={16} />
             )}
-            <span>{saving ? 'SAVING...' : 'EXECUTE_SAVE'}</span>
+            <span>{saving ? t('admin.saving') : t('admin.save')}</span>
           </motion.button>
         </div>
       </div>
 
-      {/* 元信息栏 */}
-      <div className="h-10 border-b border-zinc-800/50 flex items-center px-4 gap-6 bg-zinc-950/50">
-        <div className="flex items-center gap-2 text-xs text-zinc-500">
-          <span className="text-zinc-600">slug:</span>
-          <input
-            type="text"
-            value={slug}
-            onChange={(e) => setSlug(e.target.value)}
-            className="bg-transparent text-zinc-400 focus:outline-none w-48 font-mono"
-            placeholder="auto-generated-slug"
-          />
-        </div>
-        <div className="flex items-center gap-2 text-xs text-zinc-500">
-          <Tag size={12} />
-          <input
-            type="text"
-            value={tags}
-            onChange={(e) => setTags(e.target.value)}
-            className="bg-transparent text-zinc-400 focus:outline-none w-64 font-mono"
-            placeholder="tag1, tag2, tag3"
-          />
-        </div>
-        {lastSaved && (
-          <motion.div
-            initial={{ opacity: 0, x: -10 }}
-            animate={{ opacity: 1, x: 0 }}
-            className="flex items-center gap-1.5 text-xs text-emerald-500/70 font-mono"
-          >
-            <Zap size={12} />
-            <span>SYNCED: {lastSaved.toLocaleTimeString('zh-CN')}</span>
-          </motion.div>
-        )}
-      </div>
-
       {/* 主编辑区 */}
       <div className="flex-1 flex overflow-hidden">
-        {/* 左侧：源码编写区 */}
-        <div className={`${showPreview ? 'w-1/2' : 'w-full'} h-full border-r border-zinc-800/50 transition-all duration-300`}>
-          <div className="h-full p-6 bg-[#030303]">
+        {/* 左侧：编辑区 */}
+        <div className={`${showPreview ? 'w-1/2' : 'w-full'} h-full bg-[var(--color-bg-primary)] border-r border-[var(--color-border-surface)] transition-all duration-300`}>
+          <div className="h-full p-6 bg-[var(--color-bg-secondary)]">
             {/* 摘要输入 */}
             <textarea
               value={summary}
               onChange={(e) => setSummary(e.target.value)}
-              placeholder="// 文章摘要（可选）..."
-              className="w-full h-16 bg-transparent font-mono text-xs leading-relaxed text-zinc-500 focus:outline-none resize-none placeholder-zinc-700 mb-4 border-b border-zinc-800/30 pb-4"
+              placeholder={t('admin.articleSummary')}
+              className="w-full h-16 bg-transparent font-mono text-xs leading-relaxed text-[var(--color-text-muted)] focus:outline-none resize-none placeholder-[var(--color-text-muted)] mb-4 border-b border-[var(--color-border-surface)] pb-4"
             />
 
             {/* 图片上传区域 */}
@@ -406,7 +485,7 @@ export default function ArticleEditor({ postId, onBack }: ArticleEditorProps) {
               </motion.div>
             )}
             
-            {/* 内容编辑（支持 Ctrl+V 粘贴图片 + 拖拽图片） */}
+            {/* 内容编辑 */}
             <div className="relative w-full h-[calc(100%-5rem)]">
               <textarea
                 ref={textareaRef}
@@ -414,15 +493,15 @@ export default function ArticleEditor({ postId, onBack }: ArticleEditorProps) {
                 onChange={(e) => {
                   const val = e.target.value;
                   setContent(val);
-                  setIsCompiling(true); // 亮起编译状态灯
+                  setIsCompiling(true);
                   debouncedSync(val);
                 }}
                 onPaste={handleTextareaPaste}
                 onDragOver={handleTextareaDragOver}
                 onDragLeave={handleTextareaDragLeave}
                 onDrop={handleTextareaDrop}
-                placeholder={`# 开始你的 Markdown 极客构建...\n\n## 功能特性\n\n- 支持完整的 Markdown 语法\n- 实时预览\n- 自动保存\n- Ctrl+V / 拖拽 直接粘贴图片\n\n> 提示: 使用 Ctrl+S 快速保存`}
-                className="w-full h-full bg-transparent font-mono text-sm leading-relaxed text-zinc-300 focus:outline-none resize-none placeholder-zinc-700"
+                placeholder={t('admin.startMarkdown')}
+                className="w-full h-full bg-transparent font-mono text-sm leading-relaxed text-[var(--color-text-primary)] focus:outline-none resize-none placeholder-[var(--color-text-muted)]"
                 autoFocus
               />
 
@@ -435,7 +514,7 @@ export default function ArticleEditor({ postId, onBack }: ArticleEditorProps) {
                 >
                   <div className="flex flex-col items-center gap-2">
                     <Upload className="w-8 h-8 text-emerald-400 animate-bounce" />
-                    <span className="text-xs font-mono text-emerald-400">DROP TO UPLOAD</span>
+                    <span className="text-xs font-mono text-emerald-400">{t('admin.dropToUpload')}</span>
                   </div>
                 </motion.div>
               )}
@@ -449,22 +528,22 @@ export default function ArticleEditor({ postId, onBack }: ArticleEditorProps) {
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: 20 }}
-            className="w-1/2 h-full overflow-y-auto bg-[#050505] custom-scrollbar"
+            className="w-1/2 h-full overflow-y-auto bg-[var(--color-bg-primary)] custom-scrollbar"
           >
             <div className="p-8">
               {title && (
-                <h1 className="text-3xl font-bold text-white mb-4">{title}</h1>
+                <h1 className="text-3xl font-bold text-[var(--color-text-primary)] mb-4">{title}</h1>
               )}
               {summary && (
-                <p className="text-zinc-400 mb-6 text-sm">{summary}</p>
+                <p className="text-[var(--color-text-secondary)] mb-6 text-sm">{summary}</p>
               )}
-              <div className="prose prose-invert prose-sm max-w-none prose-headings:text-zinc-200 prose-p:text-zinc-400 prose-a:text-emerald-400 prose-code:text-emerald-300 prose-pre:bg-zinc-900/50 prose-pre:border prose-pre:border-zinc-800">
+              <div className="minimal-prose">
                 {previewContent ? (
                   <ReactMarkdown>{previewContent}</ReactMarkdown>
                 ) : (
-                  <div className="text-center py-20 text-zinc-600">
-                    <p className="font-mono text-xs">// 编译预览层空载</p>
-                    <p className="font-mono text-xs mt-2">开始编写后此处将实时渲染</p>
+                  <div className="text-center py-20 text-[var(--color-text-muted)]">
+                    <p className="font-mono text-xs">{t('admin.compilingPreview')}</p>
+                    <p className="font-mono text-xs mt-2">{t('admin.compilingPreviewDesc')}</p>
                   </div>
                 )}
               </div>
@@ -474,14 +553,18 @@ export default function ArticleEditor({ postId, onBack }: ArticleEditorProps) {
       </div>
 
       {/* 底部状态栏 */}
-      <div className="h-6 border-t border-zinc-800/50 flex items-center justify-between px-4 bg-zinc-950/50 text-[10px] text-zinc-600 font-mono">
+      <div className="h-6 border-t border-[var(--color-border-surface)] flex items-center justify-between px-4 bg-[var(--color-bg-secondary)] text-[10px] text-[var(--color-text-muted)] font-mono">
         <div className="flex items-center gap-4">
-          <span>MODE: <span className="text-zinc-400">{showPreview ? 'SPLIT' : 'EDITOR'}</span></span>
-          <span>STATUS: <span className={status === 'published' ? 'text-emerald-500' : 'text-amber-500'}>{status.toUpperCase()}</span></span>
+          <span>{t('admin.contentType')}: <span className={type === 'blog' ? 'text-emerald-400' : 'text-blue-400'}>{t(`admin.${type}`)}</span></span>
+          <span>{t('admin.mode')}: <span className="text-[var(--color-text-secondary)]">{showPreview ? t('admin.splitMode') : t('admin.editorMode')}</span></span>
+          <span>{t('admin.status')}: <span className={status === 'published' ? 'text-emerald-500' : 'text-amber-500'}>{t(`admin.${status === 'published' ? 'publishedStatus' : 'draft'}`)}</span></span>
         </div>
         <div className="flex items-center gap-4">
-          <span>CHARS: <span className="text-zinc-400">{content.length}</span></span>
-          <span>LINES: <span className="text-zinc-400">{content.split('\n').length}</span></span>
+          {type === 'doc' && selectedProject && (
+            <span>{t('admin.projectName')}: <span className="text-blue-400">{selectedProject}</span></span>
+          )}
+          <span>{t('admin.chars')}: <span className="text-[var(--color-text-secondary)]">{content.length}</span></span>
+          <span>{t('admin.lines')}: <span className="text-[var(--color-text-secondary)]">{content.split('\n').length}</span></span>
         </div>
       </div>
     </div>

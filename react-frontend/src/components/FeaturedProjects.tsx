@@ -1,206 +1,81 @@
-import { motion, useInView } from 'framer-motion';
-import { useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { ArrowRight, ExternalLink } from 'lucide-react';
 import type { Project } from '../types';
 
-function ProjectCard({ project, index }: { project: Project; index: number }) {
-  const { t } = useTranslation();
-  const ref = useRef(null);
-  const isInView = useInView(ref, { once: true, margin: '-50px' });
-
+function GithubMark({ size = 15 }: { size?: number }) {
   return (
-    <motion.div
-      ref={ref}
-      initial={{ opacity: 0, y: 40 }}
-      animate={isInView ? { opacity: 1, y: 0 } : {}}
-      transition={{ duration: 0.6, delay: index * 0.15, ease: [0.16, 1, 0.3, 1] }}
-      className="group"
-    >
-      <div className="relative h-full rounded-2xl overflow-hidden glass glass-hover transition-all duration-500 flex flex-col">
-        {/* Featured badge */}
-        {project.featured && (
-          <div className="absolute top-4 left-4 z-10 px-3 py-1 rounded-full bg-gradient-to-r from-indigo-600 to-cyan-600 text-xs font-medium text-white">
-            {t('featuredProjects.featured')}
-          </div>
-        )}
-
-        {/* Image */}
-        <div className="relative h-48 overflow-hidden">
-          <img
-            src={project.image}
-            alt={project.title}
-            className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
-            loading="lazy"
-          />
-          <div className="absolute inset-0 gradient-overlay-dark" />
-
-          {/* Category */}
-          <div className="absolute bottom-3 left-4 px-3 py-1 rounded-full bg-black/50 backdrop-blur-sm text-xs font-mono text-cyan-400 border border-cyan-500/20">
-            {project.category}
-          </div>
-        </div>
-
-        {/* Content */}
-        <div className="p-6 flex-1 flex flex-col">
-          <h3 className="text-xl font-bold mb-2 bg-gradient-to-r from-purple-400 to-indigo-400 bg-clip-text text-transparent group-hover:from-purple-300 group-hover:to-indigo-300 transition-all duration-300">
-            {project.title}
-          </h3>
-
-          <p className="text-sm text-[var(--color-text-secondary)] leading-relaxed mb-4 flex-1 line-clamp-3">
-            {project.description}
-          </p>
-
-          {/* Tech stack */}
-          <div className="flex flex-wrap gap-2 mb-5">
-            {project.tech.map((t) => (
-              <span
-                key={t}
-                className="px-2.5 py-1 rounded-lg text-xs font-mono bg-purple-500/10 text-purple-400 border border-purple-500/20 hover:bg-purple-500/20 transition-colors duration-200"
-              >
-                {t}
-              </span>
-            ))}
-          </div>
-
-          {/* Actions */}
-          <div className="flex items-center gap-3">
-            {project.github && (
-              <a
-                href={project.github}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] border border-[var(--color-border-surface)] hover:border-indigo-500/50 transition-all duration-300"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
-                </svg>
-                {t('featuredProjects.source')}
-              </a>
-            )}
-            {project.link && (
-              <a
-                href={project.link}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-white bg-gradient-to-r from-indigo-600 to-cyan-600 hover:brightness-110 transition-all duration-300"
-                onClick={(e) => e.stopPropagation()}
-              >
-                {t('featuredProjects.liveDemo')}
-              </a>
-            )}
-          </div>
-        </div>
-
-        {/* Hover border glow */}
-        <div className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"
-             style={{ boxShadow: '0 0 40px rgba(139,92,246,0.15), inset 0 0 40px rgba(139,92,246,0.08)' }} />
-      </div>
-    </motion.div>
+    <svg width={size} height={size} fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M12 0C5.37 0 0 5.37 0 12c0 5.3 3.44 9.8 8.21 11.39.6.11.79-.26.79-.58v-2.23c-3.34.73-4.03-1.42-4.03-1.42-.55-1.39-1.33-1.76-1.33-1.76-1.09-.74.08-.73.08-.73 1.21.09 1.84 1.24 1.84 1.24 1.07 1.83 2.81 1.3 3.49.99.11-.77.42-1.3.76-1.6-2.66-.31-5.47-1.34-5.47-5.93 0-1.31.47-2.38 1.24-3.22-.12-.3-.54-1.52.12-3.18 0 0 1.01-.32 3.3 1.23.96-.27 1.98-.4 3-.4s2.05.13 3 .4c2.29-1.55 3.3-1.23 3.3-1.23.65 1.66.24 2.88.12 3.18.77.84 1.24 1.91 1.24 3.22 0 4.61-2.81 5.62-5.48 5.92.43.37.82 1.1.82 2.22v3.29c0 .32.19.69.8.58A12.01 12.01 0 0 0 24 12c0-6.63-5.37-12-12-12z" />
+    </svg>
   );
 }
 
 export default function FeaturedProjects({ projects }: { projects: Project[] }) {
   const { t } = useTranslation();
-  const ref = useRef(null);
-  const isInView = useInView(ref, { once: true, margin: '-100px' });
 
   return (
-    <section ref={ref} className="py-24 px-6 flex flex-col items-center justify-center">
-      <div className="w-full max-w-6xl mx-auto flex flex-col items-center">
-        {/* Section header */}
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          animate={isInView ? { opacity: 1, y: 0 } : {}}
-          transition={{ duration: 0.6 }}
-          className="mb-12 text-center"
-        >
-          <div className="flex items-center gap-3 mb-3">
-            <div className="h-px flex-1 max-w-[60px] bg-gradient-to-r from-transparent to-cyan-500" />
-            <span className="text-sm font-mono text-cyan-400 tracking-wider uppercase">{t('featuredProjects.sectionTitle')}</span>
-            <div className="h-px flex-1 max-w-[60px] bg-gradient-to-l from-transparent to-cyan-500" />
+    <section className="py-20 md:py-24">
+      <div className="page-shell">
+        <div className="mb-10 flex items-end justify-between gap-6">
+          <div>
+            <span className="minimal-kicker">{t('featuredProjects.sectionTitle')}</span>
+            <h2 className="minimal-section-title">{t('featuredProjects.heading')}</h2>
           </div>
-          <h2 className="text-3xl md:text-4xl font-bold">
-            <span className="gradient-text">{t('featuredProjects.heading')}</span>
-          </h2>
-        </motion.div>
-
-        {/* Flex container - 垂直水平居中 */}
-        <div className="flex flex-wrap justify-center items-center gap-6 w-full">
-          {projects.length === 0 ? (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={isInView ? { opacity: 1, y: 0 } : {}}
-              transition={{ duration: 0.5 }}
-              className="w-full max-w-lg mx-auto"
-            >
-              <div className="relative rounded-2xl overflow-hidden glass glass-hover transition-all duration-500 p-10 text-center">
-                {/* 空状态图标 */}
-                <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-gradient-to-br from-indigo-500/20 to-cyan-500/20 flex items-center justify-center">
-                  <svg className="w-10 h-10 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5m6 4.125l2.25 2.25m0 0l2.25 2.25M12 13.875l2.25-2.25M12 13.875l-2.25 2.25M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" />
-                  </svg>
-                </div>
-                
-                {/* 空状态文字 */}
-                <h3 className="text-xl font-bold mb-3 bg-gradient-to-r from-purple-400 to-indigo-400 bg-clip-text text-transparent">
-                  {t('featuredProjects.noProjects')}
-                </h3>
-                <p className="text-sm text-[var(--color-text-secondary)] leading-relaxed mb-8 max-w-sm mx-auto">
-                  {t('featuredProjects.noProjectsDesc')}
-                </p>
-                
-                {/* 查看所有项目按钮 */}
-                <Link
-                  to="/projects"
-                  className="inline-flex items-center gap-2 px-8 py-4 rounded-xl text-sm font-medium text-white bg-gradient-to-r from-indigo-600 to-cyan-600 hover:brightness-110 transition-all duration-300 hover:shadow-[0_0_20px_rgba(34,211,238,0.15)]"
-                >
-                  {t('featuredProjects.viewAll')}
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
-                  </svg>
-                </Link>
-                
-                {/* Hover border glow */}
-                <div className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"
-                     style={{ boxShadow: '0 0 40px rgba(139,92,246,0.15), inset 0 0 40px rgba(139,92,246,0.08)' }} />
-              </div>
-            </motion.div>
-          ) : (
-            <>
-              {projects.map((project, i) => (
-                <motion.div
-                  key={project.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={isInView ? { opacity: 1, y: 0 } : {}}
-                  transition={{ duration: 0.5, delay: i * 0.1 }}
-                  className="w-full md:w-[calc(50%-12px)] lg:w-[calc(33.333%-16px)]"
-                >
-                  <ProjectCard project={project} index={i} />
-                </motion.div>
-              ))}
-              
-              {/* View all - 仅在项目不为空时显示 */}
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={isInView ? { opacity: 1 } : {}}
-                transition={{ delay: 0.8 }}
-                className="w-full text-center mt-8"
-              >
-                <Link
-                  to="/projects"
-                  className="inline-flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-medium text-slate-400 hover:text-white border border-slate-700 hover:border-cyan-500/50 transition-all duration-300 hover:shadow-[0_0_20px_rgba(34,211,238,0.15)]"
-                >
-                  {t('featuredProjects.viewAll')}
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
-                  </svg>
-                </Link>
-              </motion.div>
-            </>
+          {projects.length > 0 && (
+            <Link to="/projects" className="minimal-button hidden sm:inline-flex">
+              {t('featuredProjects.viewAll')}
+              <ArrowRight size={15} />
+            </Link>
           )}
         </div>
+
+        {projects.length === 0 ? (
+          <div className="minimal-card rounded-2xl p-7 md:flex md:items-center md:justify-between md:gap-8">
+            <div>
+              <h3 className="text-xl font-semibold">{t('featuredProjects.noProjects')}</h3>
+              <p className="minimal-text mt-2 max-w-xl text-sm">{t('featuredProjects.noProjectsDesc')}</p>
+            </div>
+            <Link to="/projects" className="minimal-button-primary mt-6 md:mt-0">
+              {t('featuredProjects.viewAll')}
+              <ArrowRight size={15} />
+            </Link>
+          </div>
+        ) : (
+          <div className="grid gap-4 md:grid-cols-3">
+            {projects.map((project) => (
+              <article key={project.id} className="minimal-card flex min-h-72 flex-col rounded-2xl p-5">
+                <div className="mb-5 flex items-center justify-between gap-3">
+                  <span className="minimal-tag">{project.category}</span>
+                  {project.featured && <span className="text-xs text-[var(--color-text-muted)]">{t('featuredProjects.featured')}</span>}
+                </div>
+                <h3 className="text-xl font-semibold leading-tight">{project.title}</h3>
+                <p className="minimal-text mt-3 line-clamp-3 text-sm">{project.description}</p>
+                <div className="mt-6 flex flex-wrap gap-2">
+                  {project.tech.slice(0, 5).map((tech) => (
+                    <span key={tech} className="minimal-tag">
+                      {tech}
+                    </span>
+                  ))}
+                </div>
+                <div className="mt-auto flex flex-wrap gap-3 pt-8">
+                  {project.github && (
+                    <a href={project.github} target="_blank" rel="noopener noreferrer" className="minimal-button">
+                      <GithubMark />
+                      {t('featuredProjects.source')}
+                    </a>
+                  )}
+                  {project.link && (
+                    <a href={project.link} target="_blank" rel="noopener noreferrer" className="minimal-button-primary">
+                      {t('featuredProjects.liveDemo')}
+                      <ExternalLink size={14} />
+                    </a>
+                  )}
+                </div>
+              </article>
+            ))}
+          </div>
+        )}
       </div>
     </section>
   );

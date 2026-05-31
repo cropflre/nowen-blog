@@ -33,8 +33,13 @@ export default function ProjectDocsDashboard({ onEditDoc, onNewDoc }: ProjectDoc
         if (data.length > 0 && !selectedProject) {
           setSelectedProject(data[0].project_name);
         }
+        // 如果没有项目，设置 loading 为 false
+        if (data.length === 0) {
+          setLoading(false);
+        }
       } catch (error) {
         console.error('Failed to fetch projects:', error);
+        setLoading(false);
       }
     };
     loadProjects();
@@ -180,7 +185,7 @@ export default function ProjectDocsDashboard({ onEditDoc, onNewDoc }: ProjectDoc
                 </motion.button>
               ))}
               
-              {projects.length === 0 && (
+              {projects.length === 0 && !loading && (
                 <div className="text-center py-8 text-[var(--color-text-muted)] text-sm">
                   {t('admin.noProjects')}
                 </div>
@@ -228,7 +233,7 @@ export default function ProjectDocsDashboard({ onEditDoc, onNewDoc }: ProjectDoc
             ) : filteredContents.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-20 text-[var(--color-text-muted)]">
                 <FileText size={48} className="mb-4 opacity-30" />
-                <p className="text-sm font-mono">{t('admin.noDocsFound')}</p>
+                <p className="text-sm font-mono">{selectedProject ? t('admin.noDocsFound') : t('admin.selectProjectFirst')}</p>
               </div>
             ) : (
               <div className="space-y-3">

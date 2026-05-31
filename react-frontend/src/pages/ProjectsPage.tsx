@@ -21,10 +21,19 @@ export default function ProjectsPage() {
 
   useEffect(() => {
     api
-      .getProjects()
+      .getProjectsList()
       .then((data) => {
-        setProjects(data);
-        setCategories([...new Set(data.map((project) => project.category))]);
+        const mapped: Project[] = data.map((p, i) => ({
+          id: i + 1,
+          title: p.project_name,
+          description: `${p.doc_count} docs`,
+          image: '',
+          category: 'project',
+          tech: [],
+          github: p.github_url || undefined,
+        }));
+        setProjects(mapped);
+        setCategories([...new Set(mapped.map((project) => project.category))]);
       })
       .catch(() => {
         setProjects([]);
@@ -113,3 +122,4 @@ export default function ProjectsPage() {
     </main>
   );
 }
+

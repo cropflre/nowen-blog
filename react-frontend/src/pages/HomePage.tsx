@@ -12,10 +12,18 @@ export default function HomePage() {
   useEffect(() => {
     api.getPosts({ pageSize: 3 }).then((res) => setPosts(res.data)).catch(console.error);
     
-    api.getProjects()
+    api.getProjectsList()
       .then((data) => {
-        const featured = data.filter((p: Project) => p.featured).slice(0, 3);
-        setProjects(featured.length > 0 ? featured : data.slice(0, 3));
+        const mapped: Project[] = data.slice(0, 3).map((p, i) => ({
+          id: i + 1,
+          title: p.project_name,
+          description: `${p.doc_count} docs`,
+          image: '',
+          category: 'project',
+          tech: [],
+          github: p.github_url || undefined,
+        }));
+        setProjects(mapped);
       })
       .catch(console.error);
   }, []);

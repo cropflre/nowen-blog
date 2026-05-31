@@ -31,7 +31,8 @@ type Post struct {
 	Tags        string         `gorm:"size:500" json:"tags"` // 逗号分隔
 	Status      string         `gorm:"size:20;default:draft" json:"status"` // draft | published
 	ReadTime    int            `gorm:"default:0" json:"read_time"`
-	ViewCount   int            `gorm:"default:0" json:"view_count"` // 浏览量
+	ViewCount    int            `gorm:"default:0" json:"view_count"` // 浏览量
+	CarouselOrder int            `gorm:"default:0" json:"carousel_order"` // 幻灯片排序 (0=不展示, 1-5=排序)
 	CreatedAt   time.Time      `json:"created_at"`
 	UpdatedAt   time.Time      `json:"updated_at"`
 	DeletedAt   gorm.DeletedAt `gorm:"index" json:"-"`
@@ -130,4 +131,6 @@ func initDefaults() {
 		})
 	}
 }
+
+
 

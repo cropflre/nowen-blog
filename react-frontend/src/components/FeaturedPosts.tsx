@@ -86,14 +86,14 @@ export default function FeaturedPosts({ posts }: { posts: Post[] }) {
   const isInView = useInView(ref, { once: true, margin: '-100px' });
 
   return (
-    <section ref={ref} className="py-24 px-6">
-      <div className="max-w-6xl mx-auto">
+    <section ref={ref} className="py-24 px-6 flex flex-col items-center justify-center">
+      <div className="w-full max-w-6xl mx-auto flex flex-col items-center">
         {/* Section header */}
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           animate={isInView ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.6 }}
-          className="mb-12"
+          className="mb-12 text-center"
         >
           <div className="flex items-center gap-3 mb-3">
             <div className="h-px flex-1 max-w-[60px] bg-gradient-to-r from-transparent to-indigo-500" />
@@ -105,12 +105,18 @@ export default function FeaturedPosts({ posts }: { posts: Post[] }) {
           </h2>
         </motion.div>
 
-        {/* Flex container */}
-        <div className="flex flex-wrap justify-center gap-6">
+        {/* Flex container - 垂直水平居中 */}
+        <div className="flex flex-wrap justify-center items-center gap-6 w-full">
           {posts.map((post, i) => (
-            <div key={post.id} className="w-full md:w-[calc(50%-12px)] lg:w-[calc(33.333%-16px)]">
+            <motion.div
+              key={post.id}
+              initial={{ opacity: 0, y: 20 }}
+              animate={isInView ? { opacity: 1, y: 0 } : {}}
+              transition={{ duration: 0.5, delay: i * 0.1 }}
+              className="w-full md:w-[calc(50%-12px)] lg:w-[calc(33.333%-16px)]"
+            >
               <PostCard post={post} index={i} />
-            </div>
+            </motion.div>
           ))}
         </div>
 

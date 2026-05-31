@@ -107,14 +107,14 @@ export default function FeaturedProjects({ projects }: { projects: Project[] }) 
   const isInView = useInView(ref, { once: true, margin: '-100px' });
 
   return (
-    <section ref={ref} className="py-24 px-6">
-      <div className="max-w-6xl mx-auto">
+    <section ref={ref} className="py-24 px-6 flex flex-col items-center justify-center">
+      <div className="w-full max-w-6xl mx-auto flex flex-col items-center">
         {/* Section header */}
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           animate={isInView ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.6 }}
-          className="mb-12"
+          className="mb-12 text-center"
         >
           <div className="flex items-center gap-3 mb-3">
             <div className="h-px flex-1 max-w-[60px] bg-gradient-to-r from-transparent to-cyan-500" />
@@ -126,32 +126,81 @@ export default function FeaturedProjects({ projects }: { projects: Project[] }) 
           </h2>
         </motion.div>
 
-        {/* Flex container */}
-        <div className="flex flex-wrap justify-center gap-6">
-          {projects.map((project, i) => (
-            <div key={project.id} className="w-full md:w-[calc(50%-12px)] lg:w-[calc(33.333%-16px)]">
-              <ProjectCard project={project} index={i} />
-            </div>
-          ))}
+        {/* Flex container - 垂直水平居中 */}
+        <div className="flex flex-wrap justify-center items-center gap-6 w-full">
+          {projects.length === 0 ? (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={isInView ? { opacity: 1, y: 0 } : {}}
+              transition={{ duration: 0.5 }}
+              className="w-full max-w-lg mx-auto"
+            >
+              <div className="relative rounded-2xl overflow-hidden glass glass-hover transition-all duration-500 p-10 text-center">
+                {/* 空状态图标 */}
+                <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-gradient-to-br from-indigo-500/20 to-cyan-500/20 flex items-center justify-center">
+                  <svg className="w-10 h-10 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5m6 4.125l2.25 2.25m0 0l2.25 2.25M12 13.875l2.25-2.25M12 13.875l-2.25 2.25M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" />
+                  </svg>
+                </div>
+                
+                {/* 空状态文字 */}
+                <h3 className="text-xl font-bold mb-3 bg-gradient-to-r from-purple-400 to-indigo-400 bg-clip-text text-transparent">
+                  {t('featuredProjects.noProjects')}
+                </h3>
+                <p className="text-sm text-[var(--color-text-secondary)] leading-relaxed mb-8 max-w-sm mx-auto">
+                  {t('featuredProjects.noProjectsDesc')}
+                </p>
+                
+                {/* 查看所有项目按钮 */}
+                <Link
+                  to="/projects"
+                  className="inline-flex items-center gap-2 px-8 py-4 rounded-xl text-sm font-medium text-white bg-gradient-to-r from-indigo-600 to-cyan-600 hover:brightness-110 transition-all duration-300 hover:shadow-[0_0_20px_rgba(34,211,238,0.15)]"
+                >
+                  {t('featuredProjects.viewAll')}
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                  </svg>
+                </Link>
+                
+                {/* Hover border glow */}
+                <div className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"
+                     style={{ boxShadow: '0 0 40px rgba(139,92,246,0.15), inset 0 0 40px rgba(139,92,246,0.08)' }} />
+              </div>
+            </motion.div>
+          ) : (
+            <>
+              {projects.map((project, i) => (
+                <motion.div
+                  key={project.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={isInView ? { opacity: 1, y: 0 } : {}}
+                  transition={{ duration: 0.5, delay: i * 0.1 }}
+                  className="w-full md:w-[calc(50%-12px)] lg:w-[calc(33.333%-16px)]"
+                >
+                  <ProjectCard project={project} index={i} />
+                </motion.div>
+              ))}
+              
+              {/* View all - 仅在项目不为空时显示 */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={isInView ? { opacity: 1 } : {}}
+                transition={{ delay: 0.8 }}
+                className="w-full text-center mt-8"
+              >
+                <Link
+                  to="/projects"
+                  className="inline-flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-medium text-slate-400 hover:text-white border border-slate-700 hover:border-cyan-500/50 transition-all duration-300 hover:shadow-[0_0_20px_rgba(34,211,238,0.15)]"
+                >
+                  {t('featuredProjects.viewAll')}
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                  </svg>
+                </Link>
+              </motion.div>
+            </>
+          )}
         </div>
-
-        {/* View all */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={isInView ? { opacity: 1 } : {}}
-          transition={{ delay: 0.8 }}
-          className="mt-12 text-center"
-        >
-          <Link
-            to="/projects"
-            className="inline-flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-medium text-slate-400 hover:text-white border border-slate-700 hover:border-cyan-500/50 transition-all duration-300 hover:shadow-[0_0_20px_rgba(34,211,238,0.15)]"
-          >
-            {t('featuredProjects.viewAll')}
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
-            </svg>
-          </Link>
-        </motion.div>
       </div>
     </section>
   );

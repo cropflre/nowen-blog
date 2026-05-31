@@ -42,8 +42,10 @@ const GlowCard = forwardRef<HTMLDivElement, { project: Project; index: number; l
       transition={{ duration: 0.7, delay: index * 0.1, ease: [0.16, 1, 0.3, 1] }}
       whileHover={{ y: -4, transition: { type: 'spring', stiffness: 300, damping: 20 } }}
       onMouseMove={handleMouseMove}
-      className={`group relative rounded-2xl overflow-hidden cursor-pointer flex-1 min-w-[300px] ${
-        large ? 'md:min-w-[620px]' : ''
+      className={`group relative rounded-2xl overflow-hidden cursor-pointer h-full w-full ${
+        large
+          ? 'md:col-span-2 md:row-span-2 lg:col-span-2 lg:row-span-2'
+          : 'col-span-1 row-span-1 md:row-span-2 lg:row-span-1'
       }`}
     >
       {/* Border glow layer */}
@@ -66,9 +68,7 @@ const GlowCard = forwardRef<HTMLDivElement, { project: Project; index: number; l
       />
 
       {/* Card content */}
-      <div className={`relative h-full glass border border-[var(--color-border-surface)] rounded-2xl transition-colors duration-500 group-hover:border-indigo-500/20 ${
-        large ? 'min-h-[480px]' : 'min-h-[320px]'
-      }`}>
+      <div className="relative h-full w-full glass border border-[var(--color-border-surface)] rounded-2xl transition-colors duration-500 group-hover:border-indigo-500/20 flex flex-col justify-end">
         {/* Background image with overlay */}
         <div className="absolute inset-0">
           <img
@@ -219,8 +219,8 @@ export default function ProjectsPage() {
     : projects;
 
   return (
-    <main className="relative pb-24 px-6 flex flex-col items-center" style={{ paddingTop: '200px', zIndex: 5 }}>
-      <div className="w-full max-w-6xl" style={{ position: 'relative', zIndex: 5 }}>
+    <main className="relative pt-28 md:pt-40 pb-24 px-4 md:px-6 flex flex-col items-center z-10">
+      <div className="w-full max-w-6xl relative z-10">
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -277,7 +277,7 @@ export default function ProjectsPage() {
         </motion.div>
 
         {/* Bento Grid */}
-        <div className="flex flex-wrap justify-center gap-5 w-full">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 w-full auto-rows-[240px]">
           <AnimatePresence mode="popLayout">
             {filtered.map((project, i) => (
               <GlowCard

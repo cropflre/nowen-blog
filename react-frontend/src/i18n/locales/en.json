@@ -45,7 +45,9 @@
     "viewAll": "View All Projects",
     "featured": "Featured",
     "source": "Source",
-    "liveDemo": "Live Demo ↗"
+    "liveDemo": "Live Demo ↗",
+    "noProjects": "No featured projects yet",
+    "noProjectsDesc": "There are no featured projects at the moment. Check out all projects or wait for new ones to be added."
   },
   "blog": {
     "sectionTitle": "Blog",

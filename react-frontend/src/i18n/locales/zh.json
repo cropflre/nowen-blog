@@ -45,7 +45,9 @@
     "viewAll": "查看所有项目",
     "featured": "精选",
     "source": "源码",
-    "liveDemo": "在线演示 ↗"
+    "liveDemo": "在线演示 ↗",
+    "noProjects": "暂无精选项目",
+    "noProjectsDesc": "目前没有精选项目，请查看所有项目或等待新项目发布。"
   },
   "blog": {
     "sectionTitle": "博客",

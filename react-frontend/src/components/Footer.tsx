@@ -2,6 +2,7 @@ import { motion, useInView } from 'framer-motion';
 import { useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { useTheme } from '../contexts/ThemeContext';
 
 const useFooterLinks = () => {
   const { t } = useTranslation();
@@ -44,14 +45,24 @@ const socialLinks = [
 
 export default function Footer() {
   const { t } = useTranslation();
+  const { theme } = useTheme();
   const footerLinks = useFooterLinks();
   const ref = useRef(null);
   const isInView = useInView(ref, { once: true, margin: '-50px' });
 
   return (
-    <footer ref={ref} className="relative py-16 px-6 bg-gray-900 dark:bg-gray-950 border-t border-gray-800 dark:border-gray-800">
+    <footer 
+      ref={ref} 
+      className={`relative py-16 px-6 border-t transition-all duration-300 ${
+        theme === 'dark' 
+          ? 'bg-[#0a0a10] border-[rgba(30,30,50,0.6)]' 
+          : 'bg-[#f8fafc] border-[rgba(226,232,240,0.6)]'
+      }`}
+    >
       {/* Ambient glow */}
-      <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-96 h-32 bg-purple-600/10 blur-3xl rounded-full" />
+      <div className={`absolute bottom-0 left-1/2 -translate-x-1/2 w-96 h-32 blur-3xl rounded-full ${
+        theme === 'dark' ? 'bg-purple-600/10' : 'bg-purple-600/5'
+      }`} />
 
       <motion.div
         initial={{ opacity: 0, y: 20 }}
@@ -68,20 +79,28 @@ export default function Footer() {
               </div>
               <span className="text-lg font-semibold bg-gradient-to-r from-purple-400 to-indigo-400 bg-clip-text text-transparent">nowen-blog</span>
             </div>
-            <p className="text-sm text-gray-400 dark:text-gray-500 leading-relaxed">
+            <p className={`text-sm leading-relaxed ${
+              theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
+            }`}>
               {t('footer.tagline')}
             </p>
           </div>
 
           {/* Navigation */}
           <div className="w-full md:w-[calc(33.333%-32px)]">
-            <h4 className="text-sm font-semibold text-white dark:text-gray-200 mb-4 tracking-wider uppercase">{t('footer.navigation')}</h4>
+            <h4 className={`text-sm font-semibold mb-4 tracking-wider uppercase ${
+              theme === 'dark' ? 'text-gray-200' : 'text-gray-800'
+            }`}>{t('footer.navigation')}</h4>
             <div className="flex flex-col gap-3">
               {footerLinks.map((link) => (
                 <Link
                   key={link.path}
                   to={link.path}
-                  className="text-sm text-gray-400 hover:text-purple-400 transition-colors duration-200 w-fit"
+                  className={`text-sm transition-colors duration-200 w-fit ${
+                    theme === 'dark' 
+                      ? 'text-gray-400 hover:text-purple-400' 
+                      : 'text-gray-500 hover:text-purple-600'
+                  }`}
                 >
                   {link.label}
                 </Link>
@@ -91,7 +110,9 @@ export default function Footer() {
 
           {/* Social */}
           <div className="w-full md:w-[calc(33.333%-32px)]">
-            <h4 className="text-sm font-semibold text-white dark:text-gray-200 mb-4 tracking-wider uppercase">{t('footer.connect')}</h4>
+            <h4 className={`text-sm font-semibold mb-4 tracking-wider uppercase ${
+              theme === 'dark' ? 'text-gray-200' : 'text-gray-800'
+            }`}>{t('footer.connect')}</h4>
             <div className="flex gap-3">
               {socialLinks.map((link) => (
                 <a
@@ -99,7 +120,11 @@ export default function Footer() {
                   href={link.href}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="w-10 h-10 rounded-lg bg-gray-800 dark:bg-gray-800 border border-gray-700 dark:border-gray-700 flex items-center justify-center text-gray-400 hover:text-purple-400 hover:border-purple-500/30 hover:bg-gray-700 dark:hover:bg-gray-700 transition-all duration-300"
+                  className={`w-10 h-10 rounded-lg border flex items-center justify-center transition-all duration-300 ${
+                    theme === 'dark'
+                      ? 'bg-gray-800 border-gray-700 text-gray-400 hover:text-purple-400 hover:border-purple-500/30 hover:bg-gray-700'
+                      : 'bg-gray-100 border-gray-200 text-gray-500 hover:text-purple-600 hover:border-purple-500/30 hover:bg-gray-50'
+                  }`}
                   title={link.label}
                 >
                   {link.icon}
@@ -110,11 +135,17 @@ export default function Footer() {
         </div>
 
         {/* Bottom bar */}
-        <div className="pt-8 border-t border-gray-800 dark:border-gray-800 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <p className="text-xs text-gray-500 dark:text-gray-600 font-mono">
+        <div className={`pt-8 border-t flex flex-col sm:flex-row items-center justify-between gap-4 ${
+          theme === 'dark' ? 'border-gray-800' : 'border-gray-200'
+        }`}>
+          <p className={`text-xs font-mono ${
+            theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
+          }`}>
             {t('footer.copyright')}
           </p>
-          <p className="text-xs text-gray-500 dark:text-gray-600 font-mono flex items-center gap-1.5">
+          <p className={`text-xs font-mono flex items-center gap-1.5 ${
+            theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
+          }`}>
             <span className="inline-block w-1.5 h-1.5 rounded-full bg-purple-500 animate-pulse" />
             {t('footer.builtWith')}
           </p>

@@ -168,7 +168,13 @@ body {
 }
 
 .gradient-overlay-full {
-  background: linear-gradient(to top, var(--color-bg-secondary), rgba(var(--color-bg-secondary-rgb), 0.8) 40%, rgba(var(--color-bg-secondary-rgb), 0.4));
+  background: linear-gradient(
+    to top,
+    var(--color-bg-primary) 0%,
+    rgba(var(--color-bg-primary-rgb), 0.95) 30%,
+    rgba(var(--color-bg-primary-rgb), 0.6) 70%,
+    transparent 100%
+  );
 }
 
 .gradient-overlay-side {

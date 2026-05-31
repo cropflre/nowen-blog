@@ -33,7 +33,6 @@ export default function ProjectDocsDashboard({ onEditDoc, onNewDoc }: ProjectDoc
         if (data.length > 0 && !selectedProject) {
           setSelectedProject(data[0].project_name);
         }
-        // 如果没有项目，设置 loading 为 false
         if (data.length === 0) {
           setLoading(false);
         }
@@ -86,25 +85,25 @@ export default function ProjectDocsDashboard({ onEditDoc, onNewDoc }: ProjectDoc
     if (!newProjectName.trim()) return;
     
     setCreating(true);
+    const projectName = newProjectName.trim();
+    const slug = projectName.toLowerCase().replace(/\s+/g, '-') + '-readme';
+    
     try {
-      // Create a placeholder doc for the new project
       await api.adminCreateContent({
         type: 'doc',
-        project_name: newProjectName.trim(),
+        project_name: projectName,
         github_url: newProjectGithubUrl.trim(),
-        title: `${newProjectName.trim()} - README`,
-        slug: 'readme',
-        summary: `Documentation for ${newProjectName.trim()}`,
-        content: `# ${newProjectName.trim()}\n\nWelcome to the project documentation.`,
+        title: projectName + ' - README',
+        slug: slug,
+        summary: 'Documentation for ' + projectName,
+        content: '# ' + projectName + '\n\nWelcome to the project documentation.',
         status: 'draft',
       });
       
-      // Refresh projects list
       const data = await api.getProjectsList();
       setProjects(data);
-      setSelectedProject(newProjectName.trim());
+      setSelectedProject(projectName);
       
-      // Reset and close modal
       setNewProjectName('');
       setNewProjectGithubUrl('');
       setShowNewProjectModal(false);
@@ -247,11 +246,9 @@ export default function ProjectDocsDashboard({ onEditDoc, onNewDoc }: ProjectDoc
                       transition={{ duration: 0.3, ease: [0.25, 1, 0.5, 1], delay: index * 0.05 }}
                       className="group relative flex items-center justify-between p-5 bg-[var(--color-bg-card)] border border-[var(--color-border-surface)] rounded-xl overflow-hidden hover:border-[var(--color-accent)] transition-all duration-300"
                     >
-                      {/* 悬浮光效 */}
                       <div className="absolute inset-0 bg-gradient-to-r from-blue-500/0 via-blue-500/5 to-blue-500/0 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
                       
                       <div className="relative flex items-center gap-4">
-                        {/* 状态指示灯 */}
                         <div className="relative">
                           <span className={`w-2.5 h-2.5 rounded-full ${
                             doc.status === 'published' 

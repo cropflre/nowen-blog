@@ -186,6 +186,8 @@
     "noDocsFound": "NO_DOCS_FOUND",
     "selectProjectFirst": "Please select a project first",
     "home": "HOME",
-    "carousel": "CAROUSEL"
+    "carousel": "CAROUSEL",
+    "carouselAdd": "Add to carousel",
+    "carouselActive": "Carousel #{{order}}"
   }
 }

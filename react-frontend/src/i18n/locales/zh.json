@@ -186,6 +186,8 @@
     "noDocsFound": "未找到文档",
     "selectProjectFirst": "请先选择一个项目",
     "home": "首页",
-    "carousel": "幻灯片"
+    "carousel": "幻灯片",
+    "carouselAdd": "添加到幻灯片",
+    "carouselActive": "幻灯片 #{{order}}"
   }
 }

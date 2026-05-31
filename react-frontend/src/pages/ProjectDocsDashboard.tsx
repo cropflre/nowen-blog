@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
-import { Plus, Trash2, Edit3, Eye, Search, RefreshCw, FolderOpen, FileText, ExternalLink, X } from 'lucide-react';
+import { Plus, Trash2, Edit3, Eye, Search, RefreshCw, FolderOpen, FileText, X } from 'lucide-react';
 import { api } from '../api';
 import type { Content, ProjectInfo } from '../types';
 
@@ -130,8 +130,6 @@ export default function ProjectDocsDashboard({ onEditDoc, onNewDoc }: ProjectDoc
     c.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
     c.slug.toLowerCase().includes(searchQuery.toLowerCase())
   );
-
-  const currentProject = projects.find(p => p.project_name === selectedProject);
 
   return (
     <div className="min-h-screen bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] p-8 font-mono">
@@ -441,5 +439,7 @@ export default function ProjectDocsDashboard({ onEditDoc, onNewDoc }: ProjectDoc
     </div>
   );
 }
+
+
 
 

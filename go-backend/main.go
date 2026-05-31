@@ -42,6 +42,7 @@ func main() {
 	api.Get("/contents/:slug", GetContentBySlug)              // 按 slug 查询
 	api.Get("/docs/:project/tree", GetDocTree)                // 文档目录树
 	api.Get("/projects/list", GetProjectsList)                // 项目列表
+	api.Get("/carousel", GetCarousel)                        // 幻灯片列表
 
 	// --- 静态文件服务（上传的图片）---
 	app.Static("/uploads", "./uploads")
@@ -75,6 +76,7 @@ func main() {
 
 	// 用户管理
 	admin.Put("/password", UpdatePassword)
+	admin.Put("/posts/:id/carousel", UpdateCarouselOrder)  // 更新幻灯片排序
 
 	// 获取端口
 	port := os.Getenv("PORT")
@@ -110,3 +112,4 @@ func main() {
 
 	log.Fatal(app.Listen(":" + port))
 }
+

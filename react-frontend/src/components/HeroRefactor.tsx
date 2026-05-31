@@ -3,6 +3,8 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { ArrowRight, BookOpen, Languages, LogIn, Menu, Moon, Settings, Sun, X, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { api } from '../api';
+import type { Post } from '../types';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -14,50 +16,56 @@ function GithubMark({ size = 17 }: { size?: number }) {
   );
 }
 
-
+const gradients = [
+  'from-blue-500 to-cyan-400',
+  'from-emerald-500 to-teal-400',
+  'from-violet-500 to-purple-400',
+  'from-amber-500 to-orange-400',
+  'from-rose-500 to-pink-400',
+];
 
 export default function HeroRefactor() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [currentSlide, setCurrentSlide] = useState(0);
+  const [carouselPosts, setCarouselPosts] = useState<Post[]>([]);
   const location = useLocation();
   const { t, i18n } = useTranslation();
   const { theme, toggleTheme } = useTheme();
-
-  const slides = [
-    {
-      id: 1,
-      title: t('hero.slides.0.title'),
-      subtitle: t('hero.slides.0.subtitle'),
-      description: t('hero.slides.0.description'),
-      gradient: 'from-blue-500 to-cyan-400',
-    },
-    {
-      id: 2,
-      title: t('hero.slides.1.title'),
-      subtitle: t('hero.slides.1.subtitle'),
-      description: t('hero.slides.1.description'),
-      gradient: 'from-emerald-500 to-teal-400',
-    },
-    {
-      id: 3,
-      title: t('hero.slides.2.title'),
-      subtitle: t('hero.slides.2.subtitle'),
-      description: t('hero.slides.2.description'),
-      gradient: 'from-violet-500 to-purple-400',
-    },
-  ];
   const { isAuthenticated } = useAuth();
+
+  useEffect(() => {
+    api.getCarousel().then(setCarouselPosts).catch(console.error);
+  }, []);
 
   useEffect(() => {
     setMobileOpen(false);
   }, [location.pathname]);
+
+  // 默认幻灯片
+  const defaultSlides = [
+    { id: 1, title: t('hero.slides.0.title'), subtitle: t('hero.slides.0.subtitle'), description: t('hero.slides.0.description'), gradient: gradients[0], slug: '' },
+    { id: 2, title: t('hero.slides.1.title'), subtitle: t('hero.slides.1.subtitle'), description: t('hero.slides.1.description'), gradient: gradients[1], slug: '' },
+    { id: 3, title: t('hero.slides.2.title'), subtitle: t('hero.slides.2.subtitle'), description: t('hero.slides.2.description'), gradient: gradients[2], slug: '' },
+  ];
+
+  // 使用文章幻灯片或默认幻灯片
+  const slides = carouselPosts.length > 0
+    ? carouselPosts.map((post, i) => ({
+        id: post.id,
+        title: post.title,
+        subtitle: post.tags ? post.tags.split(',')[0].trim() : '',
+        description: post.summary || '',
+        gradient: gradients[i % 5],
+        slug: post.slug,
+      }))
+    : defaultSlides;
 
   useEffect(() => {
     const timer = setInterval(() => {
       setCurrentSlide((prev) => (prev + 1) % slides.length);
     }, 5000);
     return () => clearInterval(timer);
-  }, []);
+  }, [slides.length]);
 
   const navLinks = [
     { path: '/', label: t('nav.home') },
@@ -65,17 +73,9 @@ export default function HeroRefactor() {
     { path: '/projects', label: t('nav.projects') },
   ];
 
-  const goToSlide = (index: number) => {
-    setCurrentSlide(index);
-  };
-
-  const prevSlide = () => {
-    setCurrentSlide((prev) => (prev - 1 + slides.length) % slides.length);
-  };
-
-  const nextSlide = () => {
-    setCurrentSlide((prev) => (prev + 1) % slides.length);
-  };
+  const goToSlide = (index: number) => setCurrentSlide(index);
+  const prevSlide = () => setCurrentSlide((prev) => (prev - 1 + slides.length) % slides.length);
+  const nextSlide = () => setCurrentSlide((prev) => (prev + 1) % slides.length);
 
   return (
     <section className="border-b border-[var(--color-border-surface)]">
@@ -90,13 +90,7 @@ export default function HeroRefactor() {
             {navLinks.map((link) => {
               const active = link.path === '/' ? location.pathname === '/' : location.pathname.startsWith(link.path);
               return (
-                <Link
-                  key={link.path}
-                  to={link.path}
-                  className={`text-sm transition-colors ${
-                    active ? 'text-[var(--color-text-primary)]' : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]'
-                  }`}
-                >
+                <Link key={link.path} to={link.path} className={`text-sm transition-colors ${active ? 'text-[var(--color-text-primary)]' : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]'}`}>
                   {link.label}
                 </Link>
               );
@@ -140,9 +134,7 @@ export default function HeroRefactor() {
             >
               <div className="page-shell flex flex-col py-4">
                 {navLinks.map((link) => (
-                  <Link key={link.path} to={link.path} className="py-3 text-sm font-medium">
-                    {link.label}
-                  </Link>
+                  <Link key={link.path} to={link.path} className="py-3 text-sm font-medium">{link.label}</Link>
                 ))}
               </div>
             </motion.div>
@@ -152,7 +144,6 @@ export default function HeroRefactor() {
 
       <div className="page-shell flex min-h-[78vh] items-center justify-center pt-28 pb-20">
         <div className="relative w-full max-w-4xl">
-          {/* Slides */}
           <AnimatePresence mode="wait">
             <motion.div
               key={currentSlide}
@@ -163,51 +154,45 @@ export default function HeroRefactor() {
               className="text-center"
             >
               <h1 className="text-5xl md:text-7xl font-bold tracking-tight">
-                <span className={`bg-gradient-to-r ${slides[currentSlide].gradient} bg-clip-text text-transparent`}>
-                  {slides[currentSlide].title}
+                <span className={`bg-gradient-to-r ${slides[currentSlide]?.gradient} bg-clip-text text-transparent`}>
+                  {slides[currentSlide]?.title}
                 </span>
-                <br />
-                <span className="text-[var(--color-text-muted)]">{slides[currentSlide].subtitle}</span>
+                {slides[currentSlide]?.subtitle && (
+                  <>
+                    <br />
+                    <span className="text-[var(--color-text-muted)]">{slides[currentSlide]?.subtitle}</span>
+                  </>
+                )}
               </h1>
               <p className="mt-6 text-lg text-[var(--color-text-secondary)] max-w-xl mx-auto">
-                {slides[currentSlide].description}
+                {slides[currentSlide]?.description}
               </p>
+              {slides[currentSlide]?.slug && (
+                <Link to={`/blog/${slides[currentSlide].slug}`} className="inline-flex items-center gap-2 mt-6 text-sm text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] transition-colors">
+                  {t('featuredPosts.readMore')} <ArrowRight size={14} />
+                </Link>
+              )}
             </motion.div>
           </AnimatePresence>
 
-          {/* Navigation Arrows */}
-          <button
-            onClick={prevSlide}
-            className="absolute left-0 top-1/2 -translate-y-1/2 p-2 rounded-full bg-[var(--color-bg-card)] border border-[var(--color-border-surface)] text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] transition-colors"
-            aria-label="Previous slide"
-          >
+          <button onClick={prevSlide} className="absolute left-0 top-1/2 -translate-y-1/2 p-2 rounded-full bg-[var(--color-bg-card)] border border-[var(--color-border-surface)] text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] transition-colors" aria-label="Previous slide">
             <ChevronLeft size={20} />
           </button>
-          <button
-            onClick={nextSlide}
-            className="absolute right-0 top-1/2 -translate-y-1/2 p-2 rounded-full bg-[var(--color-bg-card)] border border-[var(--color-border-surface)] text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] transition-colors"
-            aria-label="Next slide"
-          >
+          <button onClick={nextSlide} className="absolute right-0 top-1/2 -translate-y-1/2 p-2 rounded-full bg-[var(--color-bg-card)] border border-[var(--color-border-surface)] text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] transition-colors" aria-label="Next slide">
             <ChevronRight size={20} />
           </button>
 
-          {/* Dots */}
           <div className="flex justify-center gap-2 mt-10">
             {slides.map((_, index) => (
               <button
                 key={index}
                 onClick={() => goToSlide(index)}
-                className={`w-2 h-2 rounded-full transition-all ${
-                  index === currentSlide
-                    ? 'bg-[var(--color-accent)] w-6'
-                    : 'bg-[var(--color-border-surface)] hover:bg-[var(--color-text-muted)]'
-                }`}
+                className={`w-2 h-2 rounded-full transition-all ${index === currentSlide ? 'bg-[var(--color-accent)] w-6' : 'bg-[var(--color-border-surface)] hover:bg-[var(--color-text-muted)]'}`}
                 aria-label={`Go to slide ${index + 1}`}
               />
             ))}
           </div>
 
-          {/* CTA Buttons */}
           <div className="flex justify-center gap-4 mt-10">
             <Link to="/projects" className="minimal-button-primary">
               {t('hero.cta.viewProjects')}
@@ -223,8 +208,4 @@ export default function HeroRefactor() {
     </section>
   );
 }
-
-
-
-
 

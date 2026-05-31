@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
-import { Plus, Trash2, Edit3, Eye, Search, Filter, RefreshCw } from 'lucide-react';
+import { Plus, Trash2, Edit3, Eye, Search, Filter, RefreshCw, Star } from 'lucide-react';
 import { api } from '../api';
 import type { Post } from '../types';
 
@@ -41,6 +41,18 @@ export default function Dashboard({ onEditPost, onNewPost }: DashboardProps) {
     return () => { cancelled = true; };
   }, [filter, refreshKey]);
 
+  const toggleCarousel = async (post: Post) => {
+    const newOrder = post.carousel_order > 0 ? 0 : 1;
+    try {
+      await api.updateCarouselOrder(post.id, newOrder);
+      setPosts(posts.map(p => p.id === post.id ? { ...p, carousel_order: newOrder } : p));
+    } catch (error) {
+      console.error('Failed to update carousel:', error);
+    }
+  };
+
+  const carouselCount = posts.filter(p => p.carousel_order > 0).length;
+
   const deletePost = async (id: number) => {
     if (!confirm(t('admin.confirmDelete'))) return;
     try {
@@ -60,6 +72,7 @@ export default function Dashboard({ onEditPost, onNewPost }: DashboardProps) {
     total: posts.length,
     published: posts.filter(p => p.status === 'published').length,
     draft: posts.filter(p => p.status === 'draft').length,
+    carousel: carouselCount,
   };
 
   return (
@@ -213,6 +226,17 @@ export default function Dashboard({ onEditPost, onNewPost }: DashboardProps) {
                     <motion.button
                       whileHover={{ scale: 1.1 }}
                       whileTap={{ scale: 0.9 }}
+                      onClick={() => toggleCarousel(post)}
+                      className={`p-2 hover:bg-[var(--color-bg-secondary)] rounded-lg transition-colors ${
+                        post.carousel_order > 0 ? 'text-amber-400' : 'text-[var(--color-text-muted)] hover:text-amber-400'
+                      }`}
+                      title={post.carousel_order > 0 ? `Carousel #${post.carousel_order}` : 'Add to carousel'}
+                    >
+                      <Star size={16} fill={post.carousel_order > 0 ? 'currentColor' : 'none'} />
+                    </motion.button>
+                    <motion.button
+                      whileHover={{ scale: 1.1 }}
+                      whileTap={{ scale: 0.9 }}
                       className="p-2 hover:bg-[var(--color-bg-secondary)] rounded-lg text-[var(--color-text-muted)] hover:text-emerald-400 transition-colors"
                       title={t('admin.preview')}
                     >
@@ -252,4 +276,10 @@ export default function Dashboard({ onEditPost, onNewPost }: DashboardProps) {
     </div>
   );
 }
+
+
+
+
+
+
 

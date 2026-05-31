@@ -185,6 +185,7 @@
     "creating": "CREATING...",
     "noDocsFound": "NO_DOCS_FOUND",
     "selectProjectFirst": "Please select a project first",
-    "home": "HOME"
+    "home": "HOME",
+    "carousel": "CAROUSEL"
   }
 }

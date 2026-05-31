@@ -99,6 +99,15 @@ export const api = {
     return fetchJSON<import('./types').Project[]>(`/api/projects?${qs}`);
   },
 
+  // --- 幻灯片 ---
+  getCarousel: async (): Promise<import('./types').Post[]> => {
+    const res = await fetchJSON<{ status: string; data: import('./types').Post[] }>('/api/carousel');
+    return res.data;
+  },
+
+  updateCarouselOrder: (id: number, carouselOrder: number) =>
+    fetchJSON<{ message: string }>(`/api/admin/posts/${id}/carousel`, createAuthOptions("PUT", { carousel_order: carouselOrder })),
+
   // --- 统一内容系统 ---
   getContents: (params: { type: 'blog' | 'doc'; project?: string; page?: number; pageSize?: number }) => {
     const qs = new URLSearchParams();
@@ -181,3 +190,8 @@ export const api = {
     return !!getAuthToken();
   },
 };
+
+
+
+
+

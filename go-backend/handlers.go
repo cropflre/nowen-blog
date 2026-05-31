@@ -718,3 +718,45 @@ func AdminDeleteContent(c *fiber.Ctx) error {
 	}
 	return c.JSON(fiber.Map{"message": "Content deleted"})
 }
+
+// ==================== 幻灯片 (Carousel) ====================
+
+// GetCarousel 获取幻灯片列表（公开接口）
+func GetCarousel(c *fiber.Ctx) error {
+	var posts []Post
+	if err := DB.Where("status = ? AND carousel_order > ?", "published", 0).
+		Select("id", "title", "slug", "summary", "cover", "tags", "carousel_order").
+		Order("carousel_order ASC").
+		Limit(5).
+		Find(&posts).Error; err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": "Failed to fetch carousel"})
+	}
+
+	return c.JSON(fiber.Map{
+		"status": "success",
+		"data":   posts,
+	})
+}
+
+// UpdateCarouselOrder 管理员更新文章幻灯片排序
+func UpdateCarouselOrder(c *fiber.Ctx) error {
+	id := c.Params("id")
+
+	var input struct {
+		CarouselOrder int `json:"carousel_order"`
+	}
+	if err := c.BodyParser(&input); err != nil {
+		return c.Status(400).JSON(fiber.Map{"error": "Invalid request body"})
+	}
+
+	// 限制范围 0-5
+	if input.CarouselOrder < 0 || input.CarouselOrder > 5 {
+		return c.Status(400).JSON(fiber.Map{"error": "carousel_order must be 0-5"})
+	}
+
+	if err := DB.Model(&Post{}).Where("id = ?", id).Update("carousel_order", input.CarouselOrder).Error; err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": "Failed to update carousel order"})
+	}
+
+	return c.JSON(fiber.Map{"message": "Carousel order updated"})
+}

@@ -10,6 +10,7 @@ export interface Post {
   status: 'draft' | 'published';
   read_time: number;
   view_count: number; // 浏览量
+  carousel_order: number; // 幻灯片排序
   created_at: string;
   updated_at: string;
 }
@@ -144,3 +145,4 @@ export interface ImageInfo {
   mime_type: string;
   created_at: string;
 }
+

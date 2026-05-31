@@ -4,7 +4,8 @@ import { useNavigate, useLocation, Routes, Route, Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
-import { LogOut, Settings, User as UserIcon, Sun, Moon, Globe, FileText, FolderOpen } from 'lucide-react';
+import { LogOut, Settings, User as UserIcon, Sun, Moon, Globe, FileText, FolderOpen, Home } from 'lucide-react';
+import { Home } from 'lucide-react';
 import Dashboard from './Dashboard';
 import ProjectDocsDashboard from './ProjectDocsDashboard';
 import ArticleEditor from './ArticleEditor';
@@ -85,6 +86,13 @@ export default function AdminPage() {
           <div className="w-px h-6 bg-[var(--color-border-surface)]" />
           
           <nav className="flex items-center gap-1">
+            <Link
+              to="/"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-mono rounded transition-all text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)]"
+            >
+              <Home size={12} />
+              {t('admin.home')}
+            </Link>
             <Link
               to="/admin/posts"
               className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-mono rounded transition-all ${
@@ -182,3 +190,6 @@ export default function AdminPage() {
     </div>
   );
 }
+
+
+

@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Languages, LogIn, Menu, Moon, Sun, X } from 'lucide-react';
+import { Languages, LogIn, Menu, Moon, Settings, Sun, X } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../contexts/ThemeContext';
+import { useAuth } from '../contexts/AuthContext';
 
 function GithubMark({ size = 17 }: { size?: number }) {
   return (
@@ -18,6 +19,7 @@ export default function Navbar() {
   const location = useLocation();
   const { t, i18n } = useTranslation();
   const { theme, toggleTheme } = useTheme();
+  const { isAuthenticated } = useAuth();
 
   const navLinks = [
     { path: '/', label: t('nav.home') },
@@ -55,6 +57,11 @@ export default function Navbar() {
         </div>
 
         <div className="hidden items-center gap-2 md:flex">
+          {isAuthenticated && (
+            <Link to="/admin" className="minimal-button h-9 min-h-9 w-9 p-0" aria-label="Admin">
+              <Settings size={16} />
+            </Link>
+          )}
           <Link to="/login" className="minimal-button h-9 min-h-9 w-9 p-0" aria-label="Login">
             <LogIn size={16} />
           </Link>
@@ -105,4 +112,5 @@ export default function Navbar() {
     </header>
   );
 }
+
 

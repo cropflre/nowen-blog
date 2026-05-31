@@ -84,9 +84,21 @@ export default function ProjectDocsDashboard({ onEditDoc, onNewDoc }: ProjectDoc
   const handleCreateProject = async () => {
     if (!newProjectName.trim()) return;
     
-    setCreating(true);
     const projectName = newProjectName.trim();
-    const slug = projectName.toLowerCase().replace(/\s+/g, '-') + '-readme';
+    
+    // 检查项目是否已存在
+    const existingProject = projects.find(p => p.project_name === projectName);
+    if (existingProject) {
+      setSelectedProject(projectName);
+      setNewProjectName('');
+      setNewProjectGithubUrl('');
+      setShowNewProjectModal(false);
+      return;
+    }
+    
+    setCreating(true);
+    const timestamp = Date.now();
+    const slug = projectName.toLowerCase().replace(/\s+/g, '-') + '-readme-' + timestamp;
     
     try {
       await api.adminCreateContent({
@@ -429,3 +441,4 @@ export default function ProjectDocsDashboard({ onEditDoc, onNewDoc }: ProjectDoc
     </div>
   );
 }
+

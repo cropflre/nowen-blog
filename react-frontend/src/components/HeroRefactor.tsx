@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { ArrowRight, BookOpen, Languages, Menu, Moon, Sun, X } from 'lucide-react';
+import { ArrowRight, BookOpen, Languages, Menu, Moon, Sun, X, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
-import { Trans, useTranslation } from 'react-i18next';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '../contexts/ThemeContext';
 
 function GithubMark({ size = 17 }: { size?: number }) {
@@ -13,22 +13,65 @@ function GithubMark({ size = 17 }: { size?: number }) {
   );
 }
 
+const slides = [
+  {
+    id: 1,
+    title: 'Building Systems',
+    subtitle: 'that scale',
+    description: 'Go backend, React frontend, practical tooling.',
+    gradient: 'from-blue-500 to-cyan-400',
+  },
+  {
+    id: 2,
+    title: 'Open Source',
+    subtitle: 'contributions',
+    description: 'Sharing code that matters to the community.',
+    gradient: 'from-emerald-500 to-teal-400',
+  },
+  {
+    id: 3,
+    title: 'Clean Code',
+    subtitle: 'quiet interfaces',
+    description: 'Documentation that stays readable.',
+    gradient: 'from-violet-500 to-purple-400',
+  },
+];
+
 export default function HeroRefactor() {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [currentSlide, setCurrentSlide] = useState(0);
   const location = useLocation();
   const { t, i18n } = useTranslation();
   const { theme, toggleTheme } = useTheme();
-  const techStack = ['Go', 'React', 'TypeScript', 'Docker', 'PostgreSQL', 'gRPC'];
 
   useEffect(() => {
     setMobileOpen(false);
   }, [location.pathname]);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentSlide((prev) => (prev + 1) % slides.length);
+    }, 5000);
+    return () => clearInterval(timer);
+  }, []);
 
   const navLinks = [
     { path: '/', label: t('nav.home') },
     { path: '/blog', label: t('nav.blog') },
     { path: '/projects', label: t('nav.projects') },
   ];
+
+  const goToSlide = (index: number) => {
+    setCurrentSlide(index);
+  };
+
+  const prevSlide = () => {
+    setCurrentSlide((prev) => (prev - 1 + slides.length) % slides.length);
+  };
+
+  const nextSlide = () => {
+    setCurrentSlide((prev) => (prev + 1) % slides.length);
+  };
 
   return (
     <section className="border-b border-[var(--color-border-surface)]">
@@ -93,35 +136,65 @@ export default function HeroRefactor() {
         </AnimatePresence>
       </header>
 
-      <div className="page-shell grid min-h-[78vh] items-center gap-12 pt-28 pb-20 lg:grid-cols-[1.1fr_0.9fr]">
-        <motion.div
-          initial={{ opacity: 0, y: 18 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.45 }}
-        >
-          <span className="minimal-kicker">{t('hero.status')}</span>
-          <h1 className="minimal-title max-w-3xl">
-            {t('hero.roles.fullStack')}
-            <span className="block text-[var(--color-text-muted)]">{t('hero.roles.creator')}</span>
-          </h1>
-          <p className="minimal-text mt-7 max-w-2xl text-lg">
-            <Trans
-              i18nKey="hero.bio"
-              components={{
-                strong: <span className="font-semibold text-[var(--color-text-primary)]" />,
-              }}
-            />
-          </p>
+      <div className="page-shell flex min-h-[78vh] items-center justify-center pt-28 pb-20">
+        <div className="relative w-full max-w-4xl">
+          {/* Slides */}
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={currentSlide}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              transition={{ duration: 0.5 }}
+              className="text-center"
+            >
+              <h1 className="text-5xl md:text-7xl font-bold tracking-tight">
+                <span className={`bg-gradient-to-r ${slides[currentSlide].gradient} bg-clip-text text-transparent`}>
+                  {slides[currentSlide].title}
+                </span>
+                <br />
+                <span className="text-[var(--color-text-muted)]">{slides[currentSlide].subtitle}</span>
+              </h1>
+              <p className="mt-6 text-lg text-[var(--color-text-secondary)] max-w-xl mx-auto">
+                {slides[currentSlide].description}
+              </p>
+            </motion.div>
+          </AnimatePresence>
 
-          <div className="mt-8 flex flex-wrap gap-2">
-            {techStack.map((tech) => (
-              <span key={tech} className="minimal-tag">
-                {tech}
-              </span>
+          {/* Navigation Arrows */}
+          <button
+            onClick={prevSlide}
+            className="absolute left-0 top-1/2 -translate-y-1/2 p-2 rounded-full bg-[var(--color-bg-card)] border border-[var(--color-border-surface)] text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] transition-colors"
+            aria-label="Previous slide"
+          >
+            <ChevronLeft size={20} />
+          </button>
+          <button
+            onClick={nextSlide}
+            className="absolute right-0 top-1/2 -translate-y-1/2 p-2 rounded-full bg-[var(--color-bg-card)] border border-[var(--color-border-surface)] text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] transition-colors"
+            aria-label="Next slide"
+          >
+            <ChevronRight size={20} />
+          </button>
+
+          {/* Dots */}
+          <div className="flex justify-center gap-2 mt-10">
+            {slides.map((_, index) => (
+              <button
+                key={index}
+                onClick={() => goToSlide(index)}
+                className={`w-2 h-2 rounded-full transition-all ${
+                  index === currentSlide
+                    ? 'bg-[var(--color-accent)] w-6'
+                    : 'bg-[var(--color-border-surface)] hover:bg-[var(--color-text-muted)]'
+                }`}
+                aria-label={`Go to slide ${index + 1}`}
+              />
             ))}
           </div>
 
-          <div className="mt-10 flex flex-col gap-3 sm:flex-row">
+          {/* CTA Buttons */}
+          <div className="flex justify-center gap-4 mt-10">
             <Link to="/projects" className="minimal-button-primary">
               {t('hero.cta.viewProjects')}
               <ArrowRight size={16} />
@@ -131,27 +204,7 @@ export default function HeroRefactor() {
               {t('hero.cta.readBlog')}
             </Link>
           </div>
-        </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0, y: 18 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.45, delay: 0.08 }}
-          className="minimal-surface rounded-2xl p-6 md:p-8"
-        >
-          <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-1">
-            <div>
-              <div className="text-xs uppercase tracking-[0.14em] text-[var(--color-text-muted)]">Focus</div>
-              <p className="mt-3 text-2xl font-semibold leading-tight">Clean systems. Quiet interfaces.</p>
-            </div>
-            <div className="border-t border-[var(--color-border-surface)] pt-6 sm:border-l sm:border-t-0 sm:pl-6 sm:pt-0 lg:border-l-0 lg:border-t lg:pl-0 lg:pt-6">
-              <div className="text-xs uppercase tracking-[0.14em] text-[var(--color-text-muted)]">Stack</div>
-              <p className="mt-3 text-sm leading-7 text-[var(--color-text-secondary)]">
-                Go backend, React frontend, practical tooling, and documentation that stays readable.
-              </p>
-            </div>
-          </div>
-        </motion.div>
+        </div>
       </div>
     </section>
   );

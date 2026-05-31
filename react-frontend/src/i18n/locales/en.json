@@ -30,7 +30,24 @@
       "viewProjects": "View Projects",
       "readBlog": "Read Blog"
     },
-    "bio": "Building high-performance systems with <strong>Go</strong> and elegant interfaces with <strong>React</strong>. Passionate about distributed systems, developer tools, and open-source software."
+    "bio": "Building high-performance systems with <strong>Go</strong> and elegant interfaces with <strong>React</strong>. Passionate about distributed systems, developer tools, and open-source software.",
+    "slides": [
+      {
+        "title": "Building Systems",
+        "subtitle": "that scale",
+        "description": "Go backend, React frontend, practical tooling."
+      },
+      {
+        "title": "Open Source",
+        "subtitle": "contributions",
+        "description": "Sharing code that matters to the community."
+      },
+      {
+        "title": "Clean Code",
+        "subtitle": "quiet interfaces",
+        "description": "Documentation that stays readable."
+      }
+    ]
   },
   "featuredPosts": {
     "sectionTitle": "Latest Writings",

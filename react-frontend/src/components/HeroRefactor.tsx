@@ -14,29 +14,7 @@ function GithubMark({ size = 17 }: { size?: number }) {
   );
 }
 
-const slides = [
-  {
-    id: 1,
-    title: 'Building Systems',
-    subtitle: 'that scale',
-    description: 'Go backend, React frontend, practical tooling.',
-    gradient: 'from-blue-500 to-cyan-400',
-  },
-  {
-    id: 2,
-    title: 'Open Source',
-    subtitle: 'contributions',
-    description: 'Sharing code that matters to the community.',
-    gradient: 'from-emerald-500 to-teal-400',
-  },
-  {
-    id: 3,
-    title: 'Clean Code',
-    subtitle: 'quiet interfaces',
-    description: 'Documentation that stays readable.',
-    gradient: 'from-violet-500 to-purple-400',
-  },
-];
+
 
 export default function HeroRefactor() {
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -44,6 +22,30 @@ export default function HeroRefactor() {
   const location = useLocation();
   const { t, i18n } = useTranslation();
   const { theme, toggleTheme } = useTheme();
+
+  const slides = [
+    {
+      id: 1,
+      title: t('hero.slides.0.title'),
+      subtitle: t('hero.slides.0.subtitle'),
+      description: t('hero.slides.0.description'),
+      gradient: 'from-blue-500 to-cyan-400',
+    },
+    {
+      id: 2,
+      title: t('hero.slides.1.title'),
+      subtitle: t('hero.slides.1.subtitle'),
+      description: t('hero.slides.1.description'),
+      gradient: 'from-emerald-500 to-teal-400',
+    },
+    {
+      id: 3,
+      title: t('hero.slides.2.title'),
+      subtitle: t('hero.slides.2.subtitle'),
+      description: t('hero.slides.2.description'),
+      gradient: 'from-violet-500 to-purple-400',
+    },
+  ];
   const { isAuthenticated } = useAuth();
 
   useEffect(() => {
@@ -221,6 +223,8 @@ export default function HeroRefactor() {
     </section>
   );
 }
+
+
 
 
 

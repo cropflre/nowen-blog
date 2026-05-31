@@ -30,7 +30,24 @@
       "viewProjects": "查看项目",
       "readBlog": "阅读博客"
     },
-    "bio": "使用 <strong>Go</strong> 构建高性能系统，使用 <strong>React</strong> 打造优雅界面。热衷于分布式系统、开发者工具和开源软件。"
+    "bio": "使用 <strong>Go</strong> 构建高性能系统，使用 <strong>React</strong> 打造优雅界面。热衷于分布式系统、开发者工具和开源软件。",
+    "slides": [
+      {
+        "title": "构建系统",
+        "subtitle": "高扩展",
+        "description": "Go 后端，React 前端，实用工具链。"
+      },
+      {
+        "title": "开源创作",
+        "subtitle": "社区贡献",
+        "description": "分享对社区有价值的代码。"
+      },
+      {
+        "title": "优雅代码",
+        "subtitle": "简洁界面",
+        "description": "保持可读性的文档。"
+      }
+    ]
   },
   "featuredPosts": {
     "sectionTitle": "最新文章",

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"net/url"
 	"strconv"
 	"strings"
 
@@ -13,6 +14,10 @@ import (
 // GetPublicPostBySlug 前台公开文章查询引擎
 func GetPublicPostBySlug(c *fiber.Ctx) error {
 	slug := c.Params("slug")
+	// Handle URL-encoded slugs (e.g. Chinese characters)
+	if decoded, err := url.PathUnescape(slug); err == nil {
+		slug = decoded
+	}
 	var post Post
 
 	// 核心安全逻辑：必须同时满足 slug 匹配，且状态为 'published'
@@ -759,4 +764,192 @@ func UpdateCarouselOrder(c *fiber.Ctx) error {
 	}
 
 	return c.JSON(fiber.Map{"message": "Carousel order updated"})
+}
+
+
+// ==================== 评论系统 ====================
+
+// GetComments 获取文章的已审核评论（公开）
+func GetComments(c *fiber.Ctx) error {
+	postID := c.Params("postId")
+	page, _ := strconv.Atoi(c.Query("page", "1"))
+	pageSize, _ := strconv.Atoi(c.Query("pageSize", "20"))
+	if pageSize > 50 {
+		pageSize = 50
+	}
+
+	var comments []Comment
+	var total int64
+
+	query := DB.Model(&Comment{}).Where("post_id = ? AND status = ?", postID, "approved")
+	query.Count(&total)
+
+	offset := (page - 1) * pageSize
+	if err := query.Order("created_at DESC").Offset(offset).Limit(pageSize).Find(&comments).Error; err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": "Failed to fetch comments"})
+	}
+
+	return c.JSON(fiber.Map{
+		"status": "success",
+		"data": fiber.Map{
+			"comments": comments,
+			"total":    total,
+		},
+	})
+}
+
+// CreateComment 提交评论（公开，无需登录）
+func CreateComment(c *fiber.Ctx) error {
+	postID := c.Params("postId")
+
+	// 验证文章存在
+	var post Post
+	if err := DB.First(&post, postID).Error; err != nil {
+		return c.Status(404).JSON(fiber.Map{"error": "Post not found"})
+	}
+
+	var input struct {
+		ParentID *uint  `json:"parent_id`
+		Nickname string `json:"nickname`
+		Email    string `json:"email`
+		Website  string `json:"website`
+		Content  string `json:"content`
+	}
+
+	if err := c.BodyParser(&input); err != nil {
+		return c.Status(400).JSON(fiber.Map{"error": "Invalid request body"})
+	}
+
+	// 验证
+	input.Nickname = strings.TrimSpace(input.Nickname)
+	input.Content = strings.TrimSpace(input.Content)
+	if input.Nickname == "" || len(input.Nickname) > 50 {
+		return c.Status(400).JSON(fiber.Map{"error": "Nickname is required (max 50 chars)"})
+	}
+	if input.Content == "" || len(input.Content) > 2000 {
+		return c.Status(400).JSON(fiber.Map{"error": "Content is required (max 2000 chars)"})
+	}
+
+	// 验证父评论存在（如有）
+	if input.ParentID != nil {
+		var parent Comment
+		if err := DB.First(&parent, *input.ParentID).Error; err != nil {
+			return c.Status(400).JSON(fiber.Map{"error": "Parent comment not found"})
+		}
+	}
+
+	// 简单频率限制：同一IP 30秒内不能重复评论
+	ip := c.IP()
+	var recentCount int64
+	DB.Model(&Comment{}).Where("ip_address = ? AND created_at > datetime('now', '-30 seconds')", ip).Count(&recentCount)
+	if recentCount > 0 {
+		return c.Status(429).JSON(fiber.Map{"error": "Please wait before posting another comment"})
+	}
+
+	postIDUint, _ := strconv.ParseUint(postID, 10, 64)
+	comment := Comment{
+		PostID:    uint(postIDUint),
+		ParentID:  input.ParentID,
+		Nickname:  input.Nickname,
+		Email:     input.Email,
+		Website:   input.Website,
+		Content:   input.Content,
+		Status:    "pending",
+		IPAddress: ip,
+	}
+
+	if err := DB.Create(&comment).Error; err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": "Failed to create comment"})
+	}
+
+	return c.Status(201).JSON(fiber.Map{
+		"status":  "success",
+		"message": "Comment submitted, awaiting moderation",
+		"data":    comment,
+	})
+}
+
+// AdminGetComments 管理员获取评论列表
+func AdminGetComments(c *fiber.Ctx) error {
+	status := c.Query("status")
+	postID := c.Query("postId")
+	page, _ := strconv.Atoi(c.Query("page", "1"))
+	pageSize, _ := strconv.Atoi(c.Query("pageSize", "20"))
+
+	var comments []Comment
+	var total int64
+
+	query := DB.Model(&Comment{})
+	if status != "" {
+		query = query.Where("status = ?", status)
+	}
+	if postID != "" {
+		query = query.Where("post_id = ?", postID)
+	}
+	query.Count(&total)
+
+	offset := (page - 1) * pageSize
+	if err := query.Order("created_at DESC").Offset(offset).Limit(pageSize).Find(&comments).Error; err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": "Failed to fetch comments"})
+	}
+
+	return c.JSON(fiber.Map{
+		"status": "success",
+		"data": fiber.Map{
+			"comments": comments,
+			"total":    total,
+			"page":     page,
+			"pageSize": pageSize,
+		},
+	})
+}
+
+// AdminUpdateCommentStatus 管理员更新评论状态
+func AdminUpdateCommentStatus(c *fiber.Ctx) error {
+	id := c.Params("id")
+	var comment Comment
+	if err := DB.First(&comment, id).Error; err != nil {
+		return c.Status(404).JSON(fiber.Map{"error": "Comment not found"})
+	}
+
+	var input struct {
+		Status string `json:"status`
+	}
+	if err := c.BodyParser(&input); err != nil {
+		return c.Status(400).JSON(fiber.Map{"error": "Invalid request body"})
+	}
+
+	if input.Status != "approved" && input.Status != "rejected" && input.Status != "pending" {
+		return c.Status(400).JSON(fiber.Map{"error": "Invalid status"})
+	}
+
+	DB.Model(&comment).Update("status", input.Status)
+	return c.JSON(fiber.Map{"status": "success", "data": comment})
+}
+
+// AdminDeleteComment 管理员删除评论
+func AdminDeleteComment(c *fiber.Ctx) error {
+	id := c.Params("id")
+	if err := DB.Delete(&Comment{}, id).Error; err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": "Failed to delete comment"})
+	}
+	return c.JSON(fiber.Map{"message": "Comment deleted"})
+}
+
+// AdminGetCommentStats 管理员获取评论统计
+func AdminGetCommentStats(c *fiber.Ctx) error {
+	var pending, approved, rejected int64
+	DB.Model(&Comment{}).Where("status = ?", "pending").Count(&pending)
+	DB.Model(&Comment{}).Where("status = ?", "approved").Count(&approved)
+	DB.Model(&Comment{}).Where("status = ?", "rejected").Count(&rejected)
+
+	return c.JSON(fiber.Map{
+		"status": "success",
+		"data": fiber.Map{
+			"pending":  pending,
+			"approved": approved,
+			"rejected": rejected,
+			"total":    pending + approved + rejected,
+		},
+	})
 }

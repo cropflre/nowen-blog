@@ -4,6 +4,7 @@ import { ArrowLeft, Clock, Eye, Share2 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { useNavigate, useParams } from 'react-router-dom';
 import { api } from '../api';
+import CommentSection from '../components/CommentSection';
 import type { Post } from '../types';
 
 function ArticleSkeleton() {
@@ -137,6 +138,8 @@ export default function ArticleDetail() {
             <article className="minimal-prose mt-10">
               {article.html_content ? <div dangerouslySetInnerHTML={{ __html: article.html_content }} /> : <ReactMarkdown>{article.content}</ReactMarkdown>}
             </article>
+
+            <CommentSection postId={article.id} />
 
             <footer className="mt-16 border-t border-[var(--color-border-surface)] pt-8">
               <button type="button" onClick={() => navigate('/blog')} className="minimal-button">

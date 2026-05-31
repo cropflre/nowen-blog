@@ -145,4 +145,23 @@ export interface ImageInfo {
   mime_type: string;
   created_at: string;
 }
+export interface Comment {
+  id: number;
+  post_id: number;
+  parent_id: number | null;
+  nickname: string;
+  email: string;
+  website: string;
+  content: string;
+  status: 'pending' | 'approved' | 'rejected';
+  created_at: string;
+  updated_at: string;
+}
 
+export interface CommentFormData {
+  parent_id?: number | null;
+  nickname: string;
+  email: string;
+  website: string;
+  content: string;
+}

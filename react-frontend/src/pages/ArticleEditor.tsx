@@ -29,6 +29,8 @@ export default function ArticleEditor({ postId, onBack, contentType = 'blog' }: 
   const [saving, setSaving] = useState(false);
   const [showImageUploader, setShowImageUploader] = useState(false);
   const [isTextareaDragging, setIsTextareaDragging] = useState(false);
+  const [showPublishConfirm, setShowPublishConfirm] = useState(false);
+  const [showSaveConfirm, setShowSaveConfirm] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // 项目文档相关状态
@@ -168,7 +170,7 @@ export default function ArticleEditor({ postId, onBack, contentType = 'blog' }: 
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 's') {
         e.preventDefault();
-        handleSave();
+        setShowSaveConfirm(true);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
@@ -404,7 +406,7 @@ export default function ArticleEditor({ postId, onBack, contentType = 'blog' }: 
 
           {/* 状态切换 */}
           <button
-            onClick={() => setStatus(status === 'draft' ? 'published' : 'draft')}
+            onClick={() => { if (status === 'draft') { setShowPublishConfirm(true); } else { setStatus('draft'); } }}
             className={`px-3 py-1 text-xs font-mono rounded-lg transition-all ${
               status === 'published'
                 ? 'bg-emerald-500/10 border border-emerald-500/30 text-emerald-400'
@@ -446,7 +448,7 @@ export default function ArticleEditor({ postId, onBack, contentType = 'blog' }: 
           <motion.button
             whileHover={{ scale: 1.02, boxShadow: "0 0 20px rgba(16, 185, 129, 0.2)" }}
             whileTap={{ scale: 0.98 }}
-            onClick={handleSave}
+            onClick={() => setShowSaveConfirm(true)}
             disabled={saving}
             className="flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 px-4 py-1.5 rounded-lg text-sm font-medium hover:bg-emerald-500/20 transition-all disabled:opacity-50"
           >
@@ -567,6 +569,98 @@ export default function ArticleEditor({ postId, onBack, contentType = 'blog' }: 
           <span>{t('admin.lines')}: <span className="text-[var(--color-text-secondary)]">{content.split('\n').length}</span></span>
         </div>
       </div>
+      {/* 保存确认弹窗 */}
+      {showSaveConfirm && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+          onClick={() => setShowSaveConfirm(false)}
+        >
+          <motion.div
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.9, opacity: 0 }}
+            onClick={(e) => e.stopPropagation()}
+            className="bg-[var(--color-bg-secondary)] border border-[var(--color-border-surface)] rounded-xl p-6 w-[400px] shadow-2xl"
+          >
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-full bg-blue-500/10 flex items-center justify-center">
+                <Save size={18} className="text-blue-400" />
+              </div>
+              <h3 className="text-lg font-semibold text-[var(--color-text-primary)]">{t('admin.confirmSaveTitle')}</h3>
+            </div>
+            <p className="text-sm text-[var(--color-text-secondary)] mb-6 leading-relaxed">
+              {t('admin.confirmSaveMessage')}
+            </p>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setShowSaveConfirm(false)}
+                className="px-4 py-2 text-sm font-mono text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] border border-[var(--color-border-surface)] rounded-lg hover:bg-[var(--color-bg-card)] transition-all"
+              >
+                {t('admin.cancel')}
+              </button>
+              <button
+                onClick={() => {
+                  setShowSaveConfirm(false);
+                  handleSave();
+                }}
+                className="px-4 py-2 text-sm font-mono bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 rounded-lg hover:bg-emerald-500/20 transition-all"
+              >
+                {t('admin.confirmSave')}
+              </button>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+
+      {/* 发布确认弹窗 */}
+      {showPublishConfirm && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+          onClick={() => setShowPublishConfirm(false)}
+        >
+          <motion.div
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.9, opacity: 0 }}
+            onClick={(e) => e.stopPropagation()}
+            className="bg-[var(--color-bg-secondary)] border border-[var(--color-border-surface)] rounded-xl p-6 w-[400px] shadow-2xl"
+          >
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-full bg-emerald-500/10 flex items-center justify-center">
+                <Upload size={18} className="text-emerald-400" />
+              </div>
+              <h3 className="text-lg font-semibold text-[var(--color-text-primary)]">{t('admin.confirmPublishTitle')}</h3>
+            </div>
+            <p className="text-sm text-[var(--color-text-secondary)] mb-6 leading-relaxed">
+              {t('admin.confirmPublishMessage')}
+            </p>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setShowPublishConfirm(false)}
+                className="px-4 py-2 text-sm font-mono text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] border border-[var(--color-border-surface)] rounded-lg hover:bg-[var(--color-bg-card)] transition-all"
+              >
+                {t('admin.cancel')}
+              </button>
+              <button
+                onClick={() => {
+                  setStatus('published');
+                  setShowPublishConfirm(false);
+                }}
+                className="px-4 py-2 text-sm font-mono bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 rounded-lg hover:bg-emerald-500/20 transition-all"
+              >
+                {t('admin.confirmPublish')}
+              </button>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+
     </div>
   );
 }

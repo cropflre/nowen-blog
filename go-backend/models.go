@@ -72,6 +72,23 @@ type Content struct {
 	DeletedAt   gorm.DeletedAt `gorm:"index" json:"-"`
 }
 
+
+// Comment 评论模型
+type Comment struct {
+	ID        uint           `gorm:"primaryKey" json:"id"`
+	PostID    uint           `gorm:"index;not null" json:"post_id"`
+	ParentID  *uint          `gorm:"index" json:"parent_id"` // 回复的父评论ID，nil为顶级评论
+	Nickname  string         `gorm:"size:50;not null" json:"nickname"`
+	Email     string         `gorm:"size:100" json:"email,omitempty"`
+	Website   string         `gorm:"size:200" json:"website,omitempty"`
+	Content   string         `gorm:"type:text;not null" json:"content"`
+	Status    string         `gorm:"size:20;default:pending;index" json:"status"` // pending | approved | rejected
+	IPAddress string         `gorm:"size:45" json:"-"`
+	CreatedAt time.Time      `json:"created_at"`
+	UpdatedAt time.Time      `json:"updated_at"`
+	DeletedAt gorm.DeletedAt `gorm:"index" json:"-"`
+}
+
 // 数据库实例
 var DB *gorm.DB
 
@@ -92,7 +109,7 @@ func InitDB() {
 	}
 
 	// 自动迁移
-	if err := DB.AutoMigrate(&User{}, &Post{}, &SiteInfo{}, &Content{}, &Image{}); err != nil {
+	if err := DB.AutoMigrate(&User{}, &Post{}, &SiteInfo{}, &Content{}, &Image{}, &Comment{}); err != nil {
 		panic("Failed to migrate database: " + err.Error())
 	}
 

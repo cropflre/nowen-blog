@@ -59,6 +59,43 @@ export const api = {
     return res.data;
   },
 
+  // --- 评论系统 ---
+  getComments: (postId: number, page = 1, pageSize = 20) =>
+    fetchJSON<{ status: string; data: { comments: import('./types').Comment[]; total: number } }>(
+      `/api/posts/${postId}/comments?page=${page}&pageSize=${pageSize}`
+    ),
+
+  createComment: (postId: number, data: import('./types').CommentFormData) =>
+    fetchJSON<{ status: string; message: string; data: import('./types').Comment }>(
+      `/api/posts/${postId}/comments`,
+      { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) }
+    ),
+
+  // --- 管理员评论 API ---
+  adminGetComments: (params?: { status?: string; postId?: string; page?: number; pageSize?: number }) => {
+    const qs = new URLSearchParams();
+    if (params?.status) qs.set('status', params.status);
+    if (params?.postId) qs.set('postId', params.postId);
+    if (params?.page) qs.set('page', String(params.page));
+    if (params?.pageSize) qs.set('pageSize', String(params.pageSize));
+    return fetchJSON<{ status: string; data: { comments: import('./types').Comment[]; total: number } }>(
+      `/api/admin/comments?${qs}`, createAuthOptions('GET')
+    );
+  },
+
+  adminGetCommentStats: () =>
+    fetchJSON<{ status: string; data: { pending: number; approved: number; rejected: number; total: number } }>(
+      '/api/admin/comments/stats', createAuthOptions('GET')
+    ),
+
+  adminUpdateCommentStatus: (id: number, status: string) =>
+    fetchJSON<{ status: string; data: import('./types').Comment }>(
+      `/api/admin/comments/${id}/status`, createAuthOptions('PUT', { status })
+    ),
+
+  adminDeleteComment: (id: number) =>
+    fetchJSON<{ message: string }>(`/api/admin/comments/${id}`, createAuthOptions('DELETE')),
+
   // --- 认证API ---
   login: (data: import('./types').LoginRequest) =>
     fetchJSON<import('./types').AuthResponse>('/api/auth/login', createAuthOptions('POST', data)),

@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation, Routes, Route, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
@@ -9,16 +9,24 @@ import Dashboard from './Dashboard';
 import ProjectDocsDashboard from './ProjectDocsDashboard';
 import ArticleEditor from './ArticleEditor';
 
-type ViewType = 'dashboard' | 'projects' | 'editor';
-
 export default function AdminPage() {
   const { t, i18n } = useTranslation();
   const { user, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
-  const [view, setView] = useState<ViewType>('dashboard');
+  const location = useLocation();
+  
   const [editingPostId, setEditingPostId] = useState<number | undefined>();
   const [contentType, setContentType] = useState<'blog' | 'doc'>('blog');
+
+  // 根据当前路径判断激活的 tab
+  const getActiveTab = () => {
+    if (location.pathname.startsWith('/admin/docs')) return 'docs';
+    if (location.pathname.startsWith('/admin/editor')) return 'editor';
+    return 'posts';
+  };
+
+  const activeTab = getActiveTab();
 
   const handleLogout = () => {
     logout();
@@ -28,34 +36,34 @@ export default function AdminPage() {
   const handleNewPost = () => {
     setEditingPostId(undefined);
     setContentType('blog');
-    setView('editor');
+    navigate('/admin/editor');
   };
 
   const handleNewDoc = () => {
     setEditingPostId(undefined);
     setContentType('doc');
-    setView('editor');
+    navigate('/admin/editor');
   };
 
   const handleEditPost = (id: number) => {
     setEditingPostId(id);
     setContentType('blog');
-    setView('editor');
+    navigate('/admin/editor/' + id);
   };
 
   const handleEditDoc = (id: number) => {
     setEditingPostId(id);
     setContentType('doc');
-    setView('editor');
+    navigate('/admin/editor/' + id);
   };
 
   const handleBack = () => {
-    if (contentType === 'doc') {
-      setView('projects');
-    } else {
-      setView('dashboard');
-    }
     setEditingPostId(undefined);
+    if (contentType === 'doc') {
+      navigate('/admin/docs');
+    } else {
+      navigate('/admin/posts');
+    }
   };
 
   const toggleLanguage = () => {
@@ -77,38 +85,39 @@ export default function AdminPage() {
           <div className="w-px h-6 bg-[var(--color-border-surface)]" />
           
           <nav className="flex items-center gap-1">
-            <button
-              onClick={() => { setView('dashboard'); setEditingPostId(undefined); }}
+            <Link
+              to="/admin/posts"
               className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-mono rounded transition-all ${
-                view === 'dashboard' 
+                activeTab === 'posts' 
                   ? 'bg-[var(--color-bg-card)] text-[var(--color-text-primary)]' 
                   : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)]'
               }`}
             >
               <FileText size={12} />
               {t('admin.blogPosts')}
-            </button>
-            <button
-              onClick={() => { setView('projects'); setEditingPostId(undefined); }}
+            </Link>
+            <Link
+              to="/admin/docs"
               className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-mono rounded transition-all ${
-                view === 'projects' 
+                activeTab === 'docs' 
                   ? 'bg-[var(--color-bg-card)] text-[var(--color-text-primary)]' 
                   : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)]'
               }`}
             >
               <FolderOpen size={12} />
               {t('admin.projectDocs')}
-            </button>
-            <button
-              onClick={handleNewPost}
+            </Link>
+            <Link
+              to="/admin/editor"
+              onClick={() => { setEditingPostId(undefined); setContentType('blog'); }}
               className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-mono rounded transition-all ${
-                view === 'editor' && contentType === 'blog'
+                activeTab === 'editor'
                   ? 'bg-[var(--color-bg-card)] text-[var(--color-text-primary)]' 
                   : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)]'
               }`}
             >
               {t('admin.editor')}
-            </button>
+            </Link>
           </nav>
         </div>
 
@@ -162,44 +171,14 @@ export default function AdminPage() {
         </div>
       </div>
 
-      {/* 主内容区 */}
-      <AnimatePresence mode="wait">
-        {view === 'dashboard' ? (
-          <motion.div
-            key="dashboard"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
-          >
-            <Dashboard onEditPost={handleEditPost} onNewPost={handleNewPost} />
-          </motion.div>
-        ) : view === 'projects' ? (
-          <motion.div
-            key="projects"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
-          >
-            <ProjectDocsDashboard onEditDoc={handleEditDoc} onNewDoc={handleNewDoc} />
-          </motion.div>
-        ) : (
-          <motion.div
-            key="editor"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
-          >
-            <ArticleEditor 
-              postId={editingPostId} 
-              onBack={handleBack}
-              contentType={contentType}
-            />
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {/* 主内容区 - 使用路由 */}
+      <Routes>
+        <Route index element={<Dashboard onEditPost={handleEditPost} onNewPost={handleNewPost} />} />
+        <Route path="posts" element={<Dashboard onEditPost={handleEditPost} onNewPost={handleNewPost} />} />
+        <Route path="docs" element={<ProjectDocsDashboard onEditDoc={handleEditDoc} onNewDoc={handleNewDoc} />} />
+        <Route path="editor" element={<ArticleEditor postId={editingPostId} onBack={handleBack} contentType={contentType} />} />
+        <Route path="editor/:id" element={<ArticleEditor onBack={handleBack} contentType={contentType} />} />
+      </Routes>
     </div>
   );
 }

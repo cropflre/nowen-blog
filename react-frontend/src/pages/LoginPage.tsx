@@ -1,7 +1,9 @@
 import { useState } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import { Sun, Moon, Home } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { useTheme } from '../contexts/ThemeContext';
 
 export default function LoginPage() {
   const [username, setUsername] = useState('');
@@ -9,6 +11,7 @@ export default function LoginPage() {
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const { login } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -30,7 +33,17 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#050505] flex items-center justify-center px-4 font-mono">
+    <div className="min-h-screen bg-[var(--color-bg-primary)] flex items-center justify-center px-4 font-mono relative">
+      {/* Top right controls */}
+      <div className="absolute top-4 right-4 flex items-center gap-2">
+        <Link to="/" className="minimal-button h-9 min-h-9 w-9 p-0" aria-label="Home">
+          <Home size={16} />
+        </Link>
+        <button type="button" onClick={toggleTheme} className="minimal-button h-9 min-h-9 w-9 p-0" aria-label={theme === 'dark' ? 'Light mode' : 'Dark mode'}>
+          {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
+        </button>
+      </div>
+
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -73,7 +86,7 @@ export default function LoginPage() {
                 required
                 autoComplete="username"
                 autoFocus
-                className="w-full px-4 py-3 rounded-lg text-sm outline-none transition-all duration-200 bg-[var(--color-bg-primary)] border border-[var(--color-border-surface)] text-[var(--color-text-secondary)] focus:border-[var(--color-accent)] placeholder-[var(--color-text-muted)]"
+                className="w-full px-4 py-3 rounded-lg text-sm outline-none transition-all duration-200 bg-[var(--color-bg-primary)] border border-[var(--color-border-surface)] text-[var(--color-text-primary)] focus:border-[var(--color-accent)] placeholder-[var(--color-text-muted)]"
                 placeholder="admin"
               />
             </div>
@@ -89,24 +102,24 @@ export default function LoginPage() {
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 autoComplete="current-password"
-                className="w-full px-4 py-3 rounded-lg text-sm outline-none transition-all duration-200 bg-[var(--color-bg-primary)] border border-[var(--color-border-surface)] text-[var(--color-text-secondary)] focus:border-[var(--color-accent)] placeholder-[var(--color-text-muted)]"
+                className="w-full px-4 py-3 rounded-lg text-sm outline-none transition-all duration-200 bg-[var(--color-bg-primary)] border border-[var(--color-border-surface)] text-[var(--color-text-primary)] focus:border-[var(--color-accent)] placeholder-[var(--color-text-muted)]"
                 placeholder="••••••••"
               />
             </div>
 
             <motion.button
-              whileHover={{ scale: 1.01, boxShadow: "0 0 20px rgba(16, 185, 129, 0.15)" }}
+              whileHover={{ scale: 1.01 }}
               whileTap={{ scale: 0.99 }}
               type="submit"
               disabled={isLoading}
-              className="w-full py-3 px-4 rounded-lg text-sm font-mono font-semibold tracking-wider transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20"
+              className="w-full py-3 px-4 rounded-lg text-sm font-mono font-semibold tracking-wider transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed bg-[var(--color-accent)] text-[var(--color-bg-primary)]"
             >
               {isLoading ? (
                 <span className="flex items-center justify-center gap-2">
                   <motion.span
                     animate={{ rotate: 360 }}
                     transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                    className="w-4 h-4 border-2 border-emerald-500/30 border-t-emerald-500 rounded-full inline-block"
+                    className="w-4 h-4 border-2 border-current/30 border-t-current rounded-full inline-block"
                   />
                   AUTHENTICATING...
                 </span>

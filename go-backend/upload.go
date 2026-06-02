@@ -25,7 +25,7 @@ type Image struct {
 // 上传目录
 var uploadDir string
 
-func init() {
+func ensureUploadDir() {
 	uploadDir = os.Getenv("UPLOAD_DIR")
 	if uploadDir == "" {
 		uploadDir = "/app/uploads"

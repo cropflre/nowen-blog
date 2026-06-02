@@ -1,7 +1,7 @@
-import { useState, useEffect, useCallback } from 'react';
+﻿import { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MessageSquare, Send, Reply, ChevronDown, User, Mail, Globe, Clock } from 'lucide-react';
+import { MessageSquare, Send, Reply, User, Mail, Globe, Clock } from 'lucide-react';
 import { api } from '../api';
 import type { Comment, CommentFormData } from '../types';
 

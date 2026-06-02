@@ -1,13 +1,13 @@
-import React from 'react';
+﻿import React from 'react';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Check } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import GitHubProjectIdentifier from '../components/GitHubProjectIdentifier';
 import type { GitHubRepoInfo } from '../types';
 
 const GitHubDemoPage: React.FC = () => {
   const navigate = useNavigate();
-  const [selectedRepo, setSelectedRepo] = React.useState<GitHubRepoInfo | null>(null);
+  const [, setSelectedRepo] = React.useState<GitHubRepoInfo | null>(null);
 
   const handleProjectInfoFetched = (repoInfo: GitHubRepoInfo) => {
     setSelectedRepo(repoInfo);
@@ -34,7 +34,7 @@ const GitHubDemoPage: React.FC = () => {
       </header>
 
       <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        {/* 功能介绍 */}
+        {/* 鍔熻兘浠嬬粛 */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -75,7 +75,7 @@ const GitHubDemoPage: React.FC = () => {
           </div>
         </motion.div>
 
-        {/* GitHub 项目识别组件 */}
+        {/* GitHub 椤圭洰璇嗗埆缁勪欢 */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -95,7 +95,7 @@ const GitHubDemoPage: React.FC = () => {
           </div>
         </motion.div>
 
-        {/* 使用说明 */}
+        {/* 浣跨敤璇存槑 */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -134,7 +134,7 @@ const GitHubDemoPage: React.FC = () => {
           </div>
         </motion.div>
 
-        {/* API 信息 */}
+        {/* API 淇℃伅 */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}

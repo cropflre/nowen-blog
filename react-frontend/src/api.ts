@@ -265,4 +265,73 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ url }),
     }),
+
+
+  // ==================== AI 写作助手 API ====================
+  
+  // 获取 AI 设置
+  getAISettings: () => 
+    fetchJSON<import('./types').AISettings>('/api/admin/ai/settings', createAuthOptions('GET')),
+  
+  // 更新 AI 设置
+  updateAISettings: (data: Partial<import('./types').AISettings>) => 
+    fetchJSON<{success: boolean; message: string}>('/api/admin/ai/settings', createAuthOptions('PUT', data)),
+  
+  // 测试 AI 连接
+  testAIConnection: () => 
+    fetchJSON<{success: boolean; message: string}>('/api/admin/ai/test', createAuthOptions('POST')),
+  
+  // AI 写作助手 (SSE 流式)
+  aiChat: async (
+    action: import('./types').AIAction, 
+    text: string, 
+    context: string | undefined,
+    onChunk: (chunk: string) => void,
+    customPrompt?: string
+  ): Promise<void> => {
+    const token = getAuthToken();
+    const res = await fetch(API_BASE + '/api/admin/ai/chat', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + token,
+      },
+      body: JSON.stringify({ action, text, context, customPrompt }),
+    });
+    
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({}));
+      throw new Error(errorData.error || 'AI request failed: ' + res.status);
+    }
+    
+    const reader = res.body?.getReader();
+    const decoder = new TextDecoder();
+    
+    if (!reader) {
+      throw new Error('Failed to get response reader');
+    }
+    
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      
+      const textChunk = decoder.decode(value, { stream: true });
+      const lines = textChunk.split('\n');
+      
+      for (const line of lines) {
+        if (line.startsWith('data: ')) {
+          const data = line.slice(6);
+          if (data === '[DONE]') return;
+          try {
+            const parsed = JSON.parse(data);
+            if (parsed.content) {
+              onChunk(parsed.content);
+            }
+          } catch {
+            // Ignore parse errors for incomplete chunks
+          }
+        }
+      }
+    }
+  },
 };

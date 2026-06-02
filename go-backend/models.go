@@ -1,4 +1,4 @@
-﻿package main
+package main
 
 import (
 	"os"
@@ -93,6 +93,14 @@ type Comment struct {
 	DeletedAt gorm.DeletedAt `gorm:"index" json:"-"`
 }
 
+// AISetting AI 设置模型
+type AISetting struct {
+	ID        uint      `gorm:"primaryKey" json:"id"`
+	Key       string    `gorm:"uniqueIndex;size:50;not null" json:"key"`
+	Value     string    `gorm:"size:500" json:"value"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
 // 数据库实例
 var DB *gorm.DB
 
@@ -121,7 +129,7 @@ func InitDB() {
 	}
 
 	// 自动迁移
-	if err := DB.AutoMigrate(&User{}, &Post{}, &SiteInfo{}, &Content{}, &Image{}, &Comment{}); err != nil {
+	if err := DB.AutoMigrate(&User{}, &Post{}, &SiteInfo{}, &Content{}, &Image{}, &Comment{}, &AISetting{}); err != nil {
 		panic("Failed to migrate database: " + err.Error())
 	}
 
@@ -159,5 +167,29 @@ func initDefaults() {
 			Role:               "admin",
 			MustChangePassword: true,
 		})
+	}
+
+	// 默认 AI 设置
+	initAIDefaults()
+}
+
+// initAIDefaults 初始化 AI 默认设置
+func initAIDefaults() {
+	defaults := map[string]string{
+		"ai_api_url": "https://api.openai.com/v1",
+		"ai_api_key": "",
+		"ai_model":   "gpt-4o-mini",
+	}
+
+	for key, value := range defaults {
+		var count int64
+		DB.Model(&AISetting{}).Where("key = ?", key).Count(&count)
+		if count == 0 {
+			DB.Create(&AISetting{
+				Key:       key,
+				Value:     value,
+				UpdatedAt: time.Now(),
+			})
+		}
 	}
 }

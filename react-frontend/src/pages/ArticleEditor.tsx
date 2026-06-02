@@ -1,12 +1,13 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, Save, Eye, Code, Tag, Image as ImageIcon, Upload, FileText, FolderOpen } from 'lucide-react';
+import { ArrowLeft, Save, Eye, Code, Tag, Image as ImageIcon, Upload, FileText, FolderOpen, Sparkles } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { debounce } from 'lodash-es';
 import { api } from '../api';
 import type { Post, PostRequest, Content, ProjectInfo } from '../types';
 import ImageUploader from '../components/ImageUploader';
+import AIWritingAssistant from '../components/AIWritingAssistant';
 import { toastEvent } from '../components/CyberToast';
 
 interface ArticleEditorProps {
@@ -32,6 +33,10 @@ export default function ArticleEditor({ postId, onBack, contentType = 'blog' }: 
   const [showPublishConfirm, setShowPublishConfirm] = useState(false);
   const [showSaveConfirm, setShowSaveConfirm] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  // AI 写作助手状态
+  const [showAI, setShowAI] = useState(false);
+  const [selectedText, setSelectedText] = useState('');
+  const [selectionRange, setSelectionRange] = useState<{ start: number; end: number } | null>(null);
 
   // 项目文档相关状态
   const [type, setType] = useState<'blog' | 'doc'>(contentType);
@@ -278,6 +283,52 @@ export default function ArticleEditor({ postId, onBack, contentType = 'blog' }: 
     }
   }, [inlineUploadImage, t]);
 
+
+  // AI 写作助手处理函数
+  const handleOpenAI = useCallback(() => {
+    const textarea = textareaRef.current;
+    if (textarea) {
+      const start = textarea.selectionStart;
+      const end = textarea.selectionEnd;
+      
+      if (start !== end) {
+        setSelectedText(content.substring(start, end));
+        setSelectionRange({ start, end });
+      } else {
+        setSelectedText('');
+        setSelectionRange(null);
+      }
+    }
+    setShowAI(true);
+  }, [content]);
+
+  const handleAIInsert = useCallback((text: string) => {
+    if (!selectionRange) {
+      const textarea = textareaRef.current;
+      if (textarea) {
+        const pos = textarea.selectionStart;
+        const newContent = content.substring(0, pos) + '\n' + text + '\n' + content.substring(pos);
+        setContent(newContent);
+      }
+    } else {
+      const newContent = content.substring(0, selectionRange.end) + '\n' + text + '\n' + content.substring(selectionRange.end);
+      setContent(newContent);
+    }
+    setShowAI(false);
+    setSelectedText('');
+    setSelectionRange(null);
+  }, [content, selectionRange]);
+
+  const handleAIReplace = useCallback((text: string) => {
+    if (!selectionRange) return;
+    
+    const newContent = content.substring(0, selectionRange.start) + text + content.substring(selectionRange.end);
+    setContent(newContent);
+    setShowAI(false);
+    setSelectedText('');
+    setSelectionRange(null);
+  }, [content, selectionRange]);
+
   return (
     <div className="h-screen bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] flex flex-col overflow-hidden">
       {/* 顶部工具栏 */}
@@ -444,7 +495,18 @@ export default function ArticleEditor({ postId, onBack, contentType = 'blog' }: 
             <ImageIcon size={16} />
           </motion.button>
 
-          {/* 保存按钮 */}
+                    {/* AI 写作助手 */}
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={handleOpenAI}
+            className="p-2 rounded-lg transition-colors bg-violet-500/10 text-violet-400 hover:bg-violet-500/20"
+            title={t('ai.title')}
+          >
+            <Sparkles size={16} />
+          </motion.button>
+
+{/* 保存按钮 */}
           <motion.button
             whileHover={{ scale: 1.02, boxShadow: "0 0 20px rgba(16, 185, 129, 0.2)" }}
             whileTap={{ scale: 0.98 }}
@@ -661,6 +723,36 @@ export default function ArticleEditor({ postId, onBack, contentType = 'blog' }: 
         </motion.div>
       )}
 
+
+      {/* AI 写作助手弹窗 */}
+      <AnimatePresence>
+        {showAI && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+            onClick={() => setShowAI(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-[calc(100%-2rem)] max-w-lg"
+            >
+              <AIWritingAssistant
+                selectedText={selectedText}
+                fullText={content}
+                onInsert={handleAIInsert}
+                onReplace={handleAIReplace}
+                onClose={() => setShowAI(false)}
+              />
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
+
 }

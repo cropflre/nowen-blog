@@ -4,12 +4,13 @@ import { useNavigate, useLocation, Routes, Route, Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
-import { LogOut, Settings, User as UserIcon, Sun, Moon, Globe, FileText, FolderOpen, Home, Menu, X, PenLine } from 'lucide-react';
+import { LogOut, Settings, User as UserIcon, Sun, Moon, Globe, FileText, FolderOpen, Home, Menu, X, PenLine, Bot } from 'lucide-react';
 import Dashboard from './Dashboard';
 import ProjectDocsDashboard from './ProjectDocsDashboard';
 import ArticleEditor from './ArticleEditor';
 import SettingsPage from './SettingsPage';
 import SiteSettingsPage from './SiteSettingsPage';
+import AISettingsPage from './AISettingsPage';
 
 export default function AdminPage() {
   const { t, i18n } = useTranslation();
@@ -26,6 +27,7 @@ export default function AdminPage() {
     if (location.pathname.startsWith('/admin/docs')) return 'docs';
     if (location.pathname.startsWith('/admin/editor')) return 'editor';
     if (location.pathname.startsWith('/admin/settings')) return 'settings';
+    if (location.pathname.startsWith('/admin/ai-settings')) return 'ai-settings';
     return 'posts';
   };
 
@@ -82,6 +84,7 @@ export default function AdminPage() {
     { to: '/admin/editor', icon: <PenLine size={12} />, label: t('admin.editor'), key: 'editor' },
     { to: '/admin/settings', icon: <Settings size={12} />, label: t('settings.title'), key: 'settings' },
     { to: '/admin/site-settings', icon: <Globe size={12} />, label: t('settings.siteSettings') || 'SITE_SETTINGS', key: 'site-settings' },
+    { to: '/admin/ai-settings', icon: <Bot size={12} />, label: t('ai.settings'), key: 'ai-settings' },
   ];
 
   return (
@@ -227,6 +230,7 @@ export default function AdminPage() {
         <Route path="editor/:id" element={<ArticleEditor onBack={handleBack} contentType={contentType} />} />
         <Route path="settings" element={<SettingsPage forcePasswordChange={mustChangePassword} />} />
         <Route path="site-settings" element={<SiteSettingsPage />} />
+        <Route path="ai-settings" element={<AISettingsPage />} />
       </Routes>
     </div>
   );

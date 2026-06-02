@@ -24,7 +24,7 @@ export default function ProjectDocsDashboard({ onEditDoc, onNewDoc }: ProjectDoc
   const [newProjectName, setNewProjectName] = useState('');
   const [newProjectGithubUrl, setNewProjectGithubUrl] = useState('');
   const [creating, setCreating] = useState(false);
-  const [fetchingRepo, setFetchingRepo] = useState(false);
+  const [__fetchingRepo, setFetchingRepo] = useState(false);
   const [repoDescription, setRepoDescription] = useState('');
   const [repoReadme, setRepoReadme] = useState('');
   // 自动获取 GitHub 仓库信息

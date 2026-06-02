@@ -21,8 +21,8 @@ func main() {
 	app := fiber.New(fiber.Config{
 		AppName:      "NOWEN Blog API",
 		BodyLimit:    10 * 1024 * 1024, // 10MB
-		ReadTimeout:  30 * 1e9,         // 30s
-		WriteTimeout: 30 * 1e9,
+		ReadTimeout:  60 * 1e9,         // 60s (increased for AI streaming)
+		WriteTimeout: 60 * 1e9,
 	})
 
 	// 全局中间件
@@ -107,6 +107,12 @@ func main() {
 	admin.Put("/comments/:id/status", AdminUpdateCommentStatus)
 	admin.Delete("/comments/:id", AdminDeleteComment) // 更新幻灯片排序
 
+	// AI 写作助手
+	admin.Get("/ai/settings", GetAISettings)
+	admin.Put("/ai/settings", UpdateAISettings)
+	admin.Post("/ai/test", TestAIConnection)
+	admin.Post("/ai/chat", AIChatSSE)
+
 	// 获取端口
 	port := os.Getenv("PORT")
 	if port == "" {
@@ -138,6 +144,10 @@ func main() {
 	log.Printf("     DELETE /api/admin/posts/:id")
 	log.Printf("     PUT    /api/admin/site")
 	log.Printf("     PUT    /api/admin/password")
+	log.Printf("     GET    /api/admin/ai/settings")
+	log.Printf("     PUT    /api/admin/ai/settings")
+	log.Printf("     POST   /api/admin/ai/test")
+	log.Printf("     POST   /api/admin/ai/chat")
 
 	log.Fatal(app.Listen(":" + port))
 }

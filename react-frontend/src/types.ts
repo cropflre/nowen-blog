@@ -1,16 +1,16 @@
-export interface Post {
+﻿export interface Post {
   id: number;
   title: string;
   slug: string;
   summary: string;
   content: string;
-  html_content: string; // 服务端预渲染的 HTML
+  html_content: string; // 鏈嶅姟绔娓叉煋鐨?HTML
   cover: string;
-  tags: string; // 逗号分隔的字符串
+  tags: string; // 閫楀彿鍒嗛殧鐨勫瓧绗︿覆
   status: 'draft' | 'published';
   read_time: number;
-  view_count: number; // 浏览量
-  carousel_order: number; // 幻灯片排序
+  view_count: number; // 娴忚閲?
+  carousel_order: number; // 骞荤伅鐗囨帓搴?
   created_at: string;
   updated_at: string;
 }
@@ -24,9 +24,9 @@ export interface SiteInfo {
   email: string;
   github: string;
   twitter: string;
-  skills: string; // 逗号分隔的字符串
-  beian_enabled?: boolean; // 备案信息开关
-  beian_number?: string;   // 备案号
+  skills: string; // 閫楀彿鍒嗛殧鐨勫瓧绗︿覆
+  beian_enabled?: boolean; // 澶囨淇℃伅寮€鍏?
+  beian_number?: string;   // 澶囨鍙?
 }
 
 export interface User {
@@ -98,7 +98,7 @@ export interface PaginatedResponse<T> {
   totalPages: number;
 }
 
-// 统一内容模型
+// 缁熶竴鍐呭妯″瀷
 export interface Content {
   id: number;
   type: 'blog' | 'doc';
@@ -131,7 +131,7 @@ export interface ProjectInfo {
   doc_count: number;
 }
 
-// 全局搜索结果
+// 鍏ㄥ眬鎼滅储缁撴灉
 export interface SearchResult {
   id: number;
   title: string;
@@ -143,7 +143,7 @@ export interface SearchResult {
   created_at: string;
 }
 
-// 图片信息
+// 鍥剧墖淇℃伅
 export interface ImageInfo {
   id: number;
   filename: string;
@@ -175,16 +175,16 @@ export interface CommentFormData {
   content: string;
 }
 
-// ==================== GitHub 项目相关类型 ====================
+// ==================== GitHub 椤圭洰鐩稿叧绫诲瀷 ====================
 
-// GitHub 仓库所有者信息
+// GitHub 浠撳簱鎵€鏈夎€呬俊鎭?
 export interface GitHubOwner {
   login: string;
   avatar_url: string;
   html_url: string;
 }
 
-// GitHub 仓库信息
+// GitHub 浠撳簱淇℃伅
 export interface GitHubRepoInfo {
   id: number;
   name: string;
@@ -206,9 +206,33 @@ export interface GitHubRepoInfo {
   owner: GitHubOwner;
 }
 
-// GitHub 项目信息响应
+// GitHub 椤圭洰淇℃伅鍝嶅簲
 export interface GitHubProjectResponse {
   success: boolean;
   message?: string;
   data?: GitHubRepoInfo;
 }
+
+// ==================== AI 写作助手相关类型 ====================
+
+export interface AISettings {
+  ai_api_url: string;
+  ai_api_key: string;
+  ai_api_key_set: boolean;
+  ai_model: string;
+}
+
+export type AIAction = 
+  | 'continue' 
+  | 'rewrite' 
+  | 'polish' 
+  | 'shorten' 
+  | 'expand'
+  | 'translate_en' 
+  | 'translate_zh' 
+  | 'summarize' 
+  | 'explain'
+  | 'fix_grammar' 
+  | 'format_markdown' 
+  | 'format_code' 
+  | 'custom';

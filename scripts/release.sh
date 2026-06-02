@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env bash
+#!/usr/bin/env bash
 # nowen-blog Docker release script
 set -euo pipefail
 

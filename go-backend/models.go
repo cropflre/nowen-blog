@@ -1,6 +1,8 @@
 ﻿package main
 
 import (
+	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/glebarez/sqlite"
@@ -97,7 +99,16 @@ var DB *gorm.DB
 // InitDB 初始化数据库
 func InitDB() {
 	var err error
-	DB, err = gorm.Open(sqlite.Open("nowen_blog.db"), &gorm.Config{})
+	// 确保数据目录存在
+	dataDir := "/app/data"
+	if os.Getenv("DATA_DIR") != "" {
+		dataDir = os.Getenv("DATA_DIR")
+	}
+	if err := os.MkdirAll(dataDir, os.ModePerm); err != nil {
+		panic("Failed to create data directory: " + err.Error())
+	}
+	dbPath := filepath.Join(dataDir, "nowen_blog.db")
+	DB, err = gorm.Open(sqlite.Open(dbPath), &gorm.Config{})
 	if err != nil {
 		panic("Failed to connect to database: " + err.Error())
 	}

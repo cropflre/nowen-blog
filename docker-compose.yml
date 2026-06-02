@@ -1,10 +1,5 @@
-# =============================================================================
-# nowen-blog docker-compose.yml
-#
-# 使用方式：
-#   开发环境：docker compose up --build
-#   生产环境：docker compose -f docker-compose.yml up -d
-# =============================================================================
+﻿# nowen-blog docker-compose.yml
+# Usage: docker compose up -d
 
 services:
   blog:
@@ -15,12 +10,14 @@ services:
     ports:
       - "8080:80"
     volumes:
-      # 持久化上传文件和数据库
-      - blog-uploads:/app/uploads
+      # Persist database
       - blog-data:/app/data
+      # Persist uploads
+      - blog-uploads:/app/uploads
     environment:
       - PORT=8080
-      - GIN_MODE=release
+      - DATA_DIR=/app/data
+      - UPLOAD_DIR=/app/uploads
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:80/api/health"]
@@ -30,5 +27,5 @@ services:
       start_period: 10s
 
 volumes:
-  blog-uploads:
   blog-data:
+  blog-uploads:

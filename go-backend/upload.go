@@ -23,10 +23,13 @@ type Image struct {
 }
 
 // 上传目录
-const uploadDir = "./uploads"
+var uploadDir string
 
-// 初始化上传目录
 func init() {
+	uploadDir = os.Getenv("UPLOAD_DIR")
+	if uploadDir == "" {
+		uploadDir = "/app/uploads"
+	}
 	if err := os.MkdirAll(uploadDir, os.ModePerm); err != nil {
 		panic("Failed to create upload directory: " + err.Error())
 	}

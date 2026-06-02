@@ -14,6 +14,9 @@ func main() {
 	// 初始化数据库
 	InitDB()
 
+	// 确保上传目录存在
+	ensureUploadDir()
+
 	// 创建 Fiber 应用
 	app := fiber.New(fiber.Config{
 		AppName:      "NOWEN Blog API",
@@ -62,7 +65,7 @@ func main() {
 	api.Get("/github/repo-info", GetGitHubRepoInfo)    // GET 方式，传入 owner 和 repo 参数
 
 	// --- 静态文件服务（上传的图片）---
-	app.Static("/uploads", "./uploads")
+	app.Static("/uploads", uploadDir)
 
 	// --- 认证端点 ---
 	api.Post("/auth/register", Register)

@@ -106,6 +106,12 @@ export const api = {
   updatePassword: (data: import('./types').UpdatePasswordRequest) =>
     fetchJSON<{ message: string }>('/api/admin/password', createAuthOptions('PUT', data)),
 
+  updateProfile: (data: import('./types').UpdateProfileRequest) =>
+    fetchJSON<{ message: string; token: string; username: string }>('/api/admin/profile', createAuthOptions('PUT', data)),
+
+  getCurrentUser: () =>
+    fetchJSON<{ id: number; username: string; email: string; role: string; must_change_password: boolean; created_at: string }>('/api/admin/me', createAuthOptions('GET')),
+
   // --- 管理员API ---
   adminGetPosts: (params?: { status?: string; page?: number; pageSize?: number }) => {
     const qs = new URLSearchParams();
@@ -225,6 +231,31 @@ export const api = {
   
   isAuthenticated: () => {
     return !!getAuthToken();
+  },
+
+  // ==================== GitHub 项目相关 API ====================
+  
+  // 通过 URL 获取 GitHub 仓库信息（POST）
+  fetchGitHubRepoByURL: (url: string): Promise<import('./types').GitHubProjectResponse> =>
+    fetchJSON<import('./types').GitHubProjectResponse>('/api/github/repo-info', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url }),
+    }),
+
+  // 通过 owner 和 repo 获取 GitHub 仓库信息（GET）
+  fetchGitHubRepo: (owner: string, repo: string): Promise<{ success: boolean; data: import('./types').GitHubRepoInfo }> => {
+    const qs = new URLSearchParams();
+    qs.set('owner', owner);
+    qs.set('repo', repo);
+    return fetchJSON<{ success: boolean; data: import('./types').GitHubRepoInfo }>(`/api/github/repo-info?${qs}`);
+  },
+
+  // 通过完整 URL 获取 GitHub 仓库信息（GET）
+  fetchGitHubRepoByURLGet: (url: string): Promise<{ success: boolean; data: import('./types').GitHubRepoInfo }> => {
+    const qs = new URLSearchParams();
+    qs.set('url', url);
+    return fetchJSON<{ success: boolean; data: import('./types').GitHubRepoInfo }>(`/api/github/repo-info?${qs}`);
   },
 };
 

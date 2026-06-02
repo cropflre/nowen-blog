@@ -10,6 +10,7 @@ import BlogPage from './pages/BlogPage';
 import ArticleDetail from './pages/ArticleDetail';
 import ProjectsPage from './pages/ProjectsPage';
 import ProjectDocs from './pages/ProjectDocs';
+import GitHubDemoPage from './pages/GitHubDemoPage';
 import LoginPage from './pages/LoginPage';
 import AdminPage from './pages/AdminPage';
 import { ThemeProvider } from './contexts/ThemeContext';
@@ -34,6 +35,7 @@ function AnimatedRoutes() {
           <Route path="/blog/:slug" element={<ArticleDetail />} />
           <Route path="/projects" element={<ProjectsPage />} />
           <Route path="/docs/:project" element={<ProjectDocs />} />
+          <Route path="/github-demo" element={<GitHubDemoPage />} />
         </Routes>
       </motion.div>
     </AnimatePresence>

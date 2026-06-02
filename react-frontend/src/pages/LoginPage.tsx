@@ -1,17 +1,21 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Sun, Moon, Home } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 
 export default function LoginPage() {
+  const [isRegister, setIsRegister] = useState(false);
   const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const { login } = useAuth();
+  const { login, register } = useAuth();
   const { theme, toggleTheme } = useTheme();
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -23,23 +27,32 @@ export default function LoginPage() {
     setIsLoading(true);
 
     try {
-      await login(username, password);
+      if (isRegister) {
+        await register(username, email, password);
+      } else {
+        await login(username, password);
+      }
       navigate(from, { replace: true });
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Login failed');
+      setError(err instanceof Error ? err.message : isRegister ? t('login.registerFailed') : t('login.loginFailed'));
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const toggleMode = () => {
+    setIsRegister(!isRegister);
+    setError('');
   };
 
   return (
     <div className="min-h-screen bg-[var(--color-bg-primary)] flex items-center justify-center px-4 font-mono relative">
       {/* Top right controls */}
       <div className="absolute top-4 right-4 flex items-center gap-2">
-        <Link to="/" className="minimal-button h-9 min-h-9 w-9 p-0" aria-label="Home">
+        <Link to="/" className="minimal-button h-9 min-h-9 w-9 p-0" aria-label={t('nav.home')}>
           <Home size={16} />
         </Link>
-        <button type="button" onClick={toggleTheme} className="minimal-button h-9 min-h-9 w-9 p-0" aria-label={theme === 'dark' ? 'Light mode' : 'Dark mode'}>
+        <button type="button" onClick={toggleTheme} className="minimal-button h-9 min-h-9 w-9 p-0" aria-label={theme === 'dark' ? t('nav.switchToLight') : t('nav.switchToDark')}>
           {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
         </button>
       </div>
@@ -55,13 +68,17 @@ export default function LoginPage() {
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-xl mb-4 bg-[var(--color-bg-card)] border border-[var(--color-border-surface)]">
             <span className="text-2xl font-bold text-emerald-500">&gt;_</span>
           </div>
-          <h1 className="text-2xl font-bold text-[var(--color-text-primary)] mb-2 tracking-wider">SYSTEM_ACCESS</h1>
+          <h1 className="text-2xl font-bold text-[var(--color-text-primary)] mb-2 tracking-wider">
+            {isRegister ? t('login.registerTitle') : t('login.systemAccess')}
+          </h1>
           <p className="text-sm text-[var(--color-text-muted)]">
-            <span className="text-[var(--color-text-muted)] opacity-60">//</span> 身份验证协议启动中...
+            <span className="text-[var(--color-text-muted)] opacity-60">
+              {isRegister ? t('login.registerProtocol') : t('login.authProtocol')}
+            </span>
           </p>
         </div>
 
-        {/* Login Form */}
+        {/* Form */}
         <div className="rounded-xl p-8 bg-[var(--color-bg-card)] border border-[var(--color-border-surface)]">
           <form onSubmit={handleSubmit} className="space-y-6">
             {error && (
@@ -76,7 +93,7 @@ export default function LoginPage() {
 
             <div>
               <label htmlFor="username" className="block text-xs font-medium mb-2 text-[var(--color-text-muted)] tracking-wider">
-                USERNAME
+                {t('login.username')}
               </label>
               <input
                 id="username"
@@ -91,9 +108,30 @@ export default function LoginPage() {
               />
             </div>
 
+            {isRegister && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+              >
+                <label htmlFor="email" className="block text-xs font-medium mb-2 text-[var(--color-text-muted)] tracking-wider">
+                  {t('login.email')}
+                </label>
+                <input
+                  id="email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  autoComplete="email"
+                  className="w-full px-4 py-3 rounded-lg text-sm outline-none transition-all duration-200 bg-[var(--color-bg-primary)] border border-[var(--color-border-surface)] text-[var(--color-text-primary)] focus:border-[var(--color-accent)] placeholder-[var(--color-text-muted)]"
+                  placeholder="user@example.com"
+                />
+              </motion.div>
+            )}
+
             <div>
               <label htmlFor="password" className="block text-xs font-medium mb-2 text-[var(--color-text-muted)] tracking-wider">
-                PASSWORD
+                {t('login.password')}
               </label>
               <input
                 id="password"
@@ -101,7 +139,8 @@ export default function LoginPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                autoComplete="current-password"
+                minLength={6}
+                autoComplete={isRegister ? 'new-password' : 'current-password'}
                 className="w-full px-4 py-3 rounded-lg text-sm outline-none transition-all duration-200 bg-[var(--color-bg-primary)] border border-[var(--color-border-surface)] text-[var(--color-text-primary)] focus:border-[var(--color-accent)] placeholder-[var(--color-text-muted)]"
                 placeholder="••••••••"
               />
@@ -121,24 +160,37 @@ export default function LoginPage() {
                     transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
                     className="w-4 h-4 border-2 border-current/30 border-t-current rounded-full inline-block"
                   />
-                  AUTHENTICATING...
+                  {isRegister ? t('login.registering') : t('login.authenticating')}
                 </span>
               ) : (
-                'EXECUTE_LOGIN'
+                isRegister ? t('login.executeRegister') : t('login.executeLogin')
               )}
             </motion.button>
           </form>
+
+          {/* Toggle login/register */}
+          <div className="mt-6 pt-4 border-t border-[var(--color-border-surface)] text-center">
+            <button
+              type="button"
+              onClick={toggleMode}
+              className="text-xs text-[var(--color-text-muted)] hover:text-emerald-400 transition-colors font-mono"
+            >
+              {isRegister ? t('login.switchToLogin') : t('login.switchToRegister')}
+            </button>
+          </div>
         </div>
 
         {/* Footer */}
-        <div className="text-center mt-6 space-y-2">
-          <p className="text-xs text-[var(--color-text-muted)] font-mono">
-            <span className="opacity-60">DEFAULT:</span> admin / admin123
-          </p>
-          <p className="text-xs text-[var(--color-text-muted)] opacity-50 font-mono">
-            PROTECTED_ZONE // UNAUTHORIZED_ACCESS_PROHIBITED
-          </p>
-        </div>
+        {!isRegister && (
+          <div className="text-center mt-6 space-y-2">
+            <p className="text-xs text-[var(--color-text-muted)] font-mono">
+              <span className="opacity-60">{t('login.defaultCredentials')}</span>
+            </p>
+            <p className="text-xs text-[var(--color-text-muted)] opacity-50 font-mono">
+              {t('login.protectedZone')}
+            </p>
+          </div>
+        )}
       </motion.div>
     </div>
   );

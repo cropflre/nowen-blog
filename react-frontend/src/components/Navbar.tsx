@@ -25,6 +25,7 @@ export default function Navbar() {
     { path: '/', label: t('nav.home') },
     { path: '/blog', label: t('nav.blog') },
     { path: '/projects', label: t('nav.projects') },
+    { path: '/github-demo', label: 'GitHub' },
   ];
 
   useEffect(() => {

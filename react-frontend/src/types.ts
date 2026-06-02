@@ -25,6 +25,8 @@ export interface SiteInfo {
   github: string;
   twitter: string;
   skills: string; // 逗号分隔的字符串
+  beian_enabled?: boolean; // 备案信息开关
+  beian_number?: string;   // 备案号
 }
 
 export interface User {
@@ -32,6 +34,7 @@ export interface User {
   username: string;
   email?: string;
   role: string;
+  must_change_password?: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -40,6 +43,7 @@ export interface AuthResponse {
   token: string;
   username: string;
   role?: string;
+  must_change_password?: boolean;
 }
 
 export interface LoginRequest {
@@ -56,6 +60,11 @@ export interface RegisterRequest {
 export interface UpdatePasswordRequest {
   oldPassword: string;
   newPassword: string;
+}
+
+export interface UpdateProfileRequest {
+  username: string;
+  email: string;
 }
 
 export interface PostRequest {
@@ -164,4 +173,42 @@ export interface CommentFormData {
   email: string;
   website: string;
   content: string;
+}
+
+// ==================== GitHub 项目相关类型 ====================
+
+// GitHub 仓库所有者信息
+export interface GitHubOwner {
+  login: string;
+  avatar_url: string;
+  html_url: string;
+}
+
+// GitHub 仓库信息
+export interface GitHubRepoInfo {
+  id: number;
+  name: string;
+  full_name: string;
+  description: string;
+  html_url: string;
+  clone_url: string;
+  homepage: string;
+  stargazers_count: number;
+  forks_count: number;
+  watchers_count: number;
+  language: string;
+  topics: string[];
+  created_at: string;
+  updated_at: string;
+  default_branch: string;
+  private: boolean;
+  size: number;
+  owner: GitHubOwner;
+}
+
+// GitHub 项目信息响应
+export interface GitHubProjectResponse {
+  success: boolean;
+  message?: string;
+  data?: GitHubRepoInfo;
 }

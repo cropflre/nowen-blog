@@ -74,10 +74,11 @@ func Register(c *fiber.Ctx) error {
 	}
 
 	user := User{
-		Username: input.Username,
-		Email:    input.Email,
-		Password: hashedPassword,
-		Role:     "admin",
+		Username:           input.Username,
+		Email:              input.Email,
+		Password:           hashedPassword,
+		Role:               "admin",
+		MustChangePassword: false,
 	}
 
 	if err := DB.Create(&user).Error; err != nil {
@@ -126,9 +127,10 @@ func Login(c *fiber.Ctx) error {
 	}
 
 	return c.JSON(fiber.Map{
-		"token":    token,
-		"username": user.Username,
-		"role":     user.Role,
+		"token":                token,
+		"username":             user.Username,
+		"role":                 user.Role,
+		"must_change_password": user.MustChangePassword,
 	})
 }
 
@@ -163,7 +165,10 @@ func UpdatePassword(c *fiber.Ctx) error {
 		return c.Status(500).JSON(fiber.Map{"error": "Failed to hash password"})
 	}
 
-	DB.Model(&user).Update("password", hashedPassword)
+	DB.Model(&user).Updates(map[string]interface{}{
+		"password":             hashedPassword,
+		"must_change_password": false,
+	})
 	return c.JSON(fiber.Map{"message": "Password updated successfully"})
 }
 
@@ -426,14 +431,16 @@ func GetSiteInfo(c *fiber.Ctx) error {
 	if err := DB.First(&siteInfo).Error; err != nil {
 		// 返回默认值
 		return c.JSON(SiteInfo{
-			Name:    "NOWEN",
-			Title:   "Full-Stack Engineer & System Architect",
-			Bio:     "Building high-performance systems with Go and elegant interfaces with React.",
-			Avatar:  "https://api.dicebear.com/7.x/bottts-neutral/svg?seed=nowen&backgroundColor=0a0a0a",
-			Email:   "hello@nowen.dev",
-			Github:  "https://github.com/nowen",
-			Twitter: "https://twitter.com/nowen",
-			Skills:  "Go,React,TypeScript,Rust,PostgreSQL,Redis,Docker,Kubernetes",
+			Name:         "NOWEN",
+			Title:        "Full-Stack Engineer & System Architect",
+			Bio:          "Building high-performance systems with Go and elegant interfaces with React.",
+			Avatar:       "https://api.dicebear.com/7.x/bottts-neutral/svg?seed=nowen&backgroundColor=0a0a0a",
+			Email:        "hello@nowen.dev",
+			Github:       "https://github.com/nowen",
+			Twitter:      "https://twitter.com/nowen",
+			Skills:       "Go,React,TypeScript,Rust,PostgreSQL,Redis,Docker,Kubernetes",
+			BeianEnabled: false,
+			BeianNumber:  "",
 		})
 	}
 	return c.JSON(siteInfo)
@@ -463,6 +470,8 @@ func UpdateSiteInfo(c *fiber.Ctx) error {
 	siteInfo.Github = input.Github
 	siteInfo.Twitter = input.Twitter
 	siteInfo.Skills = input.Skills
+	siteInfo.BeianEnabled = input.BeianEnabled
+	siteInfo.BeianNumber = input.BeianNumber
 
 	DB.Save(&siteInfo)
 	return c.JSON(siteInfo)
@@ -495,14 +504,14 @@ func SearchContents(c *fiber.Ctx) error {
 
 	// 搜索 Post 表（仅已发布）
 	var posts []Post
-	DB.Where("status = ? AND (title LIKE ? OR summary LIKE ? OR tags LIKE ?)", 
+	DB.Where("status = ? AND (title LIKE ? OR summary LIKE ? OR tags LIKE ?)",
 		"published", likeQuery, likeQuery, likeQuery).
 		Select("id", "title", "slug", "summary", "tags", "type", "created_at").
 		Limit(limit).Find(&posts)
 
 	// 搜索 Content 表（仅已发布）
 	var contents []Content
-	DB.Where("status = ? AND (title LIKE ? OR summary LIKE ? OR tags LIKE ?)", 
+	DB.Where("status = ? AND (title LIKE ? OR summary LIKE ? OR tags LIKE ?)",
 		"published", likeQuery, likeQuery, likeQuery).
 		Select("id", "title", "slug", "summary", "tags", "type", "project_name", "created_at").
 		Limit(limit).Find(&contents)
@@ -585,11 +594,11 @@ func GetContents(c *fiber.Ctx) error {
 	query.Order("`order` ASC, created_at DESC").Offset(offset).Limit(pageSize).Find(&items)
 
 	return c.JSON(fiber.Map{
-		"data":        items,
-		"total":       total,
-		"page":        page,
-		"pageSize":    pageSize,
-		"totalPages":  (total + int64(pageSize) - 1) / int64(pageSize),
+		"data":       items,
+		"total":      total,
+		"page":       page,
+		"pageSize":   pageSize,
+		"totalPages": (total + int64(pageSize) - 1) / int64(pageSize),
 	})
 }
 
@@ -765,7 +774,6 @@ func UpdateCarouselOrder(c *fiber.Ctx) error {
 
 	return c.JSON(fiber.Map{"message": "Carousel order updated"})
 }
-
 
 // ==================== 评论系统 ====================
 
@@ -951,5 +959,78 @@ func AdminGetCommentStats(c *fiber.Ctx) error {
 			"rejected": rejected,
 			"total":    pending + approved + rejected,
 		},
+	})
+}
+
+// UpdateProfile ??????
+func UpdateProfile(c *fiber.Ctx) error {
+	userID := c.Locals("userID").(uint)
+
+	var input struct {
+		Username string `json:"username"`
+		Email    string `json:"email"`
+	}
+
+	if err := c.BodyParser(&input); err != nil {
+		return c.Status(400).JSON(fiber.Map{"error": "Invalid request body"})
+	}
+
+	var user User
+	if err := DB.First(&user, userID).Error; err != nil {
+		return c.Status(404).JSON(fiber.Map{"error": "User not found"})
+	}
+
+	// ?????
+	if len(input.Username) < 3 || len(input.Username) > 50 {
+		return c.Status(400).JSON(fiber.Map{"error": "Username must be 3-50 characters"})
+	}
+
+	// ???????????
+	if input.Username != user.Username {
+		var existing User
+		if err := DB.Where("username = ? AND id != ?", input.Username, userID).First(&existing).Error; err == nil {
+			return c.Status(409).JSON(fiber.Map{"error": "Username already taken"})
+		}
+	}
+
+	// ??????????
+	if input.Email != "" && input.Email != user.Email {
+		var existing User
+		if err := DB.Where("email = ? AND id != ?", input.Email, userID).First(&existing).Error; err == nil {
+			return c.Status(409).JSON(fiber.Map{"error": "Email already taken"})
+		}
+	}
+
+	DB.Model(&user).Updates(map[string]interface{}{
+		"username": input.Username,
+		"email":    input.Email,
+	})
+
+	// ??????????????
+	token, _ := GenerateToken(&user)
+
+	return c.JSON(fiber.Map{
+		"message":  "Profile updated successfully",
+		"token":    token,
+		"username": input.Username,
+	})
+}
+
+// GetCurrentUser 获取当前登录用户信息
+func GetCurrentUser(c *fiber.Ctx) error {
+	userID := c.Locals("userID").(uint)
+
+	var user User
+	if err := DB.First(&user, userID).Error; err != nil {
+		return c.Status(404).JSON(fiber.Map{"error": "User not found"})
+	}
+
+	return c.JSON(fiber.Map{
+		"id":                   user.ID,
+		"username":             user.Username,
+		"email":                user.Email,
+		"role":                 user.Role,
+		"must_change_password": user.MustChangePassword,
+		"created_at":           user.CreatedAt,
 	})
 }

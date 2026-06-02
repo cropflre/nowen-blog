@@ -132,12 +132,12 @@ export default function ProjectDocsDashboard({ onEditDoc, onNewDoc }: ProjectDoc
   );
 
   return (
-    <div className="min-h-screen bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] p-8 font-mono">
+    <div className="min-h-screen bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] p-4 md:p-8 font-mono">
       <div className="max-w-7xl mx-auto">
         {/* 顶部控制栏 */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-12 border-b border-[var(--color-border-surface)] pb-6">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 md:gap-6 mb-8 md:mb-12 border-b border-[var(--color-border-surface)] pb-6">
           <div>
-            <h1 className="text-3xl font-bold tracking-wider text-[var(--color-text-primary)] mb-2">
+            <h1 className="text-2xl md:text-3xl font-bold tracking-wider text-[var(--color-text-primary)] mb-2">
               <span className="text-blue-500">&gt;</span> {t('admin.projectDocs')}
             </h1>
             <p className="text-[var(--color-text-muted)] text-sm">
@@ -297,7 +297,7 @@ export default function ProjectDocsDashboard({ onEditDoc, onNewDoc }: ProjectDoc
                         </div>
                       </div>
 
-                      <div className="relative flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                      <div className="relative flex items-center gap-1 md:gap-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-300">
                         <motion.button
                           whileHover={{ scale: 1.1 }}
                           whileTap={{ scale: 0.9 }}
@@ -363,7 +363,7 @@ export default function ProjectDocsDashboard({ onEditDoc, onNewDoc }: ProjectDoc
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
               onClick={(e) => e.stopPropagation()}
-              className="w-full max-w-md bg-[var(--color-bg-secondary)] border border-[var(--color-border-surface)] rounded-xl p-6 shadow-2xl"
+              className="w-[calc(100%-2rem)] max-w-md bg-[var(--color-bg-secondary)] border border-[var(--color-border-surface)] rounded-xl p-4 md:p-6 shadow-2xl"
             >
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-lg font-semibold text-[var(--color-text-primary)]">

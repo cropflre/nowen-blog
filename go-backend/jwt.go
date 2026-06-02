@@ -1,4 +1,4 @@
-package main
+﻿package main
 
 import (
 	"errors"
@@ -34,19 +34,21 @@ func CheckPassword(password, hash string) bool {
 
 // JWTClaims JWT 声明
 type JWTClaims struct {
-	UserID   uint   `json:"user_id"`
-	Username string `json:"username"`
-	Role     string `json:"role"`
+	UserID            uint   `json:"user_id"`
+	Username          string `json:"username"`
+	Role              string `json:"role"`
+	MustChangePassword bool   `json:"must_change_password"`
 }
 
 // GenerateToken 生成 JWT 令牌
 func GenerateToken(user *User) (string, error) {
 	claims := jwt.MapClaims{
-		"user_id":  user.ID,
-		"username": user.Username,
-		"role":     user.Role,
-		"exp":      time.Now().Add(72 * time.Hour).Unix(),
-		"iat":      time.Now().Unix(),
+		"user_id":             user.ID,
+		"username":            user.Username,
+		"role":                user.Role,
+		"must_change_password": user.MustChangePassword,
+		"exp":                 time.Now().Add(72 * time.Hour).Unix(),
+		"iat":                 time.Now().Unix(),
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
@@ -82,10 +84,13 @@ func ValidateToken(tokenString string) (*JWTClaims, error) {
 			return nil, errors.New("invalid role in token")
 		}
 
+		mustChange, _ := claims["must_change_password"].(bool)
+
 		return &JWTClaims{
-			UserID:   uint(userID),
-			Username: username,
-			Role:     role,
+			UserID:            uint(userID),
+			Username:          username,
+			Role:              role,
+			MustChangePassword: mustChange,
 		}, nil
 	}
 

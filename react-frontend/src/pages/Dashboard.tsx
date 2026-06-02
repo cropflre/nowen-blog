@@ -76,12 +76,12 @@ export default function Dashboard({ onEditPost, onNewPost }: DashboardProps) {
   };
 
   return (
-    <div className="min-h-screen bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] p-8 font-mono">
+    <div className="min-h-screen bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] p-4 md:p-8 font-mono">
       <div className="max-w-7xl mx-auto">
         {/* 顶部控制栏 */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-12 border-b border-[var(--color-border-surface)] pb-6">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 md:gap-6 mb-8 md:mb-12 border-b border-[var(--color-border-surface)] pb-6">
           <div>
-            <h1 className="text-3xl font-bold tracking-wider text-[var(--color-text-primary)] mb-2">
+            <h1 className="text-2xl md:text-3xl font-bold tracking-wider text-[var(--color-text-primary)] mb-2">
               <span className="text-emerald-500">&gt;</span> {t('admin.coreConsole')}
             </h1>
             <p className="text-[var(--color-text-muted)] text-sm">
@@ -103,7 +103,7 @@ export default function Dashboard({ onEditPost, onNewPost }: DashboardProps) {
         </div>
 
         {/* 统计卡片 */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4 mb-6 md:mb-8">
           {[
             { label: t('admin.totalArticles'), value: stats.total, color: 'text-blue-400' },
             { label: t('admin.published'), value: stats.published, color: 'text-emerald-400' },
@@ -222,7 +222,7 @@ export default function Dashboard({ onEditPost, onNewPost }: DashboardProps) {
                     </div>
                   </div>
 
-                  <div className="relative flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                  <div className="relative flex items-center gap-1 md:gap-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-300">
                     <motion.button
                       whileHover={{ scale: 1.1 }}
                       whileTap={{ scale: 0.9 }}

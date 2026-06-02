@@ -463,7 +463,7 @@ export default function ArticleEditor({ postId, onBack, contentType = 'blog' }: 
       </div>
 
       {/* 主编辑区 */}
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
         {/* 左侧：编辑区 */}
         <div className={`${showPreview ? 'w-1/2' : 'w-full'} h-full bg-[var(--color-bg-primary)] border-r border-[var(--color-border-surface)] transition-all duration-300`}>
           <div className="h-full p-6 bg-[var(--color-bg-secondary)]">
@@ -583,7 +583,7 @@ export default function ArticleEditor({ postId, onBack, contentType = 'blog' }: 
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.9, opacity: 0 }}
             onClick={(e) => e.stopPropagation()}
-            className="bg-[var(--color-bg-secondary)] border border-[var(--color-border-surface)] rounded-xl p-6 w-[400px] shadow-2xl"
+            className="bg-[var(--color-bg-secondary)] border border-[var(--color-border-surface)] rounded-xl p-6 w-[calc(100%-2rem)] max-w-[400px] shadow-2xl"
           >
             <div className="flex items-center gap-3 mb-4">
               <div className="w-10 h-10 rounded-full bg-blue-500/10 flex items-center justify-center">
@@ -629,7 +629,7 @@ export default function ArticleEditor({ postId, onBack, contentType = 'blog' }: 
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.9, opacity: 0 }}
             onClick={(e) => e.stopPropagation()}
-            className="bg-[var(--color-bg-secondary)] border border-[var(--color-border-surface)] rounded-xl p-6 w-[400px] shadow-2xl"
+            className="bg-[var(--color-bg-secondary)] border border-[var(--color-border-surface)] rounded-xl p-6 w-[calc(100%-2rem)] max-w-[400px] shadow-2xl"
           >
             <div className="flex items-center gap-3 mb-4">
               <div className="w-10 h-10 rounded-full bg-emerald-500/10 flex items-center justify-center">

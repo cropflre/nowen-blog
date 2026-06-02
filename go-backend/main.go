@@ -1,10 +1,11 @@
-package main
+﻿package main
 
 import (
 	"log"
 	"os"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gofiber/fiber/v2/middleware/logger"
 	"github.com/gofiber/fiber/v2/middleware/recover"
 )
@@ -24,7 +25,15 @@ func main() {
 	// 全局中间件
 	app.Use(logger.New())
 	app.Use(recover.New())
-	app.Use(CORSMiddleware)
+	// CORS 配置 - 允许前端开发服务器访问
+	app.Use(cors.New(cors.Config{
+		AllowOrigins:     "*",
+		AllowMethods:     "GET,POST,PUT,DELETE,OPTIONS",
+		AllowHeaders:     "Content-Type,Authorization,Accept",
+		AllowCredentials: false,
+		ExposeHeaders:    "Authorization",
+		MaxAge:           86400,
+	}))
 
 	// API 路由组
 	api := app.Group("/api")
@@ -38,15 +47,19 @@ func main() {
 	api.Get("/search", SearchContents)           // 全局搜索 (Cmd+K)
 
 	// --- 统一内容系统 (Content) ---
-	api.Get("/contents", GetContents)                         // ?type=blog|doc&project=xxx
-	api.Get("/contents/:slug", GetContentBySlug)              // 按 slug 查询
-	api.Get("/docs/:project/tree", GetDocTree)                // 文档目录树
-	api.Get("/projects/list", GetProjectsList)                // 项目列表
+	api.Get("/contents", GetContents)            // ?type=blog|doc&project=xxx
+	api.Get("/contents/:slug", GetContentBySlug) // 按 slug 查询
+	api.Get("/docs/:project/tree", GetDocTree)   // 文档目录树
+	api.Get("/projects/list", GetProjectsList)   // 项目列表
 	api.Get("/carousel", GetCarousel)
 
 	// --- 评论系统 ---
 	api.Get("/posts/:postId/comments", GetComments)
-	api.Post("/posts/:postId/comments", CreateComment)                        // 幻灯片列表
+	api.Post("/posts/:postId/comments", CreateComment) // 幻灯片列表
+
+	// --- GitHub 仓库信息 ---
+	api.Post("/github/repo-info", FetchGitHubRepoInfo) // POST 方式，传入 GitHub URL
+	api.Get("/github/repo-info", GetGitHubRepoInfo)    // GET 方式，传入 owner 和 repo 参数
 
 	// --- 静态文件服务（上传的图片）---
 	app.Static("/uploads", "./uploads")
@@ -80,13 +93,15 @@ func main() {
 
 	// 用户管理
 	admin.Put("/password", UpdatePassword)
+	admin.Put("/profile", UpdateProfile)
+	admin.Get("/me", GetCurrentUser)
 	admin.Put("/posts/:id/carousel", UpdateCarouselOrder)
 
 	// 评论管理
 	admin.Get("/comments", AdminGetComments)
 	admin.Get("/comments/stats", AdminGetCommentStats)
 	admin.Put("/comments/:id/status", AdminUpdateCommentStatus)
-	admin.Delete("/comments/:id", AdminDeleteComment)  // 更新幻灯片排序
+	admin.Delete("/comments/:id", AdminDeleteComment) // 更新幻灯片排序
 
 	// 获取端口
 	port := os.Getenv("PORT")
@@ -96,7 +111,7 @@ func main() {
 
 	// 启动服务器
 	log.Printf("🚀 Server running on http://localhost:%s", port)
-	log.Printf("📋 API Endpoints:")
+	log.Printf("📂 API Endpoints:")
 	log.Printf("   Public:")
 	log.Printf("     GET  /api/health")
 	log.Printf("     GET  /api/site")
@@ -122,4 +137,3 @@ func main() {
 
 	log.Fatal(app.Listen(":" + port))
 }
-

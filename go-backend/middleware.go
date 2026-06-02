@@ -1,4 +1,4 @@
-package main
+﻿package main
 
 import (
 	"strings"
@@ -24,20 +24,6 @@ func JWTMiddleware(c *fiber.Ctx) error {
 	c.Locals("userID", claims.UserID)
 	c.Locals("username", claims.Username)
 	c.Locals("role", claims.Role)
-
-	return c.Next()
-}
-
-// CORSMiddleware CORS 中间件
-func CORSMiddleware(c *fiber.Ctx) error {
-	c.Set("Access-Control-Allow-Origin", "*")
-	c.Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-	c.Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
-	c.Set("Access-Control-Max-Age", "86400")
-
-	if c.Method() == "OPTIONS" {
-		return c.SendStatus(200)
-	}
 
 	return c.Next()
 }

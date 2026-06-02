@@ -1,6 +1,8 @@
 package main
 
 import (
+	"encoding/base64"
+	"time"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -133,6 +135,54 @@ func getGitHubToken() string {
 	return os.Getenv("GITHUB_TOKEN")
 }
 
+
+// GitHubReadmeInfo README 信息
+type GitHubReadmeInfo struct {
+	Name     string `json:"name"`
+	Path     string `json:"path"`
+	Content  string `json:"content"` // Base64 encoded
+	HTMLURL  string `json:"html_url"`
+	Download string `json:"download_url"`
+}
+
+// FetchGitHubREADME 获取 GitHub 仓库的 README 内容
+func FetchGitHubREADME(owner, repo string) (string, error) {
+	url := fmt.Sprintf("https://api.github.com/repos/%s/%s/readme", owner, repo)
+
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return "", err
+	}
+	req.Header.Set("Accept", "application/vnd.github.v3+json")
+
+	if token := getGitHubToken(); token != "" {
+		req.Header.Set("Authorization", "Bearer "+token)
+	}
+
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("failed to fetch README: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != 200 {
+		return "", fmt.Errorf("GitHub API returned status %d", resp.StatusCode)
+	}
+
+	var readme GitHubReadmeInfo
+	if err := json.NewDecoder(resp.Body).Decode(&readme); err != nil {
+		return "", fmt.Errorf("failed to decode README response: %w", err)
+	}
+
+	content, err := base64.StdEncoding.DecodeString(readme.Content)
+	if err != nil {
+		return "", fmt.Errorf("failed to decode README content: %w", err)
+	}
+
+	return string(content), nil
+}
+
 // FetchGitHubRepoInfo 处理获取 GitHub 仓库信息的请求
 func FetchGitHubRepoInfo(c *fiber.Ctx) error {
 	var req GitHubURLRequest
@@ -213,5 +263,52 @@ func GetGitHubRepoInfo(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{
 		"success": true,
 		"data":    repoInfo,
+	})
+}
+
+// FetchGitHubRepoInfoWithREADME 处理获取 GitHub 仓库信息和 README 的请求
+func FetchGitHubRepoInfoWithREADME(c *fiber.Ctx) error {
+	var req GitHubURLRequest
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(400).JSON(fiber.Map{
+			"success": false,
+			"message": "Invalid request body",
+		})
+	}
+
+	if req.URL == "" {
+		return c.Status(400).JSON(fiber.Map{
+			"success": false,
+			"message": "GitHub URL is required",
+		})
+	}
+
+	owner, repo, err := ParseGitHubURL(req.URL)
+	if err != nil {
+		return c.Status(400).JSON(fiber.Map{
+			"success": false,
+			"message": "Invalid GitHub URL format",
+		})
+	}
+
+	repoInfo, err := FetchGitHubRepo(owner, repo)
+	if err != nil {
+		return c.Status(500).JSON(fiber.Map{
+			"success": false,
+			"message": fmt.Sprintf("Failed to fetch repository info: %s", err.Error()),
+		})
+	}
+
+	readme, err := FetchGitHubREADME(owner, repo)
+	if err != nil {
+		readme = ""
+	}
+
+	return c.JSON(fiber.Map{
+		"success": true,
+		"data": fiber.Map{
+			"repo_info": repoInfo,
+			"readme":    readme,
+		},
 	})
 }

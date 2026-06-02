@@ -257,9 +257,12 @@ export const api = {
     qs.set('url', url);
     return fetchJSON<{ success: boolean; data: import('./types').GitHubRepoInfo }>(`/api/github/repo-info?${qs}`);
   },
+
+  // 获取仓库信息和 README
+  fetchGitHubRepoWithREADME: (url: string): Promise<{ success: boolean; data: { repo_info: import('./types').GitHubRepoInfo; readme: string } }> =>
+    fetchJSON<{ success: boolean; data: { repo_info: import('./types').GitHubRepoInfo; readme: string } }>('/api/github/repo-info-full', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url }),
+    }),
 };
-
-
-
-
-

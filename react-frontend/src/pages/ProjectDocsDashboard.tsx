@@ -24,6 +24,40 @@ export default function ProjectDocsDashboard({ onEditDoc, onNewDoc }: ProjectDoc
   const [newProjectName, setNewProjectName] = useState('');
   const [newProjectGithubUrl, setNewProjectGithubUrl] = useState('');
   const [creating, setCreating] = useState(false);
+  const [fetchingRepo, setFetchingRepo] = useState(false);
+  const [repoDescription, setRepoDescription] = useState('');
+  const [repoReadme, setRepoReadme] = useState('');
+  // 自动获取 GitHub 仓库信息
+  useEffect(() => {
+    const fetchRepoInfo = async () => {
+      if (!newProjectGithubUrl.trim() || !newProjectGithubUrl.includes('github.com')) {
+        setRepoDescription('');
+        setRepoReadme('');
+        return;
+      }
+
+      setFetchingRepo(true);
+      try {
+        const result = await api.fetchGitHubRepoWithREADME(newProjectGithubUrl.trim());
+        if (result.success && result.data) {
+          if (result.data.repo_info?.description) {
+            setRepoDescription(result.data.repo_info.description);
+          }
+          if (result.data.readme) {
+            setRepoReadme(result.data.readme);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to fetch repo info:', error);
+      } finally {
+        setFetchingRepo(false);
+      }
+    };
+
+    const timer = setTimeout(fetchRepoInfo, 1000);
+    return () => clearTimeout(timer);
+  }, [newProjectGithubUrl]);
+
 
   useEffect(() => {
     const loadProjects = async () => {
@@ -93,6 +127,8 @@ export default function ProjectDocsDashboard({ onEditDoc, onNewDoc }: ProjectDoc
       setNewProjectName('');
       setNewProjectGithubUrl('');
       setShowNewProjectModal(false);
+      setRepoDescription('');
+      setRepoReadme('');
       return;
     }
     
@@ -107,8 +143,8 @@ export default function ProjectDocsDashboard({ onEditDoc, onNewDoc }: ProjectDoc
         github_url: newProjectGithubUrl.trim(),
         title: projectName + ' - README',
         slug: slug,
-        summary: 'Documentation for ' + projectName,
-        content: '# ' + projectName + '\n\nWelcome to the project documentation.',
+        summary: repoDescription || 'Documentation for ' + projectName,
+        content: repoReadme || '# ' + projectName + '\n\nWelcome to the project documentation.',
         status: 'published',
       });
       

@@ -63,6 +63,7 @@ func main() {
 	// --- GitHub 仓库信息 ---
 	api.Post("/github/repo-info", FetchGitHubRepoInfo) // POST 方式，传入 GitHub URL
 	api.Get("/github/repo-info", GetGitHubRepoInfo)    // GET 方式，传入 owner 和 repo 参数
+	api.Post("/github/repo-info-full", FetchGitHubRepoInfoWithREADME) // 获取仓库信息和 README
 
 	// --- 静态文件服务（上传的图片）---
 	app.Static("/uploads", uploadDir)

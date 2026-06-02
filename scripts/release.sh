@@ -87,11 +87,11 @@ fi
 
 if [ -z "$VERSION" ]; then
     if [ -n "$SUGGESTED" ]; then
-        read -rp "请输入版本号 [建议: ${SUGGESTED}]: " VERSION
-        [ -z "$VERSION" ] && VERSION="$SUGGESTED"
+        VERSION="$SUGGESTED"
+        info "自动使用建议版本: ${VERSION}"
     else
-        read -rp "请输入版本号（如 1.0.0）: " VERSION
-        [ -z "$VERSION" ] && die "版本号不能为空"
+        VERSION="1.0.0"
+        info "首次发布，使用默认版本: ${VERSION}"
     fi
 fi
 

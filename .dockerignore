@@ -35,3 +35,6 @@ LICENSE
 # Temp files
 uploads/*
 !uploads/.gitkeep
+# Environment files
+.env
+.env.*

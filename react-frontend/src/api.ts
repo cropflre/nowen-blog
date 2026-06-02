@@ -1,4 +1,4 @@
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+﻿const API_BASE = import.meta.env.VITE_API_URL || '';
 
 async function fetchJSON<T>(endpoint: string, options?: RequestInit): Promise<T> {
   const res = await fetch(`${API_BASE}${endpoint}`, options);
@@ -9,12 +9,12 @@ async function fetchJSON<T>(endpoint: string, options?: RequestInit): Promise<T>
   return res.json();
 }
 
-// 获取存储的令牌
+// 鑾峰彇瀛樺偍鐨勪护鐗?
 function getAuthToken(): string | null {
   return localStorage.getItem('auth_token');
 }
 
-// 创建带认证头的请求选项
+// 鍒涘缓甯﹁璇佸ご鐨勮姹傞€夐」
 function createAuthOptions(method: string, body?: unknown): RequestInit {
   const token = getAuthToken();
   const headers: Record<string, string> = {
@@ -38,7 +38,7 @@ function createAuthOptions(method: string, body?: unknown): RequestInit {
 }
 
 export const api = {
-  // --- 公开API ---
+  // --- 鍏紑API ---
   getSite: () => fetchJSON<import('./types').SiteInfo>('/api/site'),
   
   getPosts: (params?: { tag?: string; status?: string; page?: number; pageSize?: number }) => {
@@ -53,13 +53,13 @@ export const api = {
   getPost: (slug: string) =>
     fetchJSON<import('./types').Post>(`/api/posts/detail?slug=${slug}`),
 
-  // RESTful 文章查询（带浏览量递增）
+  // RESTful 鏂囩珷鏌ヨ锛堝甫娴忚閲忛€掑锛?
   getPublicPost: async (slug: string): Promise<import('./types').Post> => {
     const res = await fetchJSON<{ status: string; data: import('./types').Post }>(`/api/posts/${slug}`);
     return res.data;
   },
 
-  // --- 评论系统 ---
+  // --- 璇勮绯荤粺 ---
   getComments: (postId: number, page = 1, pageSize = 20) =>
     fetchJSON<{ status: string; data: { comments: import('./types').Comment[]; total: number } }>(
       `/api/posts/${postId}/comments?page=${page}&pageSize=${pageSize}`
@@ -71,7 +71,7 @@ export const api = {
       { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) }
     ),
 
-  // --- 管理员评论 API ---
+  // --- 绠＄悊鍛樿瘎璁?API ---
   adminGetComments: (params?: { status?: string; postId?: string; page?: number; pageSize?: number }) => {
     const qs = new URLSearchParams();
     if (params?.status) qs.set('status', params.status);
@@ -96,7 +96,7 @@ export const api = {
   adminDeleteComment: (id: number) =>
     fetchJSON<{ message: string }>(`/api/admin/comments/${id}`, createAuthOptions('DELETE')),
 
-  // --- 认证API ---
+  // --- 璁よ瘉API ---
   login: (data: import('./types').LoginRequest) =>
     fetchJSON<import('./types').AuthResponse>('/api/auth/login', createAuthOptions('POST', data)),
   
@@ -112,7 +112,7 @@ export const api = {
   getCurrentUser: () =>
     fetchJSON<{ id: number; username: string; email: string; role: string; must_change_password: boolean; created_at: string }>('/api/admin/me', createAuthOptions('GET')),
 
-  // --- 管理员API ---
+  // --- 绠＄悊鍛楢PI ---
   adminGetPosts: (params?: { status?: string; page?: number; pageSize?: number }) => {
     const qs = new URLSearchParams();
     if (params?.status) qs.set('status', params.status);
@@ -142,7 +142,7 @@ export const api = {
     return fetchJSON<import('./types').Project[]>(`/api/projects?${qs}`);
   },
 
-  // --- 幻灯片 ---
+  // --- 骞荤伅鐗?---
   getCarousel: async (): Promise<import('./types').Post[]> => {
     const res = await fetchJSON<{ status: string; data: import('./types').Post[] }>('/api/carousel');
     return res.data;
@@ -151,7 +151,7 @@ export const api = {
   updateCarouselOrder: (id: number, carouselOrder: number) =>
     fetchJSON<{ message: string }>(`/api/admin/posts/${id}/carousel`, createAuthOptions("PUT", { carousel_order: carouselOrder })),
 
-  // --- 统一内容系统 ---
+  // --- 缁熶竴鍐呭绯荤粺 ---
   getContents: (params: { type: 'blog' | 'doc'; project?: string; page?: number; pageSize?: number }) => {
     const qs = new URLSearchParams();
     qs.set('type', params.type);
@@ -176,13 +176,13 @@ export const api = {
     return res.data;
   },
 
-  // 全局搜索 (Cmd+K)
+  // 鍏ㄥ眬鎼滅储 (Cmd+K)
   searchContents: async (query: string): Promise<import('./types').SearchResult[]> => {
     const res = await fetchJSON<{ status: string; data: import('./types').SearchResult[] }>(`/api/search?q=${encodeURIComponent(query)}`);
     return res.data;
   },
 
-  // 管理员内容 API
+  // 绠＄悊鍛樺唴瀹?API
   adminCreateContent: (data: Partial<import('./types').Content>) =>
     fetchJSON<import('./types').Content>('/api/admin/contents', createAuthOptions('POST', data)),
 
@@ -192,7 +192,7 @@ export const api = {
   adminDeleteContent: (id: number) =>
     fetchJSON<{ message: string }>(`/api/admin/contents/${id}`, createAuthOptions('DELETE')),
 
-  // 图片上传 API
+  // 鍥剧墖涓婁紶 API
   uploadImage: async (file: File): Promise<{ id: number; url: string; filename: string; original: string; markdown: string }> => {
     const token = getAuthToken();
     const formData = new FormData();
@@ -210,7 +210,7 @@ export const api = {
     }
 
     const data = await res.json();
-    // 合并 data.data（id, url, filename 等）和顶层 markdown 字段
+    // 鍚堝苟 data.data锛坕d, url, filename 绛夛級鍜岄《灞?markdown 瀛楁
     return { ...data.data, markdown: data.markdown };
   },
 
@@ -220,7 +220,7 @@ export const api = {
   deleteImage: (id: number) =>
     fetchJSON<{ message: string }>(`/api/admin/images/${id}`, createAuthOptions('DELETE')),
 
-  // --- 工具函数 ---
+  // --- 宸ュ叿鍑芥暟 ---
   setAuthToken: (token: string) => {
     localStorage.setItem('auth_token', token);
   },
@@ -233,9 +233,9 @@ export const api = {
     return !!getAuthToken();
   },
 
-  // ==================== GitHub 项目相关 API ====================
+  // ==================== GitHub 椤圭洰鐩稿叧 API ====================
   
-  // 通过 URL 获取 GitHub 仓库信息（POST）
+  // 閫氳繃 URL 鑾峰彇 GitHub 浠撳簱淇℃伅锛圥OST锛?
   fetchGitHubRepoByURL: (url: string): Promise<import('./types').GitHubProjectResponse> =>
     fetchJSON<import('./types').GitHubProjectResponse>('/api/github/repo-info', {
       method: 'POST',
@@ -243,7 +243,7 @@ export const api = {
       body: JSON.stringify({ url }),
     }),
 
-  // 通过 owner 和 repo 获取 GitHub 仓库信息（GET）
+  // 閫氳繃 owner 鍜?repo 鑾峰彇 GitHub 浠撳簱淇℃伅锛圙ET锛?
   fetchGitHubRepo: (owner: string, repo: string): Promise<{ success: boolean; data: import('./types').GitHubRepoInfo }> => {
     const qs = new URLSearchParams();
     qs.set('owner', owner);
@@ -251,7 +251,7 @@ export const api = {
     return fetchJSON<{ success: boolean; data: import('./types').GitHubRepoInfo }>(`/api/github/repo-info?${qs}`);
   },
 
-  // 通过完整 URL 获取 GitHub 仓库信息（GET）
+  // 閫氳繃瀹屾暣 URL 鑾峰彇 GitHub 浠撳簱淇℃伅锛圙ET锛?
   fetchGitHubRepoByURLGet: (url: string): Promise<{ success: boolean; data: import('./types').GitHubRepoInfo }> => {
     const qs = new URLSearchParams();
     qs.set('url', url);

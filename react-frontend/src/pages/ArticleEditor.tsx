@@ -422,7 +422,7 @@ export default function ArticleEditor({ postId, onBack, contentType = 'blog' }: 
             value={title}
             onChange={(e) => handleTitleChange(e.target.value)}
             placeholder={t('admin.articleTitle')}
-            className="w-64 bg-transparent border-b border-[var(--color-border-surface)] focus:border-[var(--color-accent)] px-2 py-1 text-sm text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus:outline-none transition-colors"
+            className="w-64 bg-transparent border-0 px-2 py-1 text-sm text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus:outline-none focus:ring-0 transition-colors"
           />
 
           <div className="w-px h-6 bg-[var(--color-border-surface)]" />

@@ -1,5 +1,36 @@
 @import "tailwindcss";
 
+/* Tailwind v4：让 dark: 变体跟随 data-theme 属性，适配 nowen-blog 的主题机制 */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+/* 动画 token：注册后生成 animate-* 工具类，供 SpotlightCard 等组件使用 */
+@theme {
+  --animate-shimmer: shimmer 2s linear infinite;
+  --animate-border-beam: border-beam 3s linear infinite;
+  --animate-aurora-float: aurora-float 12s ease-in-out infinite;
+  --animate-pulse-glow: pulse-glow 4s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+@keyframes border-beam {
+  0% { offset-distance: 0%; }
+  100% { offset-distance: 100%; }
+}
+
+@keyframes aurora-float {
+  0%, 100% { transform: translate(0, 0); }
+  50% { transform: translate(40px, -30px); }
+}
+
+@keyframes pulse-glow {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 0.85; }
+}
+
 @layer theme {
   :root,
   [data-theme="light"] {
@@ -22,6 +53,26 @@
     --color-accent-rgb: 17, 17, 17;
     --color-cyan-rgb: 47, 93, 98;
     --color-purple-rgb: 90, 81, 71;
+
+    /* ===== NOWEN 视觉系统：Solar Clarity（浅色）新增 token =====
+       不改动上方任何既有变量，确保现有页面外观不变。 */
+    --nebula-cyan: #00f2fe;
+    --nebula-blue: #4facfe;
+    --nebula-purple: #667eea;
+    --nebula-pink: #f093fb;
+    --nebula-orange: #f5576c;
+    --color-primary: #5b6cf2;
+    --color-primary-light: #7c8af6;
+    --color-primary-dark: #4f46e5;
+    --color-bg-tertiary: #ece9e1;
+    --color-bg-gradient: radial-gradient(ellipse 80% 50% at 50% -20%, rgba(102, 126, 234, 0.08), transparent);
+    --color-glass: rgba(255, 255, 255, 0.6);
+    --color-glass-border: rgba(20, 20, 35, 0.08);
+    --color-glass-hover: rgba(20, 20, 35, 0.04);
+    --color-glow: rgba(102, 126, 234, 0.22);
+    --color-glow-secondary: rgba(6, 182, 212, 0.18);
+    --color-shadow: 0 4px 24px -8px rgba(20, 20, 35, 0.12);
+    --color-shadow-hover: 0 12px 40px -12px rgba(102, 126, 234, 0.18);
   }
 
   [data-theme="dark"] {
@@ -44,6 +95,26 @@
     --color-accent-rgb: 243, 240, 232;
     --color-cyan-rgb: 167, 184, 178;
     --color-purple-rgb: 200, 191, 176;
+
+    /* ===== NOWEN 视觉系统：Deep Space（暗色）新增 token =====
+       不改动上方任何既有变量，确保现有页面外观不变。 */
+    --nebula-cyan: #00f2fe;
+    --nebula-blue: #4facfe;
+    --nebula-purple: #667eea;
+    --nebula-pink: #f093fb;
+    --nebula-orange: #f5576c;
+    --color-primary: #667eea;
+    --color-primary-light: #818cf8;
+    --color-primary-dark: #4f46e5;
+    --color-bg-tertiary: #171720;
+    --color-bg-gradient: radial-gradient(ellipse 80% 50% at 50% -20%, rgba(102, 126, 234, 0.15), transparent);
+    --color-glass: rgba(23, 23, 32, 0.5);
+    --color-glass-border: rgba(255, 255, 255, 0.1);
+    --color-glass-hover: rgba(255, 255, 255, 0.05);
+    --color-glow: rgba(102, 126, 234, 0.6);
+    --color-glow-secondary: rgba(6, 182, 212, 0.5);
+    --color-shadow: none;
+    --color-shadow-hover: none;
   }
 }
 
@@ -293,5 +364,140 @@
     -webkit-line-clamp: 3;
     -webkit-box-orient: vertical;
     overflow: hidden;
+  }
+
+  /* ===== NOWEN 视觉系统：基础工具类 =====
+     仅依赖上方新增的 token，不覆盖既有 minimal-* 类，不影响现有页面。 */
+
+  /* 玻璃面：导航、卡片、弹层背景 */
+  .glass {
+    background: var(--color-glass);
+    border: 1px solid var(--color-glass-border);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+  }
+
+  /* 渐变文字：靛蓝 → 青 */
+  .gradient-text {
+    background: linear-gradient(135deg, var(--color-primary), var(--nebula-cyan));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    -webkit-text-fill-color: transparent;
+  }
+
+  /* 主题卡片：玻璃 + 弥散阴影 + hover 上浮 */
+  .theme-card {
+    position: relative;
+    border: 1px solid var(--color-glass-border);
+    background: var(--color-glass);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+    border-radius: 1rem;
+    box-shadow: var(--color-shadow);
+    transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
+  }
+
+  .theme-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--color-shadow-hover);
+    border-color: var(--color-glass-hover);
+  }
+
+  /* 氛围卡片：hover 时显示渐变发光描边（暗色模式下最明显） */
+  .vibe-card {
+    position: relative;
+    overflow: hidden;
+    border: 1px solid var(--color-glass-border);
+    background: var(--color-glass);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+    border-radius: 1rem;
+    box-shadow: var(--color-shadow);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+  }
+
+  .vibe-card::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 1px;
+    background: linear-gradient(135deg, var(--color-glow), transparent 40%, var(--color-glow-secondary));
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    pointer-events: none;
+  }
+
+  .vibe-card:hover::before {
+    opacity: 0.6;
+  }
+
+  .vibe-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--color-shadow-hover);
+  }
+
+  /* 骨架屏：shimmer 流光 */
+  .skeleton {
+    position: relative;
+    overflow: hidden;
+    background: var(--color-bg-tertiary);
+    border-radius: 0.5rem;
+  }
+
+  .skeleton::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.08), transparent);
+    background-size: 200% 100%;
+    animation: shimmer 2s linear infinite;
+  }
+
+  /* 聚焦环：键盘可访问性 */
+  .focus-ring {
+    outline: 2px solid transparent;
+    outline-offset: 2px;
+  }
+
+  .focus-ring:focus-visible {
+    outline-color: var(--color-primary);
+  }
+
+  /* 局部滚动条：命令面板、文档侧栏等 */
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: var(--color-glass-border);
+    border-radius: 999px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: var(--color-glass-hover);
+  }
+}
+
+/* 尊重「减少动效」系统偏好 */
+@media (prefers-reduced-motion: reduce) {
+  .skeleton::after,
+  .vibe-card,
+  .theme-card,
+  .animate-border-beam,
+  .animate-aurora-float,
+  .animate-pulse-glow,
+  .animate-shimmer {
+    animation: none !important;
+    transition: none !important;
   }
 }

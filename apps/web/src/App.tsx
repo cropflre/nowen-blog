@@ -13,6 +13,9 @@ import { Search } from './pages/Search';
 import { About } from './pages/About';
 import { Login } from './pages/admin/Login';
 import { Dashboard } from './pages/admin/Dashboard';
+import { AdminPosts } from './pages/admin/AdminPosts';
+import { AdminPostNew } from './pages/admin/AdminPostNew';
+import { AdminPostEdit } from './pages/admin/AdminPostEdit';
 import { NotFound } from './pages/NotFound';
 
 export function App() {
@@ -40,6 +43,9 @@ export function App() {
         <Route element={<AdminRoute />}>
           <Route element={<AdminLayout />}>
             <Route path="/admin" element={<Dashboard />} />
+            <Route path="/admin/posts" element={<AdminPosts />} />
+            <Route path="/admin/posts/new" element={<AdminPostNew />} />
+            <Route path="/admin/posts/:id/edit" element={<AdminPostEdit />} />
           </Route>
         </Route>
 

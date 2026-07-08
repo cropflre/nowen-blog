@@ -10,6 +10,7 @@ export interface PostRow {
   isFeatured: boolean;
   isPinned: boolean;
   readingTime: number;
+  wordCount: number;
   viewCount: number;
   likeCount: number;
   publishedAt: string | null;

@@ -5,7 +5,15 @@ import type {
   SiteSettings,
   SearchResult,
 } from '@blog/shared';
-import type { CategoryView, TagView, ArchiveYear, AdminUser } from '../types';
+import type {
+  CategoryView,
+  TagView,
+  ArchiveYear,
+  AdminUser,
+  AdminPostView,
+  AdminPostInput,
+  AdminListPostsParams,
+} from '../types';
 
 const BASE = '/api';
 
@@ -65,4 +73,33 @@ export const api = {
     }),
   logout: () => request<{ ok: boolean }>('/admin/logout', { method: 'POST' }),
   getMe: () => request<{ user: AdminUser }>('/admin/me'),
+
+  // 后台文章管理
+  listAdminPosts: (params: AdminListPostsParams = {}) => {
+    const qs = new URLSearchParams();
+    if (params.page) qs.set('page', String(params.page));
+    if (params.pageSize) qs.set('pageSize', String(params.pageSize));
+    if (params.status && params.status !== 'all') qs.set('status', params.status);
+    const q = qs.toString();
+    return request<{ items: AdminPostView[]; total: number; page: number; pageSize: number }>(
+      `/admin/posts${q ? `?${q}` : ''}`,
+    );
+  },
+  getAdminPost: (id: string) => request<AdminPostView>(`/admin/posts/${id}`),
+  createAdminPost: (payload: AdminPostInput) =>
+    request<AdminPostView>('/admin/posts', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  updateAdminPost: (id: string, payload: AdminPostInput) =>
+    request<AdminPostView>(`/admin/posts/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    }),
+  deleteAdminPost: (id: string) =>
+    request<{ ok: boolean }>(`/admin/posts/${id}`, { method: 'DELETE' }),
+  publishAdminPost: (id: string) =>
+    request<AdminPostView>(`/admin/posts/${id}/publish`, { method: 'POST' }),
+  unpublishAdminPost: (id: string) =>
+    request<AdminPostView>(`/admin/posts/${id}/unpublish`, { method: 'POST' }),
 };

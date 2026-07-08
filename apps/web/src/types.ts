@@ -6,6 +6,8 @@ import type {
   Tag,
   Paginated,
   SearchResult,
+  PostStatus,
+  Author,
 } from '@blog/shared';
 
 export type {
@@ -16,7 +18,58 @@ export type {
   Tag,
   Paginated,
   SearchResult,
+  PostStatus,
+  Author,
 };
+
+export interface AdminPostView {
+  id: string;
+  title: string;
+  slug: string;
+  summary: string | null;
+  contentMd: string;
+  coverUrl: string | null;
+  status: PostStatus;
+  isFeatured: boolean;
+  isPinned: boolean;
+  readingTime: number;
+  wordCount: number;
+  viewCount: number;
+  likeCount: number;
+  seoTitle: string | null;
+  seoDescription: string | null;
+  canonicalUrl: string | null;
+  publishedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+  author: Author;
+  categoryIds: string[];
+  tagIds: string[];
+  categories: Category[];
+  tags: Tag[];
+}
+
+export interface AdminPostInput {
+  title: string;
+  slug?: string;
+  summary?: string | null;
+  contentMd: string;
+  coverUrl?: string | null;
+  status?: PostStatus;
+  isFeatured?: boolean;
+  isPinned?: boolean;
+  categoryIds?: string[];
+  tagIds?: string[];
+  seoTitle?: string | null;
+  seoDescription?: string | null;
+  canonicalUrl?: string | null;
+}
+
+export interface AdminListPostsParams {
+  page?: number;
+  pageSize?: number;
+  status?: PostStatus | 'all';
+}
 
 export interface CategoryView extends Category {
   postCount: number;

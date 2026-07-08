@@ -1,6 +1,7 @@
 import { sql } from 'drizzle-orm';
 import { db, sqlite } from './client';
 import { seedIfEmpty } from './seed';
+import { ensureSearchIndex } from '../modules/search/search.service';
 
 const CREATE_TABLES = `
 CREATE TABLE IF NOT EXISTS users (
@@ -76,13 +77,29 @@ CREATE INDEX IF NOT EXISTS idx_posts_featured ON posts(is_featured);
 CREATE INDEX IF NOT EXISTS idx_comments_post_id ON post_categories(post_id);
 `;
 
+// FTS5 全文搜索虚拟表。
+// 注意：posts.id 为 TEXT 主键，没有可用作 content_rowid 的整型列，
+// 因此不采用 external content 方案，而是独立存储索引内容。
+// id 列标记为 UNINDEXED（仅用于回查文章，不参与全文匹配）。
+const CREATE_FTS =
+  "CREATE VIRTUAL TABLE IF NOT EXISTS posts_fts USING fts5(" +
+  "  id UNINDEXED," +
+  "  title," +
+  "  summary," +
+  "  content_md," +
+  "  tokenize = 'unicode61'" +
+  ")";
+
 let initialized = false;
 
 export function initDb(): void {
   if (initialized) return;
   sqlite.exec(CREATE_TABLES);
+  sqlite.exec(CREATE_FTS);
   // 触发一次轻量查询，确保连接可用
   db.run(sql`SELECT 1`);
   seedIfEmpty();
+  // 兜底：索引为空时从存量已发布文章重建（避免存量数据搜不到）
+  ensureSearchIndex();
   initialized = true;
 }

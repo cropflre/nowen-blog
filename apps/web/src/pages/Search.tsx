@@ -12,9 +12,9 @@ export function Search() {
   const [q, setQ] = useState(initial);
   const [term, setTerm] = useState(initial);
 
-  const { data, isFetching } = useQuery({
+  const { data, isFetching, isError, error } = useQuery({
     queryKey: ['search', term],
-    queryFn: () => api.search(term),
+    queryFn: () => api.search(term, { page: 1, pageSize: 50 }),
     enabled: term.trim().length > 0,
   });
 
@@ -41,6 +41,8 @@ export function Search() {
 
       {term.trim().length === 0 ? (
         <p className="text-muted">输入关键词开始搜索。</p>
+      ) : isError ? (
+        <p className="text-muted">搜索出错了：{error?.message ?? '未知错误'}</p>
       ) : isFetching ? (
         <p className="text-muted">搜索中…</p>
       ) : (data?.items.length ?? 0) === 0 ? (

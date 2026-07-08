@@ -1,4 +1,4 @@
-import { and, asc, eq, like, or, desc, count } from 'drizzle-orm';
+import { and, asc, eq, desc, count } from 'drizzle-orm';
 import type { PostSummary } from '@blog/shared';
 import { db } from '../../db/client';
 import { posts, categories, tags, postCategories, postTags } from '../../db/schema';
@@ -54,29 +54,6 @@ export async function listTags(): Promise<TagView[]> {
     .groupBy(tags.id)
     .orderBy(desc(count(postTags.postId)));
   return rows;
-}
-
-export async function searchPosts(q: string): Promise<PostRow[]> {
-  const term = q.trim();
-  if (!term) return [];
-  const rows = await db.query.posts.findMany({
-    where: and(
-      eq(posts.status, 'published'),
-      or(
-        like(posts.title, `%${term}%`),
-        like(posts.summary, `%${term}%`),
-        like(posts.contentMd, `%${term}%`),
-      ),
-    ),
-    orderBy: [desc(posts.publishedAt)],
-    with: {
-      author: true,
-      categoryLinks: { with: { category: true } },
-      tagLinks: { with: { tag: true } },
-    },
-    limit: 50,
-  });
-  return rows as unknown as PostRow[];
 }
 
 export interface ArchiveMonth {

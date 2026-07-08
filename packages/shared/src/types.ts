@@ -42,6 +42,8 @@ export interface PostSummary {
   author: Author;
   categories: Category[];
   tags: Tag[];
+  /** 搜索命中时的高亮片段（含控制字符标记），非搜索场景为空。 */
+  snippet?: string | null;
 }
 
 /** 文章详情，含 Markdown 正文 */
@@ -91,4 +93,6 @@ export interface SearchResult {
   query: string;
   items: PostSummary[];
   total: number;
+  page?: number;
+  pageSize?: number;
 }

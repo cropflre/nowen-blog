@@ -1,0 +1,14 @@
+{
+  "name": "@blog/config",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "files": [
+    "tsconfig.base.json",
+    "prettier.config.mjs"
+  ],
+  "exports": {
+    "./tsconfig.base": "./tsconfig.base.json",
+    "./prettier": "./prettier.config.mjs"
+  }
+}

@@ -1,0 +1,72 @@
+@import "tailwindcss";
+@plugin "@tailwindcss/typography";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  --bg: #fafafa;
+  --surface: #ffffff;
+  --text: #18181b;
+  --text-muted: #52525b;
+  --border: rgba(0, 0, 0, 0.08);
+  --brand: #6366f1;
+  --brand-2: #8b5cf6;
+}
+
+.dark {
+  --bg: #0a0a0b;
+  --surface: #111113;
+  --text: #ededed;
+  --text-muted: #a1a1aa;
+  --border: rgba(255, 255, 255, 0.08);
+  --brand: #818cf8;
+  --brand-2: #a78bfa;
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-fg: var(--text);
+  --color-muted: var(--text-muted);
+  --color-line: var(--border);
+  --color-brand: var(--brand);
+  --color-brand-2: var(--brand-2);
+  --font-sans: "Inter", system-ui, -apple-system, "PingFang SC", "Microsoft YaHei",
+    sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --radius-card: 16px;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* 文章正文排版（配合 @tailwindcss/typography 的 prose / dark:prose-invert） */
+.prose {
+  max-width: 760px;
+}
+
+.prose pre {
+  border-radius: 12px;
+  border: 1px solid var(--border);
+}
+
+.prose :not(pre) > code {
+  background: color-mix(in srgb, var(--brand) 12%, transparent);
+  padding: 0.15em 0.4em;
+  border-radius: 6px;
+  font-weight: 500;
+  font-size: 0.875em;
+}
+
+.prose img {
+  border-radius: 12px;
+}

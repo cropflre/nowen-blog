@@ -23,3 +23,6 @@ apps/server/data/*
 
 # coverage
 coverage/
+
+# Claude Code local settings
+.claude/settings.local.json

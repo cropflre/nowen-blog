@@ -62,8 +62,8 @@ export function AdminPostEditor({ postId }: { postId?: string }) {
     enabled: !!postId,
   });
 
-  const { data: cats } = useQuery({ queryKey: ['categories'], queryFn: api.listCategories });
-  const { data: tags } = useQuery({ queryKey: ['tags'], queryFn: api.listTags });
+  const { data: cats } = useQuery({ queryKey: ['categories'], queryFn: api.listAdminCategories });
+  const { data: tags } = useQuery({ queryKey: ['tags'], queryFn: api.listAdminTags });
 
   useEffect(() => {
     if (existing && !prefilled.current) {

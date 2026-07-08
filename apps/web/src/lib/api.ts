@@ -13,6 +13,10 @@ import type {
   AdminPostView,
   AdminPostInput,
   AdminListPostsParams,
+  AdminCategoryView,
+  AdminTagView,
+  AdminCategoryInput,
+  AdminTagInput,
 } from '../types';
 
 const BASE = '/api';
@@ -102,4 +106,36 @@ export const api = {
     request<AdminPostView>(`/admin/posts/${id}/publish`, { method: 'POST' }),
   unpublishAdminPost: (id: string) =>
     request<AdminPostView>(`/admin/posts/${id}/unpublish`, { method: 'POST' }),
+
+  // 后台分类管理
+  listAdminCategories: () => request<{ items: AdminCategoryView[] }>('/admin/categories'),
+  getAdminCategory: (id: string) => request<AdminCategoryView>(`/admin/categories/${id}`),
+  createAdminCategory: (payload: AdminCategoryInput) =>
+    request<AdminCategoryView>('/admin/categories', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  updateAdminCategory: (id: string, payload: AdminCategoryInput) =>
+    request<AdminCategoryView>(`/admin/categories/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    }),
+  deleteAdminCategory: (id: string) =>
+    request<{ ok: boolean }>(`/admin/categories/${id}`, { method: 'DELETE' }),
+
+  // 后台标签管理
+  listAdminTags: () => request<{ items: AdminTagView[] }>('/admin/tags'),
+  getAdminTag: (id: string) => request<AdminTagView>(`/admin/tags/${id}`),
+  createAdminTag: (payload: AdminTagInput) =>
+    request<AdminTagView>('/admin/tags', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  updateAdminTag: (id: string, payload: AdminTagInput) =>
+    request<AdminTagView>(`/admin/tags/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    }),
+  deleteAdminTag: (id: string) =>
+    request<{ ok: boolean }>(`/admin/tags/${id}`, { method: 'DELETE' }),
 };

@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { FileText, Image, MessageSquare } from 'lucide-react';
+import { FileText, Folder, Tag } from 'lucide-react';
 import { api } from '../../lib/api';
 
 export function Dashboard() {
@@ -18,29 +18,35 @@ export function Dashboard() {
 
       <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <Link
-          to="/admin/posts"
+          to="/admin/posts/new"
           className="flex items-start gap-3 rounded-card border border-line bg-surface p-5 transition hover:border-brand/60"
         >
           <FileText className="mt-0.5 h-5 w-5 text-brand" />
           <div>
-            <p className="text-sm text-muted">文章管理</p>
-            <p className="mt-1 text-lg font-semibold">写文章 / 发布</p>
+            <p className="text-sm text-muted">写文章</p>
+            <p className="mt-1 text-lg font-semibold">新建文章</p>
           </div>
         </Link>
-        <div className="flex items-start gap-3 rounded-card border border-line bg-surface p-5">
-          <Image className="mt-0.5 h-5 w-5 text-muted" />
+        <Link
+          to="/admin/categories"
+          className="flex items-start gap-3 rounded-card border border-line bg-surface p-5 transition hover:border-brand/60"
+        >
+          <Folder className="mt-0.5 h-5 w-5 text-brand" />
           <div>
-            <p className="text-sm text-muted">媒体库</p>
-            <p className="mt-1 text-lg font-semibold">后续阶段</p>
+            <p className="text-sm text-muted">分类管理</p>
+            <p className="mt-1 text-lg font-semibold">维护分类</p>
           </div>
-        </div>
-        <div className="flex items-start gap-3 rounded-card border border-line bg-surface p-5">
-          <MessageSquare className="mt-0.5 h-5 w-5 text-muted" />
+        </Link>
+        <Link
+          to="/admin/tags"
+          className="flex items-start gap-3 rounded-card border border-line bg-surface p-5 transition hover:border-brand/60"
+        >
+          <Tag className="mt-0.5 h-5 w-5 text-brand" />
           <div>
-            <p className="text-sm text-muted">评论管理</p>
-            <p className="mt-1 text-lg font-semibold">后续阶段</p>
+            <p className="text-sm text-muted">标签管理</p>
+            <p className="mt-1 text-lg font-semibold">维护标签</p>
           </div>
-        </div>
+        </Link>
       </div>
     </div>
   );

@@ -16,6 +16,8 @@ import { Dashboard } from './pages/admin/Dashboard';
 import { AdminPosts } from './pages/admin/AdminPosts';
 import { AdminPostNew } from './pages/admin/AdminPostNew';
 import { AdminPostEdit } from './pages/admin/AdminPostEdit';
+import { AdminCategories } from './pages/admin/AdminCategories';
+import { AdminTags } from './pages/admin/AdminTags';
 import { NotFound } from './pages/NotFound';
 
 export function App() {
@@ -46,6 +48,8 @@ export function App() {
             <Route path="/admin/posts" element={<AdminPosts />} />
             <Route path="/admin/posts/new" element={<AdminPostNew />} />
             <Route path="/admin/posts/:id/edit" element={<AdminPostEdit />} />
+            <Route path="/admin/categories" element={<AdminCategories />} />
+            <Route path="/admin/tags" element={<AdminTags />} />
           </Route>
         </Route>
 

@@ -71,6 +71,40 @@ export interface AdminListPostsParams {
   status?: PostStatus | 'all';
 }
 
+export interface AdminCategoryView {
+  id: string;
+  name: string;
+  slug: string;
+  description: string | null;
+  color: string | null;
+  sortOrder: number;
+  postCount: number;
+  createdAt: string;
+}
+
+export interface AdminTagView {
+  id: string;
+  name: string;
+  slug: string;
+  color: string | null;
+  postCount: number;
+  createdAt: string;
+}
+
+export interface AdminCategoryInput {
+  name: string;
+  slug?: string;
+  description?: string | null;
+  color?: string | null;
+  sortOrder?: number;
+}
+
+export interface AdminTagInput {
+  name: string;
+  slug?: string;
+  color?: string | null;
+}
+
 export interface CategoryView extends Category {
   postCount: number;
 }

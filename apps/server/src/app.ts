@@ -8,6 +8,7 @@ import { archiveRoutes } from './modules/archive/archive.routes';
 import { settingsRoutes } from './modules/settings/settings.routes';
 import { adminRoutes } from './modules/auth/auth.routes';
 import { adminPostsRoutes } from './modules/admin-posts/admin-posts.routes';
+import { adminCategoriesRoutes, adminTagsRoutes } from './modules/admin-taxonomies/admin-taxonomies.routes';
 
 export const app = new Hono();
 
@@ -26,6 +27,8 @@ app.route('/api/search', searchRoutes);
 app.route('/api/archive', archiveRoutes);
 app.route('/api/site-settings', settingsRoutes);
 app.route('/api/admin/posts', adminPostsRoutes);
+app.route('/api/admin/categories', adminCategoriesRoutes);
+app.route('/api/admin/tags', adminTagsRoutes);
 app.route('/api/admin', adminRoutes);
 
 app.onError((err, c) => {

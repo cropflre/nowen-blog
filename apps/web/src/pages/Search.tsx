@@ -17,10 +17,14 @@ export function Search() {
     queryFn: () => api.search(term, { page: 1, pageSize: 50 }),
     enabled: term.trim().length > 0,
   });
+  const { data: settings } = useQuery({ queryKey: ['site-settings'], queryFn: api.siteSettings });
+
+  const base = term ? `搜索：${term}` : '搜索';
+  const title = settings?.siteTitle ? `${base} - ${settings.siteTitle}` : base;
 
   return (
     <div className="mx-auto max-w-[1120px] px-4 py-12">
-      <Seo title={term ? `搜索：${term}` : '搜索'} />
+      <Seo title={title} />
 
       <form
         onSubmit={(e) => {

@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { api } from '../lib/api';
 import { ArticleCard } from '../components/post/ArticleCard';
+import { Seo } from '../components/seo/Seo';
 
 export function Home() {
   const settings = useQuery({ queryKey: ['site-settings'], queryFn: api.siteSettings });
@@ -13,6 +14,11 @@ export function Home() {
 
   return (
     <div>
+      <Seo
+        title={settings.data?.siteTitle ?? 'NOWEN Blog'}
+        description={settings.data?.siteDescription}
+      />
+
       <section className="border-b border-line">
         <div className="mx-auto max-w-[1120px] px-4 py-20 text-center">
           <h1 className="bg-gradient-to-r from-brand to-brand-2 bg-clip-text text-4xl font-bold text-transparent md:text-6xl">

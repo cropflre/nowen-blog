@@ -22,7 +22,14 @@ export function Footer() {
           {settings?.social.email && (
             <a href={`mailto:${settings.social.email}`}>Email</a>
           )}
-          {settings?.social.rss && <Link to="/rss.xml">RSS</Link>}
+          {settings?.social.rss && (
+            <a href="/rss.xml" target="_blank" rel="noreferrer">
+              RSS
+            </a>
+          )}
+          <a href="/sitemap.xml" target="_blank" rel="noreferrer">
+            Sitemap
+          </a>
         </div>
         <p>
           © {year} {settings?.authorName}

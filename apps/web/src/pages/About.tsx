@@ -4,10 +4,11 @@ import { Seo } from '../components/seo/Seo';
 
 export function About() {
   const { data: settings } = useQuery({ queryKey: ['site-settings'], queryFn: api.siteSettings });
+  const title = settings?.siteTitle ? `关于 - ${settings.siteTitle}` : '关于';
 
   return (
     <div className="mx-auto max-w-[760px] px-4 py-16">
-      <Seo title="关于" />
+      <Seo title={title} description={settings?.siteDescription} />
       <h1 className="text-3xl font-bold">{settings?.authorName ?? 'NOWEN'}</h1>
       <p className="mt-2 text-muted">{settings?.siteDescription}</p>
 

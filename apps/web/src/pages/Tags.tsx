@@ -5,10 +5,12 @@ import { Seo } from '../components/seo/Seo';
 
 export function Tags() {
   const { data } = useQuery({ queryKey: ['tags'], queryFn: api.listTags });
+  const { data: settings } = useQuery({ queryKey: ['site-settings'], queryFn: api.siteSettings });
+  const title = settings?.siteTitle ? `标签 - ${settings.siteTitle}` : '标签';
 
   return (
     <div className="mx-auto max-w-[1120px] px-4 py-12">
-      <Seo title="标签" />
+      <Seo title={title} />
       <h1 className="mb-8 text-2xl font-bold">标签</h1>
       <div className="flex flex-wrap gap-3">
         {(data?.items ?? []).map((t) => (

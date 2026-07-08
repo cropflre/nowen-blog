@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { api } from '../lib/api';
 import { Markdown } from '../components/markdown/Markdown';
 import { Seo } from '../components/seo/Seo';
+import { absUrl } from '../lib/seo';
 import { formatDate } from '../lib/format';
 
 export function PostDetail() {
@@ -12,6 +13,7 @@ export function PostDetail() {
     queryFn: () => api.getPost(slug!),
     enabled: !!slug,
   });
+  const { data: settings } = useQuery({ queryKey: ['site-settings'], queryFn: api.siteSettings });
 
   if (isLoading) {
     return <div className="mx-auto max-w-[760px] px-4 py-20 text-muted">加载中…</div>;
@@ -28,9 +30,31 @@ export function PostDetail() {
     );
   }
 
+  const jsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'BlogPosting',
+    headline: post.seoTitle || post.title,
+    ...(post.seoDescription || post.summary
+      ? { description: post.seoDescription || post.summary }
+      : {}),
+    ...(post.coverUrl ? { image: absUrl(post.coverUrl) } : {}),
+    author: { '@type': 'Person', name: post.author.username },
+    ...(post.publishedAt ? { datePublished: post.publishedAt } : {}),
+    ...(post.updatedAt ? { dateModified: post.updatedAt } : {}),
+    mainEntityOfPage: { '@type': 'WebPage', '@id': absUrl(`/posts/${post.slug}`) },
+    url: absUrl(`/posts/${post.slug}`),
+  };
+
   return (
     <article className="mx-auto max-w-[760px] px-4 py-12">
-      <Seo title={post.title} description={post.seoDescription ?? post.summary} />
+      <Seo
+        title={post.seoTitle || post.title}
+        description={post.seoDescription || post.summary}
+        canonical={post.canonicalUrl || `/posts/${post.slug}`}
+        image={post.coverUrl}
+        type="article"
+        jsonLd={jsonLd}
+      />
 
       <div className="mb-3 flex flex-wrap gap-2 text-xs">
         {post.categories.map((c) => (

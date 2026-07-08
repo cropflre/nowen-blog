@@ -1,7 +1,9 @@
 import { sql } from 'drizzle-orm';
+import bcrypt from 'bcryptjs';
 import { db, sqlite } from './client';
 import { posts, categories, tags, users, postCategories, postTags } from './schema';
 import { slugify, estimateReadingTime, randomId, nowIso } from '../lib/format';
+import { env } from '../config/env';
 
 const SAMPLE_MD = (title: string, body: string) => `# ${title}\n\n${body}`;
 
@@ -16,14 +18,30 @@ export function seedIfEmpty(): void {
   if (count.c > 0) return;
 
   const now = nowIso();
-  const authorId = randomId('u_');
 
+  // 默认管理员（仅用于开发环境）；生产环境缺失 ADMIN_PASSWORD 必须拒绝创建。
+  const adminPassword = env.adminPassword;
+  let adminPasswordHash: string;
+  if (adminPassword) {
+    adminPasswordHash = bcrypt.hashSync(adminPassword, 10);
+  } else if (env.nodeEnv === 'production') {
+    throw new Error('生产环境必须设置 ADMIN_PASSWORD 才能创建默认管理员');
+  } else {
+    const devPassword = 'dev-admin-please-change';
+    console.warn(
+      `[seed] 未设置 ADMIN_PASSWORD，开发环境使用默认管理员密码 "${devPassword}"` +
+        `（用户名 ${env.adminUsername}）。生产环境请勿如此。`,
+    );
+    adminPasswordHash = bcrypt.hashSync(devPassword, 10);
+  }
+
+  const authorId = randomId('u_');
   db.insert(users)
     .values({
       id: authorId,
-      username: 'NOWEN',
-      email: 'hi@nowen.dev',
-      passwordHash: 'noop', // 示例数据，无登录需求时不需要真实密码
+      username: env.adminUsername,
+      email: env.adminEmail,
+      passwordHash: adminPasswordHash,
       role: 'admin',
       bio: '全栈工程师，关注前端工程化、Node.js 与开源。',
       createdAt: now,

@@ -5,14 +5,29 @@ import type {
   SiteSettings,
   SearchResult,
 } from '@blog/shared';
-import type { CategoryView, TagView, ArchiveYear } from '../types';
+import type { CategoryView, TagView, ArchiveYear, AdminUser } from '../types';
 
 const BASE = '/api';
 
-async function get<T>(path: string): Promise<T> {
-  const res = await fetch(`${BASE}${path}`);
+async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  const res = await fetch(`${BASE}${path}`, {
+    ...init,
+    // 始终携带 Cookie（含 session），确保 HttpOnly Cookie 随请求收发
+    credentials: 'include',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(init?.headers ?? {}),
+    },
+  });
   if (!res.ok) {
-    throw new Error(`请求失败: ${res.status}`);
+    let message = `请求失败: ${res.status}`;
+    try {
+      const body = (await res.json()) as { error?: string };
+      if (body?.error) message = body.error;
+    } catch {
+      /* ignore */
+    }
+    throw new Error(message);
   }
   return (await res.json()) as T;
 }
@@ -32,13 +47,22 @@ export const api = {
     if (params.category) qs.set('category', params.category);
     if (params.tag) qs.set('tag', params.tag);
     const q = qs.toString();
-    return get<Paginated<PostSummary>>(`/posts${q ? `?${q}` : ''}`);
+    return request<Paginated<PostSummary>>(`/posts${q ? `?${q}` : ''}`);
   },
-  getPost: (slug: string) => get<PostDetail>(`/posts/${encodeURIComponent(slug)}`),
-  listFeatured: () => get<{ items: PostSummary[] }>('/posts/featured'),
-  listCategories: () => get<{ items: CategoryView[] }>('/categories'),
-  listTags: () => get<{ items: TagView[] }>('/tags'),
-  search: (q: string) => get<SearchResult>(`/search?q=${encodeURIComponent(q)}`),
-  archive: () => get<{ groups: ArchiveYear[] }>('/archive'),
-  siteSettings: () => get<SiteSettings>('/site-settings'),
+  getPost: (slug: string) => request<PostDetail>(`/posts/${encodeURIComponent(slug)}`),
+  listFeatured: () => request<{ items: PostSummary[] }>('/posts/featured'),
+  listCategories: () => request<{ items: CategoryView[] }>('/categories'),
+  listTags: () => request<{ items: TagView[] }>('/tags'),
+  search: (q: string) => request<SearchResult>(`/search?q=${encodeURIComponent(q)}`),
+  archive: () => request<{ groups: ArchiveYear[] }>('/archive'),
+  siteSettings: () => request<SiteSettings>('/site-settings'),
+
+  // 后台认证
+  login: (username: string, password: string) =>
+    request<{ user: AdminUser }>('/admin/login', {
+      method: 'POST',
+      body: JSON.stringify({ username, password }),
+    }),
+  logout: () => request<{ ok: boolean }>('/admin/logout', { method: 'POST' }),
+  getMe: () => request<{ user: AdminUser }>('/admin/me'),
 };

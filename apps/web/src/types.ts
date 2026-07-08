@@ -37,3 +37,10 @@ export interface ArchiveYear {
   total: number;
   months: ArchiveMonth[];
 }
+
+export interface AdminUser {
+  id: string;
+  username: string;
+  email: string | null;
+  role: string;
+}

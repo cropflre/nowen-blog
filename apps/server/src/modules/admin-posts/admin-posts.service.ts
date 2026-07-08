@@ -3,6 +3,11 @@ import type { PostRow } from '../../lib/mapping';
 import { slugify, estimateReadingTime, randomId, nowIso } from '../../lib/format';
 import * as repo from './admin-posts.repository';
 import type { PostInput, PostUpdate } from './admin-posts.schema';
+import {
+  indexPost,
+  syncPostIndex,
+  removePostFromIndex,
+} from '../search/search.service';
 
 export interface AdminPostView {
   id: string;
@@ -154,6 +159,7 @@ export async function createPost(
     authorId,
   };
   const id = await repo.insertPostTx(values, input.categoryIds, input.tagIds);
+  if (input.status === 'published') indexPost(id);
   return toAdminView((await repo.getAdminPostById(id)) as PostRow);
 }
 
@@ -193,6 +199,7 @@ export async function updatePost(
 
   const updated = await repo.updatePostTx(id, base, input.categoryIds, input.tagIds);
   if (!updated) return null;
+  syncPostIndex(id);
   return toAdminView((await repo.getAdminPostById(id)) as PostRow);
 }
 
@@ -203,12 +210,15 @@ export async function setStatus(id: string, status: string): Promise<AdminPostVi
     status === 'published' ? existing.publishedAt ?? nowIso() : existing.publishedAt;
   const updated = await repo.setStatusTx(id, status, publishedAt);
   if (!updated) return null;
+  if (status === 'published') syncPostIndex(id);
+  else removePostFromIndex(id);
   return toAdminView((await repo.getAdminPostById(id)) as PostRow);
 }
 
 export async function deletePost(id: string): Promise<boolean> {
   const existing = await repo.getAdminPostById(id);
   if (!existing) return false;
+  removePostFromIndex(id);
   await repo.deletePostTx(id);
   return true;
 }

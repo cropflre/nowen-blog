@@ -65,7 +65,10 @@ export const api = {
   listFeatured: () => request<{ items: PostSummary[] }>('/posts/featured'),
   listCategories: () => request<{ items: CategoryView[] }>('/categories'),
   listTags: () => request<{ items: TagView[] }>('/tags'),
-  search: (q: string) => request<SearchResult>(`/search?q=${encodeURIComponent(q)}`),
+  search: (q: string, page = 1, pageSize = 20) => {
+    const qs = new URLSearchParams({ q, page: String(page), pageSize: String(pageSize) });
+    return request<SearchResult>(`/search?${qs.toString()}`);
+  },
   archive: () => request<{ groups: ArchiveYear[] }>('/archive'),
   siteSettings: () => request<SiteSettings>('/site-settings'),
 

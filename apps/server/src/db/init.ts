@@ -1,6 +1,7 @@
 import { sql } from 'drizzle-orm';
 import { db, sqlite } from './client';
 import { seedIfEmpty } from './seed';
+import { ensureSearchIndex } from '../modules/search/search.service';
 
 const CREATE_TABLES = `
 CREATE TABLE IF NOT EXISTS users (
@@ -74,6 +75,11 @@ CREATE INDEX IF NOT EXISTS idx_posts_status_published ON posts(status, published
 CREATE INDEX IF NOT EXISTS idx_posts_slug ON posts(slug);
 CREATE INDEX IF NOT EXISTS idx_posts_featured ON posts(is_featured);
 CREATE INDEX IF NOT EXISTS idx_comments_post_id ON post_categories(post_id);
+
+DROP TABLE IF EXISTS posts_fts;
+CREATE VIRTUAL TABLE posts_fts USING fts5(
+  title, summary, content_md, post_id UNINDEXED
+);
 `;
 
 let initialized = false;
@@ -84,5 +90,7 @@ export function initDb(): void {
   // 触发一次轻量查询，确保连接可用
   db.run(sql`SELECT 1`);
   seedIfEmpty();
+  // 若搜索索引为空（首次启动 / 升级），从已发布文章重建 FTS 索引
+  ensureSearchIndex();
   initialized = true;
 }

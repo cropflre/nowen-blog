@@ -1,12 +1,17 @@
 import { Hono } from 'hono';
-import { toSummary } from '../../lib/mapping';
-import { searchPosts } from '../taxonomies/taxonomies.service';
+import { z } from 'zod';
+import { searchPosts } from './search.service';
 
 export const searchRoutes = new Hono();
 
+const searchQuery = z.object({
+  q: z.string().default(''),
+  page: z.coerce.number().int().min(1).default(1),
+  pageSize: z.coerce.number().int().min(1).max(50).default(10),
+});
+
 searchRoutes.get('/', async (c) => {
-  const q = (c.req.query('q') ?? '').trim();
-  const rows = await searchPosts(q);
-  const items = rows.map(toSummary);
-  return c.json({ query: q, items, total: items.length });
+  const { q, page, pageSize } = searchQuery.parse(c.req.query());
+  const result = await searchPosts(q, page, pageSize);
+  return c.json(result);
 });

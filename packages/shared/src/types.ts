@@ -87,8 +87,17 @@ export interface SiteSettings {
   icp: string | null;
 }
 
+/** 搜索命中项：在 PostSummary 基础上附加 FTS 高亮片段（可能为空） */
+export interface SearchHit extends PostSummary {
+  snippet: string | null;
+}
+
 export interface SearchResult {
   query: string;
-  items: PostSummary[];
+  items: SearchHit[];
   total: number;
+  page: number;
+  pageSize: number;
+  /** 实际命中的搜索引擎：fts = SQLite FTS5，like = SQL LIKE 兼容回退 */
+  source: 'fts' | 'like';
 }

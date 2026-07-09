@@ -86,13 +86,31 @@ CREATE TABLE IF NOT EXISTS post_tags (
   PRIMARY KEY (post_id, tag_id)
 );
 
+CREATE TABLE IF NOT EXISTS comments (
+  id TEXT PRIMARY KEY,
+  post_id TEXT NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
+  parent_id TEXT,
+  author_name TEXT NOT NULL,
+  author_email TEXT NOT NULL,
+  author_website TEXT,
+  content TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'pending',
+  ip_hash TEXT,
+  user_agent TEXT,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  approved_at TEXT,
+  deleted_at TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_comments_post_id ON comments(post_id);
+CREATE INDEX IF NOT EXISTS idx_comments_status ON comments(status);
+CREATE INDEX IF NOT EXISTS idx_comments_created_at ON comments(created_at);
+
 CREATE INDEX IF NOT EXISTS idx_posts_status_published ON posts(status, published_at);
 CREATE INDEX IF NOT EXISTS idx_posts_slug ON posts(slug);
 CREATE INDEX IF NOT EXISTS idx_posts_featured ON posts(is_featured);
-CREATE INDEX IF NOT EXISTS idx_comments_post_id ON post_categories(post_id);
 `;
-
-// FTS5 全文搜索虚拟表。
 // 注意：posts.id 为 TEXT 主键，没有可用作 content_rowid 的整型列，
 // 因此不采用 external content 方案，而是独立存储索引内容。
 // id 列标记为 UNINDEXED（仅用于回查文章，不参与全文匹配）。

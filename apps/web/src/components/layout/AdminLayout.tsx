@@ -1,6 +1,6 @@
 import { Link, Outlet, useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
-import { LogOut, FileText, Folder, Tag } from 'lucide-react';
+import { LogOut, FileText, Folder, Tag, Image } from 'lucide-react';
 import { api } from '../../lib/api';
 
 export function AdminLayout() {
@@ -48,6 +48,13 @@ export function AdminLayout() {
           >
             <Tag className="h-4 w-4" />
             标签管理
+          </Link>
+          <Link
+            to="/admin/assets"
+            className="flex items-center gap-2 rounded-lg px-3 py-2 text-muted transition hover:text-fg"
+          >
+            <Image className="h-4 w-4" />
+            媒体库
           </Link>
           <Link
             to="/"

@@ -131,3 +131,18 @@ export interface AdminUser {
   email: string | null;
   role: string;
 }
+
+export interface AssetView {
+  id: string;
+  filename: string | null;
+  storageKey: string;
+  url: string;
+  mimeType: string;
+  size: number;
+  width: number | null;
+  height: number | null;
+  alt: string | null;
+  contentHash: string | null;
+  createdAt: string;
+  updatedAt: string;
+}

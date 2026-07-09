@@ -17,6 +17,7 @@ import type {
   AdminTagView,
   AdminCategoryInput,
   AdminTagInput,
+  AssetView,
 } from '../types';
 
 const BASE = '/api';
@@ -144,4 +145,32 @@ export const api = {
     }),
   deleteAdminTag: (id: string) =>
     request<{ ok: boolean }>(`/admin/tags/${id}`, { method: 'DELETE' }),
+
+  // 媒体库管理
+  uploadAsset: (file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return request<AssetView>('/admin/assets/upload', {
+      method: 'POST',
+      body: formData,
+      headers: {}, // 让浏览器自动设置 Content-Type 为 multipart/form-data
+    });
+  },
+  listAssets: (params: { page?: number; pageSize?: number } = {}) => {
+    const qs = new URLSearchParams();
+    if (params.page) qs.set('page', String(params.page));
+    if (params.pageSize) qs.set('pageSize', String(params.pageSize));
+    const q = qs.toString();
+    return request<{ items: AssetView[]; total: number; page: number; pageSize: number }>(
+      `/admin/assets${q ? `?${q}` : ''}`,
+    );
+  },
+  getAsset: (id: string) => request<AssetView>(`/admin/assets/${id}`),
+  updateAsset: (id: string, payload: { alt?: string | null; filename?: string | null }) =>
+    request<AssetView>(`/admin/assets/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    }),
+  deleteAsset: (id: string) =>
+    request<{ ok: boolean }>(`/admin/assets/${id}`, { method: 'DELETE' }),
 };

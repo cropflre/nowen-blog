@@ -1,13 +1,9 @@
 import type { Category, Tag } from '@blog/shared';
 import type { PostRow } from '../../lib/mapping';
 import { slugify, estimateReadingTime, randomId, nowIso } from '../../lib/format';
+import { indexPost, removePostFromIndex } from '../search/search.service';
 import * as repo from './admin-posts.repository';
 import type { PostInput, PostUpdate } from './admin-posts.schema';
-import {
-  indexPost,
-  syncPostIndex,
-  removePostFromIndex,
-} from '../search/search.service';
 
 export interface AdminPostView {
   id: string;
@@ -159,7 +155,15 @@ export async function createPost(
     authorId,
   };
   const id = await repo.insertPostTx(values, input.categoryIds, input.tagIds);
-  if (input.status === 'published') indexPost(id);
+  // 新建即发布时写入 FTS 索引（新建文章恒为 public，只需判断 status）
+  if (values.status === 'published') {
+    indexPost({
+      id: values.id,
+      title: values.title,
+      summary: values.summary ?? null,
+      contentMd: values.contentMd,
+    });
+  }
   return toAdminView((await repo.getAdminPostById(id)) as PostRow);
 }
 
@@ -199,7 +203,16 @@ export async function updatePost(
 
   const updated = await repo.updatePostTx(id, base, input.categoryIds, input.tagIds);
   if (!updated) return null;
-  syncPostIndex(id);
+  // 同步 FTS 索引：先移除再根据最终状态决定是否重新索引（覆盖标题/正文变更）
+  removePostFromIndex(id);
+  if (status === 'published') {
+    indexPost({
+      id,
+      title: base.title ?? existing.title,
+      summary: (base.summary ?? existing.summary) ?? null,
+      contentMd,
+    });
+  }
   return toAdminView((await repo.getAdminPostById(id)) as PostRow);
 }
 
@@ -210,15 +223,24 @@ export async function setStatus(id: string, status: string): Promise<AdminPostVi
     status === 'published' ? existing.publishedAt ?? nowIso() : existing.publishedAt;
   const updated = await repo.setStatusTx(id, status, publishedAt);
   if (!updated) return null;
-  if (status === 'published') syncPostIndex(id);
-  else removePostFromIndex(id);
+  // 发布入索引，取消发布移出索引
+  if (status === 'published') {
+    indexPost({
+      id,
+      title: existing.title,
+      summary: existing.summary ?? null,
+      contentMd: existing.contentMd,
+    });
+  } else {
+    removePostFromIndex(id);
+  }
   return toAdminView((await repo.getAdminPostById(id)) as PostRow);
 }
 
 export async function deletePost(id: string): Promise<boolean> {
   const existing = await repo.getAdminPostById(id);
   if (!existing) return false;
-  removePostFromIndex(id);
   await repo.deletePostTx(id);
+  removePostFromIndex(id);
   return true;
 }

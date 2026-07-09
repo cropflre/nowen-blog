@@ -58,6 +58,32 @@ export async function incrementView(id: string) {
   await db.update(posts).set({ viewCount: sql`${posts.viewCount} + 1` }).where(eq(posts.id, id));
 }
 
+/** 供 RSS 使用：已发布且公开的全体文章，按发布时间倒序。 */
+export async function listPublishedForFeed(limit = 50): Promise<PostRow[]> {
+  const rows = await db.query.posts.findMany({
+    where: and(eq(posts.status, 'published'), eq(posts.visibility, 'public')),
+    orderBy: [desc(posts.publishedAt)],
+    with: POST_RELATIONS,
+    limit,
+  });
+  return rows as unknown as PostRow[];
+}
+
+/** 供 Sitemap 使用：已发布且公开文章的 slug 与时间，仅取必要字段。 */
+export async function listPublishedForSitemap(): Promise<
+  { slug: string; publishedAt: string | null; updatedAt: string }[]
+> {
+  return db
+    .select({
+      slug: posts.slug,
+      publishedAt: posts.publishedAt,
+      updatedAt: posts.updatedAt,
+    })
+    .from(posts)
+    .where(and(eq(posts.status, 'published'), eq(posts.visibility, 'public')))
+    .orderBy(desc(posts.publishedAt));
+}
+
 async function postIdsByCategory(slug: string): Promise<string[]> {
   const rows = await db
     .select({ postId: postCategories.postId })

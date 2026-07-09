@@ -65,8 +65,11 @@ export const api = {
   listFeatured: () => request<{ items: PostSummary[] }>('/posts/featured'),
   listCategories: () => request<{ items: CategoryView[] }>('/categories'),
   listTags: () => request<{ items: TagView[] }>('/tags'),
-  search: (q: string, page = 1, pageSize = 20) => {
-    const qs = new URLSearchParams({ q, page: String(page), pageSize: String(pageSize) });
+  search: (q: string, opts?: { page?: number; pageSize?: number }) => {
+    const qs = new URLSearchParams();
+    qs.set('q', q);
+    if (opts?.page) qs.set('page', String(opts.page));
+    if (opts?.pageSize) qs.set('pageSize', String(opts.pageSize));
     return request<SearchResult>(`/search?${qs.toString()}`);
   },
   archive: () => request<{ groups: ArchiveYear[] }>('/archive'),

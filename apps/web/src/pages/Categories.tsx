@@ -5,10 +5,12 @@ import { Seo } from '../components/seo/Seo';
 
 export function Categories() {
   const { data } = useQuery({ queryKey: ['categories'], queryFn: api.listCategories });
+  const { data: settings } = useQuery({ queryKey: ['site-settings'], queryFn: api.siteSettings });
+  const title = settings?.siteTitle ? `分类 - ${settings.siteTitle}` : '分类';
 
   return (
     <div className="mx-auto max-w-[1120px] px-4 py-12">
-      <Seo title="分类" />
+      <Seo title={title} />
       <h1 className="mb-8 text-2xl font-bold">分类</h1>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {(data?.items ?? []).map((c) => (

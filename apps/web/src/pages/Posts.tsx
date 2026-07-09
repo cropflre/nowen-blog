@@ -25,6 +25,7 @@ export function Posts({ taxonomy }: { taxonomy?: 'category' | 'tag' }) {
     queryKey: ['posts', params],
     queryFn: () => api.listPosts(params),
   });
+  const { data: settings } = useQuery({ queryKey: ['site-settings'], queryFn: api.siteSettings });
 
   const total = data?.total ?? 0;
   const pageSize = data?.pageSize ?? 10;
@@ -40,10 +41,11 @@ export function Posts({ taxonomy }: { taxonomy?: 'category' | 'tag' }) {
   };
 
   const heading = taxonomy ? TITLE[taxonomy] : '全部文章';
+  const title = settings?.siteTitle ? `${heading} - ${settings.siteTitle}` : heading;
 
   return (
     <div className="mx-auto max-w-[1120px] px-4 py-12">
-      <Seo title={heading} />
+      <Seo title={title} />
       <h1 className="mb-8 text-2xl font-bold">{heading}</h1>
 
       {isLoading ? (

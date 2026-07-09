@@ -3,6 +3,7 @@ import { Clock } from 'lucide-react';
 import type { PostSummary } from '../../types';
 import { formatDate } from '../../lib/format';
 import { cn } from '../../lib/cn';
+import { Highlight } from './Highlight';
 
 export function ArticleCard({
   post,
@@ -44,9 +45,13 @@ export function ArticleCard({
         <h3 className="text-lg font-semibold text-fg transition group-hover:text-brand">
           {post.title}
         </h3>
-        {post.summary && (
+        {post.snippet ? (
+          <p className="mt-2 line-clamp-3 text-sm text-muted">
+            <Highlight text={post.snippet} />
+          </p>
+        ) : post.summary ? (
           <p className="mt-2 line-clamp-2 text-sm text-muted">{post.summary}</p>
-        )}
+        ) : null}
         <div className="mt-4 flex items-center gap-3 text-xs text-muted">
           <span>{formatDate(post.publishedAt)}</span>
           <span className="flex items-center gap-1">

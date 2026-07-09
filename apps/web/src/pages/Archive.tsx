@@ -6,10 +6,12 @@ import { Seo } from '../components/seo/Seo';
 
 export function Archive() {
   const { data } = useQuery({ queryKey: ['archive'], queryFn: api.archive });
+  const { data: settings } = useQuery({ queryKey: ['site-settings'], queryFn: api.siteSettings });
+  const title = settings?.siteTitle ? `归档 - ${settings.siteTitle}` : '归档';
 
   return (
     <div className="mx-auto max-w-[1120px] px-4 py-12">
-      <Seo title="归档" />
+      <Seo title={title} />
       <h1 className="mb-8 text-2xl font-bold">归档</h1>
 
       {(data?.groups ?? []).map((g) => (

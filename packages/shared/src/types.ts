@@ -42,6 +42,8 @@ export interface PostSummary {
   author: Author;
   categories: Category[];
   tags: Tag[];
+  /** 搜索命中时的高亮片段（含控制字符标记），非搜索场景为空。 */
+  snippet?: string | null;
 }
 
 /** 文章详情，含 Markdown 正文 */
@@ -87,17 +89,10 @@ export interface SiteSettings {
   icp: string | null;
 }
 
-/** 搜索命中项：在 PostSummary 基础上附加 FTS 高亮片段（可能为空） */
-export interface SearchHit extends PostSummary {
-  snippet: string | null;
-}
-
 export interface SearchResult {
   query: string;
-  items: SearchHit[];
+  items: PostSummary[];
   total: number;
-  page: number;
-  pageSize: number;
-  /** 实际命中的搜索引擎：fts = SQLite FTS5，like = SQL LIKE 兼容回退 */
-  source: 'fts' | 'like';
+  page?: number;
+  pageSize?: number;
 }

@@ -9,6 +9,7 @@ import { settingsRoutes } from './modules/settings/settings.routes';
 import { adminRoutes } from './modules/auth/auth.routes';
 import { adminPostsRoutes } from './modules/admin-posts/admin-posts.routes';
 import { adminCategoriesRoutes, adminTagsRoutes } from './modules/admin-taxonomies/admin-taxonomies.routes';
+import { rssRoutes, sitemapRoutes, robotsRoutes } from './modules/seo/seo.routes';
 
 export const app = new Hono();
 
@@ -19,6 +20,11 @@ app.use('*', logger());
 app.use('/api/*', cors({ credentials: true }));
 
 app.get('/health', (c) => c.json({ ok: true }));
+
+// SEO 相关接口直接挂在根路径（非 /api）
+app.route('/rss.xml', rssRoutes);
+app.route('/sitemap.xml', sitemapRoutes);
+app.route('/robots.txt', robotsRoutes);
 
 app.route('/api/posts', postsRoutes);
 app.route('/api/categories', categoriesRoutes);

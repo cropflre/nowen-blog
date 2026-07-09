@@ -14,13 +14,17 @@ export function Search() {
 
   const { data, isFetching, isError, error } = useQuery({
     queryKey: ['search', term],
-    queryFn: () => api.search(term),
+    queryFn: () => api.search(term, { page: 1, pageSize: 50 }),
     enabled: term.trim().length > 0,
   });
+  const { data: settings } = useQuery({ queryKey: ['site-settings'], queryFn: api.siteSettings });
+
+  const base = term ? `搜索：${term}` : '搜索';
+  const title = settings?.siteTitle ? `${base} - ${settings.siteTitle}` : base;
 
   return (
     <div className="mx-auto max-w-[1120px] px-4 py-12">
-      <Seo title={term ? `搜索：${term}` : '搜索'} />
+      <Seo title={title} />
 
       <form
         onSubmit={(e) => {
@@ -42,7 +46,7 @@ export function Search() {
       {term.trim().length === 0 ? (
         <p className="text-muted">输入关键词开始搜索。</p>
       ) : isError ? (
-        <p className="text-muted">搜索失败：{error instanceof Error ? error.message : '请稍后重试'}</p>
+        <p className="text-muted">搜索出错了：{error?.message ?? '未知错误'}</p>
       ) : isFetching ? (
         <p className="text-muted">搜索中…</p>
       ) : (data?.items.length ?? 0) === 0 ? (
@@ -51,19 +55,10 @@ export function Search() {
         <>
           <p className="mb-6 text-sm text-muted">
             找到 {data!.total} 篇与 “{term}” 相关的文章
-            {data!.source === 'like' && '（兼容模式）'}
           </p>
           <div className="grid gap-6 md:grid-cols-3">
             {data!.items.map((p) => (
-              <div key={p.id} className="flex flex-col gap-2">
-                <ArticleCard post={p} />
-                {p.snippet && (
-                  <p
-                    className="line-clamp-3 px-1 text-xs text-muted"
-                    dangerouslySetInnerHTML={{ __html: p.snippet }}
-                  />
-                )}
-              </div>
+              <ArticleCard key={p.id} post={p} />
             ))}
           </div>
         </>

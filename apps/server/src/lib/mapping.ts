@@ -20,6 +20,8 @@ export interface PostRow {
   seoDescription: string | null;
   canonicalUrl: string | null;
   createdAt: string;
+  /** 搜索命中片段（含控制字符标记），由搜索服务注入，非搜索场景为空。 */
+  snippet?: string | null;
   author: {
     id: string;
     username: string;
@@ -53,6 +55,7 @@ export function toSummary(row: PostRow): PostSummary {
     likeCount: row.likeCount,
     publishedAt: row.publishedAt ?? null,
     updatedAt: row.updatedAt,
+    snippet: row.snippet ?? null,
     author,
     categories,
     tags,

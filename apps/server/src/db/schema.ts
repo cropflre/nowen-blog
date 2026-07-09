@@ -76,6 +76,33 @@ export const assets = sqliteTable('assets', {
   updatedAt: text('updated_at').notNull(),
 });
 
+export const comments = sqliteTable('comments', {
+  id: text('id').primaryKey(),
+  postId: text('post_id').notNull().references(() => posts.id, { onDelete: 'cascade' }),
+  parentId: text('parent_id'), // 预留回复功能，第一版不使用
+
+  // 游客信息
+  authorName: text('author_name').notNull(),
+  authorEmail: text('author_email').notNull(),
+  authorWebsite: text('author_website'),
+
+  // 评论内容
+  content: text('content').notNull(),
+
+  // 审核状态
+  status: text('status').notNull().default('pending'), // pending/approved/rejected/spam
+
+  // 安全审计
+  ipHash: text('ip_hash'),
+  userAgent: text('user_agent'),
+
+  // 时间戳
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+  approvedAt: text('approved_at'),
+  deletedAt: text('deleted_at'), // 软删除
+});
+
 export const postCategories = sqliteTable(
   'post_categories',
   {

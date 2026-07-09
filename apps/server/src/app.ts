@@ -11,6 +11,7 @@ import { adminPostsRoutes } from './modules/admin-posts/admin-posts.routes';
 import { adminCategoriesRoutes, adminTagsRoutes } from './modules/admin-taxonomies/admin-taxonomies.routes';
 import { rssRoutes, sitemapRoutes, robotsRoutes } from './modules/seo/seo.routes';
 import { adminAssetsRoutes, uploadsRoutes } from './modules/assets/assets.routes';
+import { commentsRoutes, adminCommentsRoutes } from './modules/comments/comments.routes';
 
 export const app = new Hono();
 
@@ -40,6 +41,12 @@ app.route('/api/admin', adminRoutes);
 
 // 媒体库管理接口
 app.route('/api/admin/assets', adminAssetsRoutes);
+
+// 评论公开接口（嵌套在 /api/posts/:slug/comments）
+app.route('/api/posts', commentsRoutes);
+
+// 评论后台管理接口
+app.route('/api/admin/comments', adminCommentsRoutes);
 
 // 开发环境（及生产静态层备选）暴露上传文件 /uploads
 app.route('/uploads', uploadsRoutes);

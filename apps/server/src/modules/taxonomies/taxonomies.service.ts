@@ -70,7 +70,7 @@ export interface ArchiveYear {
 
 export async function getArchive(): Promise<ArchiveYear[]> {
   const rows = await db.query.posts.findMany({
-    where: eq(posts.status, 'published'),
+    where: and(eq(posts.status, 'published'), eq(posts.visibility, 'public')),
     orderBy: [desc(posts.publishedAt)],
     with: {
       author: true,

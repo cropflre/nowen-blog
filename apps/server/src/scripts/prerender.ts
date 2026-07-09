@@ -362,11 +362,28 @@ function buildHead(meta: PageMeta): string {
   return parts.join('\n    ');
 }
 
+// 幂等保障：模板可能已被上一次 prerender 污染（dist/index.html 会被自身覆盖），
+// 注入前先清除既有 SEO meta，避免「单独重跑 prerender」时 meta 不断叠加。
+function stripSeoMeta(html: string): string {
+  return html
+    .replace(/<meta\s+name="description"[^>]*>/gi, '')
+    .replace(/<link\s+rel="canonical"[^>]*>/gi, '')
+    .replace(/<meta\s+property="og:[^"]*"[^>]*>/gi, '')
+    .replace(/<meta\s+name="twitter:[^"]*"[^>]*>/gi, '')
+    .replace(/<meta\s+name="theme-color"[^>]*>/gi, '')
+    .replace(/<script\s+type="application\/ld\+json">[\s\S]*?<\/script>/gi, '');
+}
+
 function buildPage(template: string, meta: PageMeta, bodyHtml: string): string {
-  let html = template;
+  let html = stripSeoMeta(template);
   html = html.replace(/<title>[\s\S]*?<\/title>/, `<title>${escapeHtml(meta.title)}</title>`);
   html = html.replace('</head>', `    ${buildHead(meta)}\n  </head>`);
-  html = html.replace('<div id="root"></div>', `<div id="root">${bodyHtml}</div>`);
+  // 用正则匹配 id="root" 容器（无论其是否为空），避免模板被污染后精确匹配失败、
+  // 导致正文未注入而残留上一轮的首页内容（幂等性）。
+  html = html.replace(
+    /<div id="root">[\s\S]*?<\/div>(?=\s*<\/body>)/,
+    `<div id="root">${bodyHtml}</div>`,
+  );
   return html;
 }
 
@@ -405,8 +422,14 @@ async function main(): Promise<void> {
   }
   const template = readFileSync(templatePath, 'utf-8');
 
-  // 保留原始 SPA 壳作为静态层回退（/admin、客户端路由等）。
-  writeFileSync(join(distDir, '200.html'), template);
+  // 保留 SPA 壳作为静态层回退（/admin、客户端路由等）。
+  // 强制 strip 掉 SEO meta 并清空 root，确保「单独重跑 prerender」时也幂等——
+  // 否则会继承被首页污染过的 dist/index.html，把回退壳变成带内容的首页。
+  const spaShell = stripSeoMeta(template).replace(
+    /<div id="root">[\s\S]*?<\/div>(?=\s*<\/body>)/,
+    '<div id="root"></div>',
+  );
+  writeFileSync(join(distDir, '200.html'), spaShell);
   console.log('[prerender] 已写入 SPA fallback: 200.html');
 
   const [posts, categories, tags, archive] = await Promise.all([

@@ -6,6 +6,7 @@
     "dev": "tsx watch src/main.ts",
     "start": "tsx src/main.ts",
     "seed": "tsx src/db/seed.ts",
+    "prerender": "tsx src/scripts/prerender.ts",
     "typecheck": "tsc --noEmit",
     "build": "tsc -p tsconfig.json"
   },
@@ -23,6 +24,14 @@
     "@types/better-sqlite3": "^7.6.12",
     "@types/node": "^22.9.0",
     "tsx": "^4.19.0",
-    "typescript": "^5.6.3"
+    "typescript": "^5.6.3",
+    "unified": "^11.0.5",
+    "remark-parse": "^11.0.0",
+    "remark-gfm": "^4.0.0",
+    "remark-rehype": "^11.1.1",
+    "rehype-sanitize": "^6.0.0",
+    "rehype-highlight": "^7.0.1",
+    "rehype-stringify": "^10.0.1",
+    "hast-util-sanitize": "^5.0.0"
   }
 }

@@ -84,6 +84,15 @@ export async function listPublishedForSitemap(): Promise<
     .orderBy(desc(posts.publishedAt));
 }
 
+/** 供预渲染使用：全部「已发布且公开」文章（含 relations），不限数量。与 RSS/Sitemap 同源过滤。 */
+export async function listPublishedForPrerender(): Promise<PostRow[]> {
+  return (await db.query.posts.findMany({
+    where: and(eq(posts.status, 'published'), eq(posts.visibility, 'public')),
+    orderBy: [desc(posts.isPinned), desc(posts.publishedAt)],
+    with: POST_RELATIONS,
+  })) as unknown as PostRow[];
+}
+
 async function postIdsByCategory(slug: string): Promise<string[]> {
   const rows = await db
     .select({ postId: postCategories.postId })

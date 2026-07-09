@@ -11,7 +11,8 @@
     "dev": "pnpm -r --parallel dev",
     "build": "pnpm -r build",
     "typecheck": "pnpm -r typecheck",
-    "seed": "pnpm --filter @blog/server seed"
+    "seed": "pnpm --filter @blog/server seed",
+    "prerender": "pnpm --filter @blog/server prerender"
   },
   "pnpm": {
     "onlyBuiltDependencies": ["better-sqlite3", "esbuild"]

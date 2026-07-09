@@ -10,6 +10,7 @@ import { adminRoutes } from './modules/auth/auth.routes';
 import { adminPostsRoutes } from './modules/admin-posts/admin-posts.routes';
 import { adminCategoriesRoutes, adminTagsRoutes } from './modules/admin-taxonomies/admin-taxonomies.routes';
 import { rssRoutes, sitemapRoutes, robotsRoutes } from './modules/seo/seo.routes';
+import { adminAssetsRoutes, uploadsRoutes } from './modules/assets/assets.routes';
 
 export const app = new Hono();
 
@@ -36,6 +37,12 @@ app.route('/api/admin/posts', adminPostsRoutes);
 app.route('/api/admin/categories', adminCategoriesRoutes);
 app.route('/api/admin/tags', adminTagsRoutes);
 app.route('/api/admin', adminRoutes);
+
+// 媒体库管理接口
+app.route('/api/admin/assets', adminAssetsRoutes);
+
+// 开发环境（及生产静态层备选）暴露上传文件 /uploads
+app.route('/uploads', uploadsRoutes);
 
 app.onError((err, c) => {
   console.error('[error]', err);

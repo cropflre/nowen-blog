@@ -61,6 +61,21 @@ export const tags = sqliteTable('tags', {
   createdAt: text('created_at').notNull(),
 });
 
+export const assets = sqliteTable('assets', {
+  id: text('id').primaryKey(),
+  filename: text('filename'),
+  storageKey: text('storage_key').notNull().unique(),
+  url: text('url').notNull(),
+  mimeType: text('mime_type').notNull(),
+  size: integer('size').notNull(),
+  width: integer('width'),
+  height: integer('height'),
+  alt: text('alt'),
+  contentHash: text('content_hash'),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
+
 export const postCategories = sqliteTable(
   'post_categories',
   {

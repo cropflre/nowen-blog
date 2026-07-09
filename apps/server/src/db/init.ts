@@ -59,6 +59,21 @@ CREATE TABLE IF NOT EXISTS tags (
   created_at TEXT NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS assets (
+  id TEXT PRIMARY KEY,
+  filename TEXT,
+  storage_key TEXT NOT NULL UNIQUE,
+  url TEXT NOT NULL,
+  mime_type TEXT NOT NULL,
+  size INTEGER NOT NULL,
+  width INTEGER,
+  height INTEGER,
+  alt TEXT,
+  content_hash TEXT,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS post_categories (
   post_id TEXT NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
   category_id TEXT NOT NULL REFERENCES categories(id) ON DELETE CASCADE,

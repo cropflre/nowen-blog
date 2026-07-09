@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../../lib/api';
 import { Markdown } from '../markdown/Markdown';
+import { MediaPicker } from './MediaPicker';
 import type { AdminPostInput, AdminPostView } from '../../types';
 
 type FormState = {
@@ -55,6 +56,10 @@ export function AdminPostEditor({ postId }: { postId?: string }) {
   const [saving, setSaving] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const prefilled = useRef(false);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const cursorPosRef = useRef<number | null>(null);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [pickerMode, setPickerMode] = useState<'cover' | 'insert'>('cover');
 
   const { data: existing, isLoading } = useQuery({
     queryKey: ['admin', 'post', postId],
@@ -91,6 +96,58 @@ export function AdminPostEditor({ postId }: { postId?: string }) {
       ...f,
       [key]: checked ? [...f[key], id] : f[key].filter((x) => x !== id),
     }));
+
+  const handlePickCover = () => {
+    setPickerMode('cover');
+    setPickerOpen(true);
+  };
+
+  const handleInsertImage = () => {
+    setPickerMode('insert');
+    // 记录当前光标位置
+    if (textareaRef.current && document.activeElement === textareaRef.current) {
+      cursorPosRef.current = textareaRef.current.selectionStart;
+    } else {
+      cursorPosRef.current = null;
+    }
+    setPickerOpen(true);
+  };
+
+  const handlePickerSelect = (asset: { url: string; alt: string | null; filename: string | null }) => {
+    if (pickerMode === 'cover') {
+      setForm((f) => ({ ...f, coverUrl: asset.url }));
+    } else {
+      const alt = asset.alt || asset.filename || '';
+      const markdown = `![${alt}](${asset.url})`;
+      const textarea = textareaRef.current;
+      const cursorPos = cursorPosRef.current;
+
+      // 判断是否有有效的光标位置
+      if (textarea && cursorPos !== null && cursorPos >= 0 && cursorPos <= form.contentMd.length) {
+        // 在记录的光标位置插入
+        const newContent = form.contentMd.substring(0, cursorPos) + markdown + form.contentMd.substring(cursorPos);
+        setForm((f) => ({ ...f, contentMd: newContent }));
+        // 恢复光标位置到插入的图片后面
+        setTimeout(() => {
+          const newPos = cursorPos + markdown.length;
+          textarea.selectionStart = textarea.selectionEnd = newPos;
+          textarea.focus();
+        }, 0);
+      } else {
+        // 无有效光标位置，追加到末尾
+        const separator = form.contentMd && !form.contentMd.endsWith('\n') ? '\n' : '';
+        setForm((f) => ({ ...f, contentMd: f.contentMd + separator + markdown }));
+        // 如果有 textarea，将光标移到末尾
+        if (textarea) {
+          setTimeout(() => {
+            const newPos = form.contentMd.length + separator.length + markdown.length;
+            textarea.selectionStart = textarea.selectionEnd = newPos;
+            textarea.focus();
+          }, 0);
+        }
+      }
+    }
+  };
 
   const save = async (status: 'draft' | 'published') => {
     setError(null);
@@ -181,23 +238,60 @@ export function AdminPostEditor({ postId }: { postId?: string }) {
           </div>
           <div>
             <label className={labelCls}>封面图 URL</label>
-            <input
-              className={fieldCls}
-              value={form.coverUrl}
-              onChange={(e) => set('coverUrl', e.target.value)}
-              placeholder="https://…"
-            />
+            <div className="flex gap-2">
+              <input
+                className={`flex-1 rounded-lg border border-line bg-bg px-3 py-2 text-fg outline-none focus:border-brand/60 ${form.coverUrl ? 'pr-2' : ''}`}
+                value={form.coverUrl}
+                onChange={(e) => set('coverUrl', e.target.value)}
+                placeholder="https://…"
+              />
+              <button
+                type="button"
+                onClick={handlePickCover}
+                className="shrink-0 rounded-lg border border-line px-3 py-2 text-sm transition hover:border-brand/60"
+              >
+                选择
+              </button>
+              {form.coverUrl && (
+                <button
+                  type="button"
+                  onClick={() => set('coverUrl', '')}
+                  className="shrink-0 rounded-lg border border-line px-3 py-2 text-sm text-red-400 transition hover:border-red-500/60"
+                >
+                  清空
+                </button>
+              )}
+            </div>
+            {form.coverUrl && (
+              <div className="mt-2">
+                <img
+                  src={form.coverUrl}
+                  alt="封面预览"
+                  className="h-32 rounded-lg border border-line object-cover"
+                  onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                />
+              </div>
+            )}
           </div>
           <div>
             <div className="mb-1 flex items-center justify-between">
               <label className={labelCls}>正文 (Markdown) *</label>
-              <button
-                type="button"
-                onClick={() => setPreview((p) => !p)}
-                className="text-xs text-brand hover:underline"
-              >
-                {preview ? '编辑' : '预览'}
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleInsertImage}
+                  className="text-xs text-brand hover:underline"
+                >
+                  插入图片
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPreview((p) => !p)}
+                  className="text-xs text-brand hover:underline"
+                >
+                  {preview ? '编辑' : '预览'}
+                </button>
+              </div>
             </div>
             {preview ? (
               <div className="min-h-[240px] rounded-lg border border-line bg-surface p-4">
@@ -205,6 +299,7 @@ export function AdminPostEditor({ postId }: { postId?: string }) {
               </div>
             ) : (
               <textarea
+                ref={textareaRef}
                 className={fieldCls}
                 rows={14}
                 value={form.contentMd}
@@ -308,6 +403,12 @@ export function AdminPostEditor({ postId }: { postId?: string }) {
           {publishing ? '发布中…' : '发布'}
         </button>
       </div>
+
+      <MediaPicker
+        open={pickerOpen}
+        onClose={() => setPickerOpen(false)}
+        onSelect={handlePickerSelect}
+      />
     </div>
   );
 }

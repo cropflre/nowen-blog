@@ -181,6 +181,83 @@ export const postAutosaves = sqliteTable('post_autosaves', {
   updatedAt: text('updated_at').notNull(),
 });
 
+/** 作品集项目，既支持手动维护，也支持 GitHub 元数据同步。 */
+export const projects = sqliteTable(
+  'projects',
+  {
+    id: text('id').primaryKey(),
+    name: text('name').notNull(),
+    slug: text('slug').notNull().unique(),
+    description: text('description'),
+    coverUrl: text('cover_url'),
+    repositoryUrl: text('repository_url'),
+    homepageUrl: text('homepage_url'),
+    language: text('language'),
+    topicsJson: text('topics_json').notNull().default('[]'),
+    stars: integer('stars').notNull().default(0),
+    forks: integer('forks').notNull().default(0),
+    source: text('source').notNull().default('manual'),
+    githubFullName: text('github_full_name'),
+    githubPushedAt: text('github_pushed_at'),
+    syncedAt: text('synced_at'),
+    isFeatured: integer('is_featured', { mode: 'boolean' }).notNull().default(false),
+    isPublished: integer('is_published', { mode: 'boolean' }).notNull().default(true),
+    sortOrder: integer('sort_order').notNull().default(0),
+    createdAt: text('created_at').notNull(),
+    updatedAt: text('updated_at').notNull(),
+  },
+  (table) => ({
+    githubFullNameUnique: uniqueIndex('uq_projects_github_full_name').on(table.githubFullName),
+    publicSortIdx: index('idx_projects_public_sort').on(
+      table.isPublished,
+      table.isFeatured,
+      table.sortOrder,
+      table.updatedAt,
+    ),
+  }),
+);
+
+/** 邮件订阅者。退订令牌由邮箱和服务端密钥签名生成，不保存明文令牌。 */
+export const newsletterSubscribers = sqliteTable(
+  'newsletter_subscribers',
+  {
+    id: text('id').primaryKey(),
+    email: text('email').notNull().unique(),
+    status: text('status').notNull().default('active'),
+    source: text('source').notNull().default('homepage'),
+    subscribedAt: text('subscribed_at').notNull(),
+    unsubscribedAt: text('unsubscribed_at'),
+    createdAt: text('created_at').notNull(),
+    updatedAt: text('updated_at').notNull(),
+  },
+  (table) => ({
+    statusCreatedIdx: index('idx_newsletter_subscribers_status_created').on(
+      table.status,
+      table.createdAt,
+    ),
+  }),
+);
+
+/** 已发送的文章订阅通知，用于审计发送数量和失败情况。 */
+export const newsletterCampaigns = sqliteTable(
+  'newsletter_campaigns',
+  {
+    id: text('id').primaryKey(),
+    postId: text('post_id').references(() => posts.id, { onDelete: 'set null' }),
+    subject: text('subject').notNull(),
+    recipientCount: integer('recipient_count').notNull().default(0),
+    sentCount: integer('sent_count').notNull().default(0),
+    failedCount: integer('failed_count').notNull().default(0),
+    status: text('status').notNull().default('pending'),
+    providerMessage: text('provider_message'),
+    createdAt: text('created_at').notNull(),
+    sentAt: text('sent_at'),
+  },
+  (table) => ({
+    createdAtIdx: index('idx_newsletter_campaigns_created').on(table.createdAt),
+  }),
+);
+
 export const postCategories = sqliteTable(
   'post_categories',
   {
@@ -216,10 +293,15 @@ export const postsRelations = relations(posts, ({ one, many }) => ({
   categoryLinks: many(postCategories),
   tagLinks: many(postTags),
   views: many(postViews),
+  newsletterCampaigns: many(newsletterCampaigns),
 }));
 
 export const postViewsRelations = relations(postViews, ({ one }) => ({
   post: one(posts, { fields: [postViews.postId], references: [posts.id] }),
+}));
+
+export const newsletterCampaignsRelations = relations(newsletterCampaigns, ({ one }) => ({
+  post: one(posts, { fields: [newsletterCampaigns.postId], references: [posts.id] }),
 }));
 
 export const categoriesRelations = relations(categories, ({ many }) => ({

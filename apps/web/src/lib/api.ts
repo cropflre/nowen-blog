@@ -19,6 +19,10 @@ import type {
   AdminTagInput,
   AssetView,
   CommentView,
+  CommentSubmitResult,
+  AdminCommentView,
+  AdminListCommentsParams,
+  CommentStatus,
 } from '../types';
 
 const BASE = '/api';
@@ -175,7 +179,7 @@ export const api = {
   deleteAsset: (id: string) =>
     request<{ ok: boolean }>(`/admin/assets/${id}`, { method: 'DELETE' }),
 
-  // 评论功能
+  // 前台评论
   getPostComments: (slug: string, page: number = 1) => {
     const qs = new URLSearchParams();
     qs.set('page', String(page));
@@ -186,9 +190,57 @@ export const api = {
       pageSize: number;
     }>(`/posts/${slug}/comments?${qs.toString()}`);
   },
-  submitComment: (slug: string, data: { authorName: string; authorEmail: string; content: string; authorWebsite?: string }) =>
-    request<{ id: string; status: string; message: string }>(`/posts/${slug}/comments`, {
+  submitComment: (
+    slug: string,
+    data: {
+      authorName: string;
+      authorEmail: string;
+      content: string;
+      authorWebsite?: string;
+    },
+  ) =>
+    request<CommentSubmitResult>(`/posts/${slug}/comments`, {
       method: 'POST',
       body: JSON.stringify(data),
     }),
+
+  // 后台评论管理
+  listAdminComments: (params: AdminListCommentsParams = {}) => {
+    const qs = new URLSearchParams();
+    if (params.page) qs.set('page', String(params.page));
+    if (params.pageSize) qs.set('pageSize', String(params.pageSize));
+    if (params.status && params.status !== 'all') qs.set('status', params.status);
+    if (params.postId) qs.set('postId', params.postId);
+    if (params.postSlug) qs.set('postSlug', params.postSlug);
+    const q = qs.toString();
+    return request<{
+      items: AdminCommentView[];
+      total: number;
+      page: number;
+      pageSize: number;
+    }>(`/admin/comments${q ? `?${q}` : ''}`);
+  },
+  getAdminComment: (id: string) => request<AdminCommentView>(`/admin/comments/${id}`),
+  updateAdminComment: (
+    id: string,
+    payload: Partial<{
+      authorName: string;
+      authorEmail: string;
+      authorWebsite: string;
+      content: string;
+      status: CommentStatus;
+    }>,
+  ) =>
+    request<AdminCommentView>(`/admin/comments/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    }),
+  approveAdminComment: (id: string) =>
+    request<AdminCommentView>(`/admin/comments/${id}/approve`, { method: 'POST' }),
+  rejectAdminComment: (id: string) =>
+    request<AdminCommentView>(`/admin/comments/${id}/reject`, { method: 'POST' }),
+  markAdminCommentSpam: (id: string) =>
+    request<AdminCommentView>(`/admin/comments/${id}/spam`, { method: 'POST' }),
+  deleteAdminComment: (id: string) =>
+    request<{ ok: boolean; message: string }>(`/admin/comments/${id}`, { method: 'DELETE' }),
 };

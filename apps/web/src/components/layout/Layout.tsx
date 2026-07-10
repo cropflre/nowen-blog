@@ -11,6 +11,7 @@ export function Layout() {
   useEffect(() => {
     if (!settings) return;
 
+    document.documentElement.style.setProperty('--color-primary', settings.themeColor);
     document.documentElement.style.setProperty('--brand', settings.themeColor);
 
     let themeMeta = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');

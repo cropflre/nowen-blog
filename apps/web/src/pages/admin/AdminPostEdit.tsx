@@ -3,5 +3,5 @@ import { AdminPostEditor } from '../../components/admin/AdminPostEditor';
 
 export function AdminPostEdit() {
   const { id } = useParams();
-  return <AdminPostEditor postId={id} />;
+  return <AdminPostEditor key={id} postId={id} />;
 }

@@ -26,7 +26,7 @@ export function ThemeToggle({
       )}
     >
       {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-      {showLabel && <span>{isDark ? '日间模式' : '夜间模式'}</span>}
+      {showLabel && <span className="hidden sm:inline">{isDark ? '日间模式' : '夜间模式'}</span>}
     </button>
   );
 }

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Link2, Share2, Check, ChevronLeft, ChevronRight } from 'lucide-react';
 import type { PostContext, PostDetail } from '../../types';
 
@@ -20,21 +21,26 @@ async function copyText(value: string): Promise<void> {
 
 export function PostFooter({ post, context }: { post: PostDetail; context?: PostContext }) {
   const [copied, setCopied] = useState(false);
+  const canNativeShare = typeof navigator !== 'undefined' && typeof navigator.share === 'function';
   const url = typeof window === 'undefined' ? `/posts/${post.slug}` : window.location.href.split('#')[0]!;
   const shareText = post.summary || post.title;
 
+  const showCopied = () => {
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 1800);
+  };
+
   const share = async () => {
-    if (navigator.share) {
+    if (canNativeShare) {
       try {
         await navigator.share({ title: post.title, text: shareText, url });
         return;
       } catch (error) {
-        if (error instanceof DOMException && error.name === 'AbortError') return;
+        if (typeof DOMException !== 'undefined' && error instanceof DOMException && error.name === 'AbortError') return;
       }
     }
     await copyText(url);
-    setCopied(true);
-    window.setTimeout(() => setCopied(false), 1800);
+    showCopied();
   };
 
   const encodedUrl = encodeURIComponent(url);
@@ -54,14 +60,11 @@ export function PostFooter({ post, context }: { post: PostDetail; context?: Post
             className="inline-flex items-center gap-2 rounded-lg bg-brand px-3 py-2 text-sm font-medium text-white transition hover:opacity-90"
           >
             <Share2 className="h-4 w-4" />
-            {navigator.share ? '分享' : copied ? '已复制' : '复制链接'}
+            {canNativeShare ? '分享' : copied ? '已复制' : '复制链接'}
           </button>
           <button
             type="button"
-            onClick={() => void copyText(url).then(() => {
-              setCopied(true);
-              window.setTimeout(() => setCopied(false), 1800);
-            })}
+            onClick={() => void copyText(url).then(showCopied)}
             className="inline-flex items-center gap-2 rounded-lg border border-line px-3 py-2 text-sm text-muted transition hover:border-brand/60 hover:text-fg"
           >
             {copied ? <Check className="h-4 w-4 text-emerald-500" /> : <Link2 className="h-4 w-4" />}
@@ -89,22 +92,22 @@ export function PostFooter({ post, context }: { post: PostDetail; context?: Post
       {(context?.previous || context?.next) && (
         <nav aria-label="上一篇和下一篇" className="grid gap-3 sm:grid-cols-2">
           {context.previous ? (
-            <a
-              href={`/posts/${context.previous.slug}`}
+            <Link
+              to={`/posts/${context.previous.slug}`}
               className="group rounded-card border border-line bg-surface p-4 transition hover:border-brand/60"
             >
               <span className="flex items-center gap-1 text-xs text-muted"><ChevronLeft className="h-3.5 w-3.5" />上一篇</span>
               <span className="mt-2 block font-medium text-fg transition group-hover:text-brand">{context.previous.title}</span>
-            </a>
+            </Link>
           ) : <span />}
           {context.next && (
-            <a
-              href={`/posts/${context.next.slug}`}
+            <Link
+              to={`/posts/${context.next.slug}`}
               className="group rounded-card border border-line bg-surface p-4 text-right transition hover:border-brand/60"
             >
               <span className="flex items-center justify-end gap-1 text-xs text-muted">下一篇<ChevronRight className="h-3.5 w-3.5" /></span>
               <span className="mt-2 block font-medium text-fg transition group-hover:text-brand">{context.next.title}</span>
-            </a>
+            </Link>
           )}
         </nav>
       )}

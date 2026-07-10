@@ -13,11 +13,14 @@ import {
   RotateCcw,
   Save,
   Send,
+  Sparkles,
   Star,
 } from 'lucide-react';
 import { api } from '../../lib/api';
 import { adminPostWorkflowApi } from '../../lib/adminPostWorkflowApi';
+import type { AiGeneratedFields } from '../../lib/aiApi';
 import { Markdown } from '../markdown/Markdown';
+import { AIWritingAssistant } from './AIWritingAssistant';
 import { MediaPicker } from './MediaPicker';
 import type {
   AdminPostInput,
@@ -174,6 +177,10 @@ function formatTime(value: string): string {
   }).format(date);
 }
 
+function clampSelection(value: number, contentLength: number): number {
+  return Math.max(0, Math.min(contentLength, value));
+}
+
 export function AdminPostEditor({ postId }: { postId?: string }) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -185,13 +192,15 @@ export function AdminPostEditor({ postId }: { postId?: string }) {
   const [autosaveState, setAutosaveState] = useState('');
   const [pendingAutosave, setPendingAutosave] = useState<Partial<AdminPostInput> | null>(null);
   const [restoringVersionId, setRestoringVersionId] = useState<string | null>(null);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [pickerMode, setPickerMode] = useState<'cover' | 'insert'>('cover');
+  const [aiOpen, setAiOpen] = useState(false);
+  const [aiSelection, setAiSelection] = useState({ start: 0, end: 0 });
   const prefilled = useRef(false);
   const autosavePrompted = useRef(false);
   const lastSavedJson = useRef('');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const cursorPosRef = useRef<number | null>(null);
-  const [pickerOpen, setPickerOpen] = useState(false);
-  const [pickerMode, setPickerMode] = useState<'cover' | 'insert'>('cover');
 
   const postQuery = useQuery({
     queryKey: ['admin', 'post', postId],
@@ -280,6 +289,16 @@ export function AdminPostEditor({ postId }: { postId?: string }) {
       [key]: checked ? [...current[key], id] : current[key].filter((item) => item !== id),
     }));
 
+  const focusTextareaAt = (position: number) => {
+    window.setTimeout(() => {
+      const textarea = textareaRef.current;
+      if (!textarea) return;
+      const nextPosition = clampSelection(position, textarea.value.length);
+      textarea.selectionStart = textarea.selectionEnd = nextPosition;
+      textarea.focus();
+    }, 0);
+  };
+
   const handlePickerSelect = (asset: { url: string; alt: string | null; filename: string | null }) => {
     if (pickerMode === 'cover') {
       set('coverUrl', asset.url);
@@ -290,16 +309,59 @@ export function AdminPostEditor({ postId }: { postId?: string }) {
     if (cursor !== null && cursor >= 0 && cursor <= form.contentMd.length) {
       const next = `${form.contentMd.slice(0, cursor)}${markdown}${form.contentMd.slice(cursor)}`;
       set('contentMd', next);
-      window.setTimeout(() => {
-        if (!textareaRef.current) return;
-        const nextPosition = cursor + markdown.length;
-        textareaRef.current.selectionStart = textareaRef.current.selectionEnd = nextPosition;
-        textareaRef.current.focus();
-      }, 0);
+      focusTextareaAt(cursor + markdown.length);
       return;
     }
     const separator = form.contentMd && !form.contentMd.endsWith('\n') ? '\n' : '';
     set('contentMd', `${form.contentMd}${separator}${markdown}`);
+  };
+
+  const openAiAssistant = () => {
+    const textarea = textareaRef.current;
+    const start = textarea?.selectionStart ?? form.contentMd.length;
+    const end = textarea?.selectionEnd ?? start;
+    setAiSelection({ start, end });
+    setAiOpen(true);
+    setError(null);
+    setSuccess(null);
+  };
+
+  const applyAiFields = (fields: AiGeneratedFields) => {
+    setForm((current) => ({
+      ...current,
+      title: fields.title ?? current.title,
+      summary: fields.summary ?? current.summary,
+      seoTitle: fields.seoTitle ?? current.seoTitle,
+      seoDescription: fields.seoDescription ?? current.seoDescription,
+    }));
+    setSuccess('AI 结果已应用到文章字段，保存后生效。');
+    setAutosaveState('有未保存更改');
+  };
+
+  const replaceAiText = (text: string) => {
+    const start = clampSelection(aiSelection.start, form.contentMd.length);
+    const end = clampSelection(Math.max(start, aiSelection.end), form.contentMd.length);
+    const hasSelection = end > start;
+    const next = hasSelection
+      ? `${form.contentMd.slice(0, start)}${text}${form.contentMd.slice(end)}`
+      : text;
+    set('contentMd', next);
+    setSuccess(hasSelection ? 'AI 结果已替换选中内容，保存后生效。' : 'AI 结果已替换正文，保存后生效。');
+    setAutosaveState('有未保存更改');
+    focusTextareaAt(hasSelection ? start + text.length : text.length);
+  };
+
+  const insertAiText = (text: string) => {
+    const position = clampSelection(aiSelection.end, form.contentMd.length);
+    const before = form.contentMd.slice(0, position);
+    const after = form.contentMd.slice(position);
+    const prefix = before && !before.endsWith('\n') ? '\n\n' : '';
+    const suffix = after && !after.startsWith('\n') ? '\n\n' : '';
+    const insertion = `${prefix}${text}${suffix}`;
+    set('contentMd', `${before}${insertion}${after}`);
+    setSuccess('AI 结果已插入正文，保存后生效。');
+    setAutosaveState('有未保存更改');
+    focusTextareaAt(position + insertion.length);
   };
 
   const validate = (status: PostStatus): string | null => {
@@ -436,11 +498,7 @@ export function AdminPostEditor({ postId }: { postId?: string }) {
             <Clock3 className="h-3.5 w-3.5" />{autosaveState || '自动保存已启用'}
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => navigate('/admin/posts')}
-          className="rounded-lg border border-line px-3 py-1.5 text-sm transition hover:border-brand/60"
-        >
+        <button type="button" onClick={() => navigate('/admin/posts')} className="rounded-lg border border-line px-3 py-1.5 text-sm transition hover:border-brand/60">
           返回列表
         </button>
       </header>
@@ -455,28 +513,15 @@ export function AdminPostEditor({ postId }: { postId?: string }) {
         </div>
       )}
 
-      {error && <div className="rounded-lg border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-400">{error}</div>}
-      {success && (
-        <div className="flex items-center gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-400">
-          <CheckCircle2 className="h-4 w-4" />{success}
-        </div>
-      )}
+      {error && <div role="alert" className="rounded-lg border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-400">{error}</div>}
+      {success && <div className="flex items-center gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-400"><CheckCircle2 className="h-4 w-4" />{success}</div>}
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.45fr)_minmax(340px,0.75fr)]">
         <div className="space-y-5">
           <section className="space-y-4 rounded-card border border-line bg-surface p-5 lg:p-6">
-            <div>
-              <label className={labelClass}>标题 *</label>
-              <input className={fieldClass} value={form.title} onChange={(event) => set('title', event.target.value)} placeholder="文章标题" />
-            </div>
-            <div>
-              <label className={labelClass}>Slug</label>
-              <input className={fieldClass} value={form.slug} onChange={(event) => set('slug', event.target.value)} placeholder="留空则根据标题自动生成" />
-            </div>
-            <div>
-              <label className={labelClass}>摘要</label>
-              <textarea className={fieldClass} rows={3} value={form.summary} onChange={(event) => set('summary', event.target.value)} placeholder="用于文章列表和分享卡片" />
-            </div>
+            <div><label className={labelClass}>标题 *</label><input className={fieldClass} value={form.title} onChange={(event) => set('title', event.target.value)} placeholder="文章标题" /></div>
+            <div><label className={labelClass}>Slug</label><input className={fieldClass} value={form.slug} onChange={(event) => set('slug', event.target.value)} placeholder="留空则根据标题自动生成" /></div>
+            <div><label className={labelClass}>摘要</label><textarea className={fieldClass} rows={3} value={form.summary} onChange={(event) => set('summary', event.target.value)} placeholder="用于文章列表和分享卡片" /></div>
             <div>
               <label className={labelClass}>封面图 URL</label>
               <div className="flex gap-2">
@@ -489,9 +534,10 @@ export function AdminPostEditor({ postId }: { postId?: string }) {
           </section>
 
           <section className="rounded-card border border-line bg-surface p-5 lg:p-6">
-            <div className="mb-2 flex items-center justify-between gap-3">
+            <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
               <label className={labelClass}>正文（Markdown）*</label>
-              <div className="flex gap-3 text-xs">
+              <div className="flex flex-wrap items-center gap-3 text-xs">
+                <button type="button" onClick={openAiAssistant} className="nowen-focus inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-violet-500/30 bg-gradient-to-r from-violet-500/10 to-cyan-500/10 px-3 font-medium text-violet-500 transition hover:border-violet-500/50"><Sparkles className="h-3.5 w-3.5" />AI 写作</button>
                 <button type="button" onClick={() => { cursorPosRef.current = textareaRef.current?.selectionStart ?? null; setPickerMode('insert'); setPickerOpen(true); }} className="text-brand hover:underline">插入图片</button>
                 <button type="button" onClick={() => setPreview((current) => !current)} className="text-brand hover:underline">{preview ? '返回编辑' : '预览文章'}</button>
               </div>
@@ -508,54 +554,18 @@ export function AdminPostEditor({ postId }: { postId?: string }) {
           <section className="rounded-card border border-line bg-surface p-5">
             <h2 className="font-semibold">发布设置</h2>
             <div className="mt-4 space-y-4">
-              <div>
-                <label className={labelClass}>可见性</label>
-                <select className={fieldClass} value={form.visibility} onChange={(event) => set('visibility', event.target.value as PostVisibility)}>
-                  <option value="public">公开：所有读者可访问</option>
-                  <option value="private">私密：仅后台可见</option>
-                </select>
-              </div>
-              <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-line p-3">
-                <input type="checkbox" className="mt-1" checked={form.isFeatured} onChange={(event) => set('isFeatured', event.target.checked)} />
-                <span><span className="flex items-center gap-1.5 text-sm font-medium"><Star className="h-4 w-4 text-amber-400" />精选文章</span><span className="mt-1 block text-xs text-muted">显示在首页精选区域</span></span>
-              </label>
-              <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-line p-3">
-                <input type="checkbox" className="mt-1" checked={form.isPinned} onChange={(event) => set('isPinned', event.target.checked)} />
-                <span><span className="flex items-center gap-1.5 text-sm font-medium"><Pin className="h-4 w-4 text-brand" />置顶文章</span><span className="mt-1 block text-xs text-muted">在文章列表中优先排序</span></span>
-              </label>
-              <div>
-                <label className={labelClass}>定时发布时间</label>
-                <input type="datetime-local" className={fieldClass} value={form.scheduledAt} onChange={(event) => set('scheduledAt', event.target.value)} />
-                <p className="mt-1 text-xs text-muted">按照浏览器本地时区填写，服务端保存为 UTC。</p>
-              </div>
+              <div><label className={labelClass}>可见性</label><select className={fieldClass} value={form.visibility} onChange={(event) => set('visibility', event.target.value as PostVisibility)}><option value="public">公开：所有读者可访问</option><option value="private">私密：仅后台可见</option></select></div>
+              <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-line p-3"><input type="checkbox" className="mt-1" checked={form.isFeatured} onChange={(event) => set('isFeatured', event.target.checked)} /><span><span className="flex items-center gap-1.5 text-sm font-medium"><Star className="h-4 w-4 text-amber-400" />精选文章</span><span className="mt-1 block text-xs text-muted">显示在首页精选区域</span></span></label>
+              <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-line p-3"><input type="checkbox" className="mt-1" checked={form.isPinned} onChange={(event) => set('isPinned', event.target.checked)} /><span><span className="flex items-center gap-1.5 text-sm font-medium"><Pin className="h-4 w-4 text-brand" />置顶文章</span><span className="mt-1 block text-xs text-muted">在文章列表中优先排序</span></span></label>
+              <div><label className={labelClass}>定时发布时间</label><input type="datetime-local" className={fieldClass} value={form.scheduledAt} onChange={(event) => set('scheduledAt', event.target.value)} /><p className="mt-1 text-xs text-muted">按照浏览器本地时区填写，服务端保存为 UTC。</p></div>
             </div>
           </section>
 
           <section className="rounded-card border border-line bg-surface p-5">
             <h2 className="font-semibold">分类与标签</h2>
             <div className="mt-4 space-y-4">
-              <div>
-                <label className={labelClass}>分类</label>
-                <div className="flex flex-wrap gap-2">
-                  {(categories?.items ?? []).map((category) => (
-                    <label key={category.id} className="flex items-center gap-1.5 rounded-lg border border-line px-2.5 py-1.5 text-xs">
-                      <input type="checkbox" checked={form.categoryIds.includes(category.id)} onChange={(event) => toggleTaxonomy('categoryIds', category.id, event.target.checked)} />{category.name}
-                    </label>
-                  ))}
-                  {(categories?.items.length ?? 0) === 0 && <span className="text-xs text-muted">暂无分类</span>}
-                </div>
-              </div>
-              <div>
-                <label className={labelClass}>标签</label>
-                <div className="flex flex-wrap gap-2">
-                  {(tags?.items ?? []).map((tag) => (
-                    <label key={tag.id} className="flex items-center gap-1.5 rounded-lg border border-line px-2.5 py-1.5 text-xs">
-                      <input type="checkbox" checked={form.tagIds.includes(tag.id)} onChange={(event) => toggleTaxonomy('tagIds', tag.id, event.target.checked)} />{tag.name}
-                    </label>
-                  ))}
-                  {(tags?.items.length ?? 0) === 0 && <span className="text-xs text-muted">暂无标签</span>}
-                </div>
-              </div>
+              <div><label className={labelClass}>分类</label><div className="flex flex-wrap gap-2">{(categories?.items ?? []).map((category) => <label key={category.id} className="flex items-center gap-1.5 rounded-lg border border-line px-2.5 py-1.5 text-xs"><input type="checkbox" checked={form.categoryIds.includes(category.id)} onChange={(event) => toggleTaxonomy('categoryIds', category.id, event.target.checked)} />{category.name}</label>)}{(categories?.items.length ?? 0) === 0 && <span className="text-xs text-muted">暂无分类</span>}</div></div>
+              <div><label className={labelClass}>标签</label><div className="flex flex-wrap gap-2">{(tags?.items ?? []).map((tag) => <label key={tag.id} className="flex items-center gap-1.5 rounded-lg border border-line px-2.5 py-1.5 text-xs"><input type="checkbox" checked={form.tagIds.includes(tag.id)} onChange={(event) => toggleTaxonomy('tagIds', tag.id, event.target.checked)} />{tag.name}</label>)}{(tags?.items.length ?? 0) === 0 && <span className="text-xs text-muted">暂无标签</span>}</div></div>
             </div>
           </section>
 
@@ -574,14 +584,7 @@ export function AdminPostEditor({ postId }: { postId?: string }) {
               <p className="mt-1 text-xs text-muted">手动保存、发布、归档和恢复会生成版本。</p>
               <div className="mt-4 max-h-80 space-y-2 overflow-y-auto pr-1">
                 {versionsQuery.isLoading ? <p className="text-xs text-muted">加载版本中…</p> : (versionsQuery.data?.items.length ?? 0) === 0 ? <p className="text-xs text-muted">暂无版本记录</p> : versionsQuery.data!.items.map((version) => (
-                  <div key={version.id} className="rounded-xl border border-line p-3">
-                    <div className="flex items-start justify-between gap-3">
-                      <div><p className="text-sm font-medium">V{version.version} · {VERSION_REASON[version.reason] ?? version.reason}</p><p className="mt-1 text-xs text-muted">{formatTime(version.createdAt)} · {version.createdByName ?? '系统'}</p></div>
-                      <button type="button" disabled={busy} onClick={() => void restoreVersion(version)} className="inline-flex items-center gap-1 rounded-lg border border-line px-2 py-1 text-xs transition hover:border-brand/60 disabled:opacity-40">
-                        {restoringVersionId === version.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RotateCcw className="h-3.5 w-3.5" />}恢复
-                      </button>
-                    </div>
-                  </div>
+                  <div key={version.id} className="rounded-xl border border-line p-3"><div className="flex items-start justify-between gap-3"><div><p className="text-sm font-medium">V{version.version} · {VERSION_REASON[version.reason] ?? version.reason}</p><p className="mt-1 text-xs text-muted">{formatTime(version.createdAt)} · {version.createdByName ?? '系统'}</p></div><button type="button" disabled={busy} onClick={() => void restoreVersion(version)} className="inline-flex items-center gap-1 rounded-lg border border-line px-2 py-1 text-xs transition hover:border-brand/60 disabled:opacity-40">{restoringVersionId === version.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RotateCcw className="h-3.5 w-3.5" />}恢复</button></div></div>
                 ))}
               </div>
             </section>
@@ -590,21 +593,27 @@ export function AdminPostEditor({ postId }: { postId?: string }) {
       </div>
 
       <footer className="sticky bottom-0 z-20 -mx-6 flex flex-wrap items-center gap-3 border-t border-line bg-bg/95 px-6 py-4 backdrop-blur lg:-mx-8 lg:px-8">
-        <button type="button" disabled={busy} onClick={() => void save(form.status)} className="inline-flex items-center gap-2 rounded-lg border border-line px-4 py-2 text-sm transition hover:border-brand/60 disabled:opacity-40">
-          {savingAction === form.status ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}保存更改
-        </button>
+        <button type="button" disabled={busy} onClick={() => void save(form.status)} className="inline-flex items-center gap-2 rounded-lg border border-line px-4 py-2 text-sm transition hover:border-brand/60 disabled:opacity-40">{savingAction === form.status ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}保存更改</button>
         <button type="button" disabled={busy} onClick={() => void save('draft')} className="rounded-lg border border-line px-4 py-2 text-sm transition hover:border-brand/60 disabled:opacity-40">存为草稿</button>
-        <button type="button" disabled={busy} onClick={() => void save('scheduled')} className="inline-flex items-center gap-2 rounded-lg border border-sky-500/40 px-4 py-2 text-sm text-sky-400 transition hover:bg-sky-500/10 disabled:opacity-40">
-          {savingAction === 'scheduled' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Clock3 className="h-4 w-4" />}定时发布
-        </button>
-        <button type="button" disabled={busy} onClick={() => void save('published')} className="inline-flex items-center gap-2 rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white transition hover:opacity-90 disabled:opacity-40">
-          {savingAction === 'published' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}立即发布
-        </button>
+        <button type="button" disabled={busy} onClick={() => void save('scheduled')} className="inline-flex items-center gap-2 rounded-lg border border-sky-500/40 px-4 py-2 text-sm text-sky-400 transition hover:bg-sky-500/10 disabled:opacity-40">{savingAction === 'scheduled' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Clock3 className="h-4 w-4" />}定时发布</button>
+        <button type="button" disabled={busy} onClick={() => void save('published')} className="inline-flex items-center gap-2 rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white transition hover:opacity-90 disabled:opacity-40">{savingAction === 'published' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}立即发布</button>
         {postId && form.status !== 'archived' && <button type="button" disabled={busy} onClick={() => void changeArchiveState(true)} className="ml-auto inline-flex items-center gap-2 rounded-lg border border-amber-500/40 px-4 py-2 text-sm text-amber-400 transition hover:bg-amber-500/10 disabled:opacity-40"><Archive className="h-4 w-4" />归档</button>}
         {postId && form.status === 'archived' && <button type="button" disabled={busy} onClick={() => void changeArchiveState(false)} className="ml-auto inline-flex items-center gap-2 rounded-lg border border-brand/50 px-4 py-2 text-sm text-brand disabled:opacity-40"><RotateCcw className="h-4 w-4" />恢复为草稿</button>}
       </footer>
 
       <MediaPicker open={pickerOpen} onClose={() => setPickerOpen(false)} onSelect={handlePickerSelect} />
+      <AIWritingAssistant
+        open={aiOpen}
+        title={form.title}
+        summary={form.summary}
+        contentMd={form.contentMd}
+        selectionStart={aiSelection.start}
+        selectionEnd={aiSelection.end}
+        onClose={() => setAiOpen(false)}
+        onApplyFields={applyAiFields}
+        onReplaceText={replaceAiText}
+        onInsertText={insertAiText}
+      />
     </div>
   );
 }

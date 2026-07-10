@@ -24,6 +24,7 @@ COPY . .
 FROM workspace AS web-build
 ENV NODE_ENV=production
 RUN pnpm --filter @blog/shared typecheck \
+  && pnpm --filter @blog/server typecheck \
   && pnpm --filter @blog/web typecheck \
   && pnpm --filter @blog/web exec vite build
 

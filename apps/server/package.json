@@ -6,7 +6,7 @@
     "dev": "tsx watch src/main.ts",
     "start": "tsx src/main.ts",
     "seed": "tsx src/db/seed.ts",
-    "prerender": "tsx src/scripts/prerender.ts",
+    "prerender": "tsx src/scripts/prerender.ts && tsx src/scripts/prerender-brand.ts",
     "db:migrate": "tsx src/scripts/migrate.ts",
     "typecheck": "tsc --noEmit",
     "build": "tsc -p tsconfig.json",

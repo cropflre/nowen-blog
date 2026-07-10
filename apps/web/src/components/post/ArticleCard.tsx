@@ -32,18 +32,18 @@ export function ArticleCard({
       )}
       <div className="p-5">
         <div className="mb-2 flex flex-wrap items-center gap-2 text-xs text-muted">
-          {post.categories.map((c) => (
+          {post.categories.map((category) => (
             <span
-              key={c.id}
+              key={category.id}
               className="rounded-full border border-line px-2 py-0.5"
-              style={{ color: c.color ?? undefined }}
+              style={{ color: category.color ?? undefined }}
             >
-              {c.name}
+              {category.name}
             </span>
           ))}
         </div>
         <h3 className="text-lg font-semibold text-fg transition group-hover:text-brand">
-          {post.title}
+          {post.titleHighlight ? <Highlight text={post.titleHighlight} /> : post.title}
         </h3>
         {post.snippet ? (
           <p className="mt-2 line-clamp-3 text-sm text-muted">

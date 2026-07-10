@@ -13,10 +13,16 @@ commentsRoutes.get('/:slug/comments', async (c) => {
   const slug = c.req.param('slug');
 
   // 解析查询参数
-  const query = commentListQuerySchema.parse({
+  const parsed = commentListQuerySchema.safeParse({
     page: c.req.query('page'),
     pageSize: c.req.query('pageSize'),
   });
+
+  if (!parsed.success) {
+    return c.json({ error: '参数错误', issues: parsed.error.flatten() }, 400);
+  }
+
+  const query = parsed.data;
 
   try {
     const result = await service.getPublicComments(slug, query.page, query.pageSize);
@@ -81,7 +87,7 @@ adminCommentsRoutes.use('*', authMiddleware);
 
 // GET /api/admin/comments - 评论列表（后台）
 adminCommentsRoutes.get('/', async (c) => {
-  const query = commentListQuerySchema.parse({
+  const parsed = commentListQuerySchema.safeParse({
     page: c.req.query('page'),
     pageSize: c.req.query('pageSize'),
     status: c.req.query('status'),
@@ -89,6 +95,11 @@ adminCommentsRoutes.get('/', async (c) => {
     postSlug: c.req.query('postSlug'),
   });
 
+  if (!parsed.success) {
+    return c.json({ error: '参数错误', issues: parsed.error.flatten() }, 400);
+  }
+
+  const query = parsed.data;
   const result = await service.getAdminComments(query);
   return c.json(result);
 });

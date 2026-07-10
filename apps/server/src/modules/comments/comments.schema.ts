@@ -14,7 +14,10 @@ export type CommentStatus = (typeof COMMENT_STATUS)[keyof typeof COMMENT_STATUS]
 export const commentCreateSchema = z.object({
   authorName: z.string().min(2).max(40).regex(/^[^<>'"]+$/, '昵称不能包含特殊字符'),
   authorEmail: z.string().email('邮箱格式不正确'),
-  authorWebsite: z.string().url('网站格式不正确').optional().or(z.literal('')),
+  authorWebsite: z.string().url('网站格式不正确').refine(
+    (url) => !url || url.startsWith('http://') || url.startsWith('https://'),
+    '网站地址必须以 http:// 或 https:// 开头'
+  ).optional().or(z.literal('')),
   content: z.string().min(10).max(2000, '评论内容需在 10-2000 字符之间'),
 });
 
@@ -24,7 +27,10 @@ export type CommentCreateInput = z.infer<typeof commentCreateSchema>;
 export const commentUpdateSchema = z.object({
   authorName: z.string().min(2).max(40).optional(),
   authorEmail: z.string().email().optional(),
-  authorWebsite: z.string().url().optional().or(z.literal('')),
+  authorWebsite: z.string().url().refine(
+    (url) => !url || url.startsWith('http://') || url.startsWith('https://'),
+    '网站地址必须以 http:// 或 https:// 开头'
+  ).optional().or(z.literal('')),
   content: z.string().min(10).max(2000).optional(),
   status: z.enum(['pending', 'approved', 'rejected', 'spam']).optional(),
 });

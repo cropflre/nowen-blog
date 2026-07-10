@@ -17,7 +17,7 @@ COPY apps/web/package.json apps/web/package.json
 COPY packages/shared/package.json packages/shared/package.json
 COPY packages/config/package.json packages/config/package.json
 
-RUN pnpm install --no-frozen-lockfile
+RUN pnpm install --frozen-lockfile
 
 COPY . .
 
@@ -34,9 +34,10 @@ ENV NODE_ENV=production
 ENV PORT=8787
 ENV DATABASE_PATH=/app/data/blog.sqlite
 ENV UPLOAD_DIR=/app/data/uploads
+ENV BACKUP_DIR=/app/backups
 
-RUN mkdir -p /app/data/uploads \
-  && chown -R node:node /app/data
+RUN mkdir -p /app/data/uploads /app/backups \
+  && chown -R node:node /app/data /app/backups
 
 USER node
 EXPOSE 8787

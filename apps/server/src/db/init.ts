@@ -2,6 +2,7 @@ import { sql } from 'drizzle-orm';
 import { db, sqlite } from './client';
 import { seedIfEmpty } from './seed';
 import { ensureSearchIndex } from '../modules/search/search.service';
+import { ensureSiteSettings } from '../modules/settings/settings.service';
 
 const CREATE_TABLES = `
 CREATE TABLE IF NOT EXISTS users (
@@ -13,6 +14,28 @@ CREATE TABLE IF NOT EXISTS users (
   avatar_url TEXT,
   bio TEXT,
   created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS site_settings (
+  id TEXT PRIMARY KEY,
+  site_title TEXT NOT NULL,
+  site_description TEXT NOT NULL,
+  slogan TEXT NOT NULL,
+  logo_url TEXT,
+  favicon_url TEXT,
+  author_name TEXT NOT NULL,
+  github_url TEXT,
+  twitter_url TEXT,
+  email TEXT,
+  rss_enabled INTEGER NOT NULL DEFAULT 1,
+  theme_color TEXT NOT NULL DEFAULT '#6366f1',
+  icp TEXT,
+  footer_text TEXT,
+  default_seo_title TEXT,
+  default_seo_description TEXT,
+  default_og_image TEXT,
+  comments_enabled INTEGER NOT NULL DEFAULT 1,
   updated_at TEXT NOT NULL
 );
 
@@ -123,9 +146,7 @@ CREATE INDEX IF NOT EXISTS idx_posts_status_published ON posts(status, published
 CREATE INDEX IF NOT EXISTS idx_posts_slug ON posts(slug);
 CREATE INDEX IF NOT EXISTS idx_posts_featured ON posts(is_featured);
 `;
-// 注意：posts.id 为 TEXT 主键，没有可用作 content_rowid 的整型列，
-// 因此不采用 external content 方案，而是独立存储索引内容。
-// id 列标记为 UNINDEXED（仅用于回查文章，不参与全文匹配）。
+
 const CREATE_FTS =
   "CREATE VIRTUAL TABLE IF NOT EXISTS posts_fts USING fts5(" +
   "  id UNINDEXED," +
@@ -141,10 +162,9 @@ export function initDb(): void {
   if (initialized) return;
   sqlite.exec(CREATE_TABLES);
   sqlite.exec(CREATE_FTS);
-  // 触发一次轻量查询，确保连接可用
   db.run(sql`SELECT 1`);
   seedIfEmpty();
-  // 兜底：索引为空时从存量已发布文章重建（避免存量数据搜索不到）
+  ensureSiteSettings();
   ensureSearchIndex();
   initialized = true;
 }

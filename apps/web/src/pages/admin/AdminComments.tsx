@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   CheckCircle2,
@@ -65,7 +65,7 @@ function ActionButton({
   onClick,
   tone = 'default',
 }: {
-  children: React.ReactNode;
+  children: ReactNode;
   disabled?: boolean;
   onClick: () => void;
   tone?: 'default' | 'success' | 'danger' | 'warning';
@@ -109,14 +109,20 @@ export function AdminComments() {
   const total = query.data?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
-  const runAction = async (comment: AdminCommentView, label: string, action: () => Promise<unknown>) => {
+  const runAction = async (
+    comment: AdminCommentView,
+    label: string,
+    action: () => Promise<unknown>,
+  ): Promise<boolean> => {
     setBusyId(comment.id);
     setError(null);
     try {
       await action();
       await queryClient.invalidateQueries({ queryKey: ['admin', 'comments'] });
+      return true;
     } catch (cause) {
       setError(cause instanceof Error ? `${label}失败：${cause.message}` : `${label}失败`);
+      return false;
     } finally {
       setBusyId(null);
     }
@@ -126,8 +132,10 @@ export function AdminComments() {
     if (!confirm(`确定删除 ${comment.authorName} 的这条评论吗？删除后不会在后台列表中显示。`)) {
       return;
     }
-    await runAction(comment, '删除', () => api.deleteAdminComment(comment.id));
-    if ((query.data?.items.length ?? 0) === 1 && page > 1) setPage((current) => current - 1);
+    const deleted = await runAction(comment, '删除', () => api.deleteAdminComment(comment.id));
+    if (deleted && (query.data?.items.length ?? 0) === 1 && page > 1) {
+      setPage((current) => current - 1);
+    }
   };
 
   return (
@@ -215,7 +223,7 @@ export function AdminComments() {
                     <ActionButton
                       disabled={busy}
                       tone="success"
-                      onClick={() => runAction(comment, '批准', () => api.approveAdminComment(comment.id))}
+                      onClick={() => void runAction(comment, '批准', () => api.approveAdminComment(comment.id))}
                     >
                       <CheckCircle2 className="h-3.5 w-3.5" />
                       批准
@@ -225,7 +233,7 @@ export function AdminComments() {
                     <ActionButton
                       disabled={busy}
                       tone="danger"
-                      onClick={() => runAction(comment, '拒绝', () => api.rejectAdminComment(comment.id))}
+                      onClick={() => void runAction(comment, '拒绝', () => api.rejectAdminComment(comment.id))}
                     >
                       <XCircle className="h-3.5 w-3.5" />
                       拒绝
@@ -235,7 +243,11 @@ export function AdminComments() {
                     <ActionButton
                       disabled={busy}
                       tone="warning"
-                      onClick={() => runAction(comment, '标记垃圾评论', () => api.markAdminCommentSpam(comment.id))}
+                      onClick={() =>
+                        void runAction(comment, '标记垃圾评论', () =>
+                          api.markAdminCommentSpam(comment.id),
+                        )
+                      }
                     >
                       <ShieldAlert className="h-3.5 w-3.5" />
                       标记垃圾
@@ -245,7 +257,7 @@ export function AdminComments() {
                     <ActionButton
                       disabled={busy}
                       onClick={() =>
-                        runAction(comment, '恢复待审核', () =>
+                        void runAction(comment, '恢复待审核', () =>
                           api.updateAdminComment(comment.id, { status: 'pending' }),
                         )
                       }

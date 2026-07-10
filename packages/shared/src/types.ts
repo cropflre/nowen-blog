@@ -87,6 +87,11 @@ export interface SiteSettings {
   };
   themeColor: string;
   icp: string | null;
+  footerText: string | null;
+  defaultSeoTitle: string | null;
+  defaultSeoDescription: string | null;
+  defaultOgImage: string | null;
+  commentsEnabled: boolean;
 }
 
 export interface SearchResult {

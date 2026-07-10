@@ -1,18 +1,18 @@
 # BLOG-20 生产收口、验收与恢复手册
 
-本文覆盖锁文件、CI、Docker 部署、数据备份恢复、邮件域名和 GitHub 项目初始化。
+本文覆盖锁文件、CI、Docker、备份恢复、邮件域名和 GitHub 项目初始化。
 
 ## 1. 锁文件
 
-所有常规安装、CI 和 Docker 构建必须使用：
+常规安装、CI 和 Docker 构建统一使用：
 
 ```bash
 pnpm install --frozen-lockfile
 ```
 
-`.github/workflows/lockfile-sync.yml` 仅在 `main` 的依赖清单发生变化时重新生成 `pnpm-lock.yaml`。如果锁文件发生变化，由 GitHub Actions Bot 单独提交；锁文件提交不会再次触发该工作流。
+`.github/workflows/lockfile-sync.yml` 只在 `main` 的依赖清单变化时执行 `pnpm 10.34.4 install --lockfile-only --ignore-scripts`。有差异才由 GitHub Actions Bot 提交，锁文件提交不会再次触发同步。
 
-本地修改依赖后仍建议主动执行：
+本地修改依赖后仍应执行：
 
 ```bash
 pnpm install
@@ -21,43 +21,28 @@ pnpm install --frozen-lockfile
 
 ## 2. CI 全量验证
 
-`.github/workflows/ci.yml` 包含三组验收：
+`.github/workflows/ci.yml` 包含：
 
-1. 冻结依赖、全工作区类型检查、单元测试、集成测试；
-2. 隔离 SQLite 引导、Server 编译、Web 完整构建和预渲染、备份恢复演练；
-3. Playwright Chromium E2E；
-4. Docker Compose 构建、健康检查、API 重启持久化、Web 重启、容器内备份和恢复演练。
+1. 冻结依赖、全工作区类型检查、单元和集成测试；
+2. 隔离 SQLite 引导、Server 编译、Web 完整构建与预渲染；
+3. 备份恢复测试与恢复演练；
+4. Playwright Chromium E2E；
+5. Docker 构建、健康检查、API 重启持久化、Web 重启和容器内备份。
 
-本地等价命令：
+本地核心命令：
 
 ```bash
 pnpm install --frozen-lockfile
 pnpm typecheck
 pnpm test
-
-rm -rf .tmp/ci
-mkdir -p .tmp/ci/uploads
-DATABASE_PATH="$PWD/.tmp/ci/blog.sqlite" \
-UPLOAD_DIR="$PWD/.tmp/ci/uploads" \
-NODE_ENV=test \
-SESSION_SECRET=local-ci-session-secret-at-least-32-characters \
-ADMIN_PASSWORD=local-ci-admin-password \
-pnpm db:bootstrap
-
-DATABASE_PATH="$PWD/.tmp/ci/blog.sqlite" \
-UPLOAD_DIR="$PWD/.tmp/ci/uploads" \
-NODE_ENV=test \
-SESSION_SECRET=local-ci-session-secret-at-least-32-characters \
-ADMIN_PASSWORD=local-ci-admin-password \
-pnpm --filter @blog/web build
-
 pnpm exec playwright install chromium
 pnpm test:e2e
+pnpm build
 ```
 
 ## 3. Docker 生产部署验收
 
-准备 `.env`：
+`.env` 至少配置：
 
 ```env
 BASE_URL=https://blog.example.com
@@ -66,39 +51,36 @@ SESSION_SECRET=<固定强随机密钥>
 ADMIN_USERNAME=NOWEN
 ADMIN_EMAIL=you@example.com
 ADMIN_PASSWORD=<强密码>
+DATA_VOLUME_NAME=nowen-blog-data
 BACKUP_HOST_DIR=./backups
 ```
 
-启动：
+API 以 UID 1000 的非 root 用户运行。Linux 首次部署先准备备份目录：
+
+```bash
+mkdir -p backups
+sudo chown -R 1000:1000 backups
+chmod 750 backups
+```
+
+启动和验收：
 
 ```bash
 docker compose config --quiet
 docker compose up -d --build
 docker compose ps
-```
-
-执行公开验收：
-
-```bash
 pnpm ops:verify-production -- --base-url https://blog.example.com
 ```
 
-脚本检查：
-
-- Nginx `/healthz`；
-- 站点设置和项目 API；
-- 首页及安全响应头；
-- SPA 路由回退；
-- RSS、Sitemap、robots；
-- Sitemap 是否包含项目页。
-
-测试环境或本机 HTTP：
+本机 HTTP 使用：
 
 ```bash
 pnpm ops:verify-production -- --base-url http://127.0.0.1:8080 --allow-http
 ```
 
-验证容器重启和 SQLite 持久化：
+验收脚本检查 Nginx、站点设置、项目 API、首页、安全响应头、SPA 回退、RSS、Sitemap 和 robots。
+
+验证容器重启与 SQLite 持久化：
 
 ```bash
 ADMIN_PASSWORD='<管理员密码>' \
@@ -106,19 +88,17 @@ BASE_URL=http://127.0.0.1:8080 \
 pnpm ops:verify-docker-persistence -- --allow-http
 ```
 
-该命令会创建一个临时公开项目、重启 API、确认记录仍存在、删除临时记录，再重启 Web 并复查健康状态。
+命令会创建临时项目、重启 API、确认数据仍在、清理临时项目，再重启 Web 并复查健康状态。
 
-## 4. 备份
+## 4. 在线备份
 
-Compose 将宿主机 `BACKUP_HOST_DIR` 挂载到 API 容器的 `/app/backups`。
-
-在线创建一致性 SQLite 备份：
+Compose 将 `BACKUP_HOST_DIR` 挂载到 `/app/backups`：
 
 ```bash
 docker compose exec -T api pnpm --filter @blog/server ops:backup
 ```
 
-也可本地执行：
+本地等价命令：
 
 ```bash
 pnpm ops:backup -- \
@@ -136,22 +116,14 @@ nowen-blog-backup-<时间>/
 └── manifest.json
 ```
 
-`manifest.json` 记录数据库和每个上传文件的大小、SHA-256、SQLite `integrity_check` 结果和 migration 数量。备份完成后会立即进行二次校验。
+清单记录数据库和每个上传文件的大小、SHA-256、SQLite `integrity_check` 和 migration 数量。创建后会立即二次校验。备份还应同步到异机或对象存储。
 
-建议把 `backups/` 再同步到另一台机器或对象存储。不要只把备份留在同一块磁盘。
+## 5. 恢复与演练
 
-## 5. 恢复
-
-恢复必须停止 API 和 Web，避免写入竞争和旧图片继续被读取：
+真实恢复前停止写入：
 
 ```bash
 docker compose stop web api
-```
-
-找到备份目录：
-
-```bash
-find backups -maxdepth 2 -name manifest.json -print
 ```
 
 执行恢复：
@@ -163,28 +135,28 @@ docker compose run --rm api \
   --force
 ```
 
-`--force` 不会直接丢弃旧数据。恢复前，当前数据库、WAL/SHM 和上传目录会复制到：
+`--force` 会先把当前数据库、WAL/SHM 和上传目录复制到：
 
 ```text
 /app/data/restore-rollbacks/rollback-<时间>/
 ```
 
-恢复后启动：
+恢复后：
 
 ```bash
 docker compose up -d
 pnpm ops:verify-production -- --base-url https://blog.example.com
 ```
 
-自动恢复演练：
+不覆盖生产数据的自动演练：
 
 ```bash
 docker compose exec -T api pnpm --filter @blog/server ops:rehearse-backup
 ```
 
-演练会在临时目录创建备份、恢复副本、执行完整性检查并核对核心表，不会覆盖生产数据。
+演练会在临时目录备份和恢复副本，检查完整性、migration 与核心表后自动清理。
 
-## 6. Resend 域名与真实发送验收
+## 6. Resend 域名与真实发送
 
 配置：
 
@@ -201,25 +173,11 @@ EMAIL_SMOKE_TO=you@example.com
 pnpm ops:email-acceptance
 ```
 
-脚本会：
+脚本会要求 Resend 发件域名状态为 `verified`，检查 DMARC，并向 `EMAIL_SMOKE_TO` 发送带唯一编号的真实邮件。代码验收后仍要人工确认收件箱、垃圾箱、回复地址、正文退订和邮件客户端一键退订。
 
-- 从发件地址提取域名；
-- 调用 Resend Domains API；
-- 要求域名状态为 `verified`；
-- 查询 `_dmarc.<发件域名>`；
-- 向 `EMAIL_SMOKE_TO` 发送一封带唯一验收编号的真实邮件；
-- 输出 Resend 邮件 ID，不输出 API Key。
+## 7. GitHub 项目初始化
 
-代码侧验收不能代替人工收件箱检查。还需确认：
-
-- 邮件进入收件箱而不是垃圾箱；
-- 发件人、回复地址和链接正确；
-- 正文退订和邮件客户端一键退订可用；
-- Gmail、QQ 邮箱、163 邮箱等主要目标邮箱至少各测试一次。
-
-## 7. GitHub 项目内容初始化
-
-通过后台接口初始化生产项目，不需要服务器 SSH：
+通过生产后台 API 同步，不需要服务器 SSH：
 
 ```bash
 BASE_URL=https://blog.example.com \
@@ -231,21 +189,13 @@ GITHUB_FEATURED_REPOS='cropflre/nowen-note,cropflre/nowen-reader' \
 pnpm ops:initialize-projects
 ```
 
-命令会：
+命令会登录后台、同步项目，并把指定仓库设为精选、公开和有序展示。完成后进入 `/admin/projects` 补充封面、产品地址和人工描述。
 
-- 管理员登录；
-- 调用后台 GitHub 同步接口；
-- 导入或更新项目；
-- 把指定仓库设为精选和公开；
-- 按精选列表顺序写入排序值。
-
-随后进入 `/admin/projects` 补充封面、产品地址和人工描述。
-
-## 8. GitHub 生产环境验收工作流
+## 8. 受保护的生产工作流
 
 `.github/workflows/production-acceptance.yml` 通过 `workflow_dispatch` 手动执行，并绑定 GitHub `production` Environment。
 
-建议在 `production` Environment 中配置审批人和 Secrets：
+建议在该 Environment 配置审批人和 Secrets：
 
 ```text
 ADMIN_USERNAME
@@ -255,22 +205,14 @@ NEWSLETTER_FROM_EMAIL
 NEWSLETTER_REPLY_TO
 ```
 
-工作流可以：
+工作流可验证真实 URL，并按输入选择初始化 GitHub 项目或发送一封真实验收邮件，不会自动定时发送。
 
-- 验证真实生产 URL；
-- 可选初始化 GitHub 项目；
-- 可选发送一封真实 Resend 验收邮件。
+## 9. 完成判定
 
-生产工作流不会自动定时运行，避免意外导入项目或发送邮件。
-
-## 9. 上线判定
-
-满足以下条件后才标记 BLOG-20 完成：
-
-- `pnpm-lock.yaml` 与依赖清单一致；
-- CI 的 quality、E2E、Docker 三个 Job 全绿；
+- 锁文件与依赖清单一致；
+- CI 的 quality、E2E、Docker Job 全绿；
 - 真实生产 URL 验收通过；
-- 至少一份备份已经复制到异机位置；
+- 至少一份备份已复制到异机；
 - 恢复演练通过；
-- Resend 域名为 verified 且真实邮件收到；
-- 正式项目已经初始化并人工检查展示内容。
+- Resend 域名 verified 且真实邮件收到；
+- 正式项目已初始化并人工检查。

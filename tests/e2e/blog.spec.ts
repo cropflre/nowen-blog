@@ -41,6 +41,27 @@ test.describe('NOWEN Blog smoke flows', () => {
     await expect(page.locator('html')).toHaveClass(/dark/);
   });
 
+  test('persists admin day mode across reloads and authenticated pages', async ({ page }) => {
+    await page.goto('/admin/login');
+    await expect(page.locator('html')).toHaveClass(/dark/);
+
+    await page.getByRole('button', { name: '切换到日间模式' }).click();
+    await expect(page.locator('html')).toHaveClass(/light/);
+    await expect(page.locator('html')).not.toHaveClass(/dark/);
+
+    await page.reload();
+    await expect(page.locator('html')).toHaveClass(/light/);
+    await expect(page.getByRole('button', { name: '切换到夜间模式' })).toBeVisible();
+
+    await page.getByPlaceholder('用户名').fill('NOWEN');
+    await page.getByPlaceholder('密码').fill('e2e-admin-password');
+    await page.getByRole('button', { name: '登录' }).click();
+
+    await expect(page).toHaveURL(/\/admin$/);
+    await expect(page.locator('html')).toHaveClass(/light/);
+    await expect(page.getByRole('button', { name: '切换到夜间模式' })).toBeVisible();
+  });
+
   test('logs in, creates a project and renders it on the public projects page', async ({ page }) => {
     await page.goto('/admin/login');
     await page.getByPlaceholder('用户名').fill('NOWEN');

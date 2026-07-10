@@ -14,7 +14,7 @@ import { getSiteSettings } from '../settings/settings.service';
 import type { PostRow } from '../../lib/mapping';
 
 const RSS_LIMIT = 50;
-const STATIC_PAGES = ['/', '/posts', '/categories', '/tags', '/archive', '/search', '/about'];
+const STATIC_PAGES = ['/', '/posts', '/projects', '/categories', '/tags', '/archive', '/search', '/about'];
 
 export const rssRoutes = new Hono();
 

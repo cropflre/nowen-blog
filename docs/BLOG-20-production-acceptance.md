@@ -193,9 +193,13 @@ pnpm ops:initialize-projects
 
 ## 8. 受保护的生产工作流
 
-`.github/workflows/production-acceptance.yml` 通过 `workflow_dispatch` 手动执行，并绑定 GitHub `production` Environment。
+`.github/workflows/production-acceptance.yml` 通过 `workflow_dispatch` 手动执行，并绑定 GitHub `production` Environment。生产目标不接受临时输入，固定读取受保护 Environment Variable：
 
-建议在该 Environment 配置审批人和 Secrets：
+```text
+PRODUCTION_BASE_URL=https://blog.example.com
+```
+
+这样后台密码不会因为手动输入错误 URL 而发送到其他站点。建议给 `production` Environment 配置审批人，并添加 Secrets：
 
 ```text
 ADMIN_USERNAME
@@ -205,7 +209,7 @@ NEWSLETTER_FROM_EMAIL
 NEWSLETTER_REPLY_TO
 ```
 
-工作流可验证真实 URL，并按输入选择初始化 GitHub 项目或发送一封真实验收邮件，不会自动定时发送。
+工作流可验证固定的真实 URL，并按输入选择初始化 GitHub 项目或发送一封真实验收邮件，不会自动定时发送。
 
 ## 9. 完成判定
 

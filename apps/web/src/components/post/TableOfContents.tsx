@@ -1,10 +1,21 @@
 import { useEffect, useMemo, useState } from 'react';
+import type { MouseEvent } from 'react';
 import { ListTree } from 'lucide-react';
 import type { MarkdownHeading } from '../markdown/headings';
 
 interface TableOfContentsProps {
   headings: MarkdownHeading[];
   variant: 'mobile' | 'desktop';
+}
+
+function currentHash(): string {
+  const raw = window.location.hash.slice(1);
+  if (!raw) return '';
+  try {
+    return decodeURIComponent(raw);
+  } catch {
+    return raw;
+  }
 }
 
 export function TableOfContents({ headings, variant }: TableOfContentsProps) {
@@ -36,7 +47,7 @@ export function TableOfContents({ headings, variant }: TableOfContentsProps) {
       frame = window.requestAnimationFrame(updateActiveHeading);
     };
 
-    const hash = decodeURIComponent(window.location.hash.slice(1));
+    const hash = currentHash();
     if (hash && headings.some((heading) => heading.id === hash)) {
       window.requestAnimationFrame(() => {
         document.getElementById(hash)?.scrollIntoView({ block: 'start' });
@@ -55,7 +66,7 @@ export function TableOfContents({ headings, variant }: TableOfContentsProps) {
 
   if (headings.length === 0) return null;
 
-  const onNavigate = (event: React.MouseEvent<HTMLAnchorElement>, id: string) => {
+  const onNavigate = (event: MouseEvent<HTMLAnchorElement>, id: string) => {
     event.preventDefault();
     const element = document.getElementById(id);
     if (!element) return;

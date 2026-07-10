@@ -1,0 +1,92 @@
+name: Production acceptance
+
+on:
+  workflow_dispatch:
+    inputs:
+      base_url:
+        description: Public production URL, for example https://blog.example.com
+        required: true
+        type: string
+      run_project_initialization:
+        description: Synchronize GitHub projects through the protected admin API
+        required: true
+        default: false
+        type: boolean
+      github_target:
+        description: GitHub username, owner/repo or repository URL
+        required: false
+        type: string
+      featured_repositories:
+        description: Comma-separated full names, project names or slugs to feature
+        required: false
+        type: string
+      run_email_acceptance:
+        description: Verify Resend domain and send one real acceptance email
+        required: true
+        default: false
+        type: boolean
+      email_smoke_to:
+        description: Recipient for the real delivery acceptance email
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-acceptance
+  cancel-in-progress: false
+
+jobs:
+  acceptance:
+    name: Verify live production
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: production
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Verify public production endpoints
+        run: node scripts/ops/verify-production.mjs --base-url "${{ inputs.base_url }}"
+
+      - name: Initialize GitHub project content
+        if: ${{ inputs.run_project_initialization }}
+        env:
+          BASE_URL: ${{ inputs.base_url }}
+          ADMIN_USERNAME: ${{ secrets.ADMIN_USERNAME }}
+          ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD }}
+          GITHUB_SYNC_TARGET: ${{ inputs.github_target }}
+          GITHUB_FEATURED_REPOS: ${{ inputs.featured_repositories }}
+        run: |
+          test -n "$GITHUB_SYNC_TARGET" || { echo "github_target is required"; exit 1; }
+          node scripts/ops/initialize-projects-remote.mjs
+
+      - name: Verify Resend domain and real delivery
+        if: ${{ inputs.run_email_acceptance }}
+        env:
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          NEWSLETTER_FROM_EMAIL: ${{ secrets.NEWSLETTER_FROM_EMAIL }}
+          NEWSLETTER_REPLY_TO: ${{ secrets.NEWSLETTER_REPLY_TO }}
+          EMAIL_SMOKE_TO: ${{ inputs.email_smoke_to }}
+        run: |
+          test -n "$EMAIL_SMOKE_TO" || { echo "email_smoke_to is required"; exit 1; }
+          node scripts/ops/email-acceptance.mjs
+
+      - name: Write acceptance summary
+        if: always()
+        run: |
+          {
+            echo "## Production acceptance"
+            echo ""
+            echo "- URL: ${{ inputs.base_url }}"
+            echo "- Public endpoints: executed"
+            echo "- Project initialization: ${{ inputs.run_project_initialization }}"
+            echo "- Real email acceptance: ${{ inputs.run_email_acceptance }}"
+            echo "- Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          } >> "$GITHUB_STEP_SUMMARY"

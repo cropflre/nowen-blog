@@ -29,7 +29,7 @@ export const aiSettingsUpdateSchema = z.object({
   apiUrl: apiUrlSchema,
   apiKey: z.string().max(1000).optional(),
   clearApiKey: z.boolean().optional(),
-  model: z.string().trim().min(1, '模型名称必填').max(200),
+  model: z.string().trim().max(200),
   systemPrompt: z.string().max(4000).nullable().optional(),
 });
 

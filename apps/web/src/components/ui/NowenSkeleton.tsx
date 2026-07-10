@@ -1,7 +1,8 @@
+import type { HTMLAttributes } from 'react';
 import { cn } from '../../lib/cn';
 
-export function NowenSkeleton({ className }: { className?: string }) {
-  return <span aria-hidden="true" className={cn('nowen-skeleton block', className)} />;
+export function NowenSkeleton({ className, ...props }: HTMLAttributes<HTMLSpanElement>) {
+  return <span {...props} aria-hidden="true" className={cn('nowen-skeleton block', className)} />;
 }
 
 export function HomeCardSkeleton({ compact = false }: { compact?: boolean }) {

@@ -2,71 +2,101 @@
 
 内容型博客 + 轻量 CMS。技术栈：**React + TypeScript + Vite** 前台/后台，**Hono + Drizzle + better-sqlite3** 后端，**Tailwind CSS v4** 视觉系统。
 
-## 结构
+## 项目结构
 
-```
-apps/web      前台 + 管理后台（React）
-apps/server   Node API（Hono）
-packages/shared  通用类型 + Zod schema
-packages/config  共享 tsconfig / prettier
-data/         SQLite 数据库 + 上传文件
+```text
+apps/web          前台 + 管理后台（React）
+apps/server       Node API（Hono）
+packages/shared   通用类型 + Zod schema
+packages/config   共享 TypeScript / Prettier 配置
+apps/server/drizzle 版本化数据库迁移
+deploy/nginx      生产 Nginx 配置
+tests/e2e         Playwright 浏览器 E2E
+data/             本地 SQLite 数据库 + 上传文件
 ```
 
-## 开发
+## 本地开发
 
 ```bash
 pnpm install
-pnpm dev          # 同时启动 web(5173) 与 server(8787)
+pnpm dev
 ```
 
-- 前台：http://localhost:5173
-- API：http://localhost:8787/api
-- Vite 已配置 `/api` 代理到 server，本地无需跨域。
+- Web：http://localhost:6688
+- API：http://localhost:8787
+- Vite 会代理 `/api`、RSS、Sitemap 和 robots 到 API。
 
-## 构建
+开发环境未设置 `ADMIN_PASSWORD` 时，默认管理员密码为：
+
+```text
+dev-admin-please-change
+```
+
+生产环境必须显式设置强密码。
+
+## 数据库迁移
+
+数据库结构不再由 `init.ts` 手写创建，服务启动时会自动执行 `apps/server/drizzle/` 中尚未应用的 migrations。
 
 ```bash
+pnpm db:migrate
+pnpm db:check
+pnpm db:generate
+```
+
+旧版 SQLite 会通过一次性兼容桥补齐历史字段，然后登记 Drizzle migration 状态。不要修改已在生产执行过的 migration。
+
+## 测试与构建
+
+```bash
+pnpm typecheck
+pnpm test:unit
+pnpm test:integration
+pnpm test:e2e
 pnpm build
 ```
 
-## 部署（构建期预渲染）
-
-生产环境需为预渲染提供正确的**绝对地址**与**生产数据库路径**，二者通过环境变量在构建期传入：
+Playwright 首次运行需要安装浏览器：
 
 ```bash
-BASE_URL=https://your-domain.com \
-DATABASE_PATH=/path/to/prod/blog.sqlite \
-pnpm --filter @blog/web build
+pnpm exec playwright install chromium
 ```
 
-- `web` 的 `build` 会依次执行 `vite build` 与 `prerender`，把公开页渲染成带真实 `<title>` / `og:*` / `twitter:*` / `jsonLd` / 正文的静态 HTML 落入 `apps/web/dist/`。
-- 部署拓扑：静态层托管 `dist/`（精确命中预渲染 `.html`，其余走 `200.html` SPA 回退壳），并把 `/api`、`/rss.xml`、`/sitemap.xml`、`/robots.txt` 反代到 Hono（`:8787`）。RSS / Sitemap / robots 由 Hono 实时提供，不预渲染。
+## Docker Compose 生产部署
 
-### 上传文件服务（/uploads）
+```bash
+cp .env.example .env
+# 修改 SESSION_SECRET、ADMIN_PASSWORD、BASE_URL
 
-媒体库上传的图片存储在 `data/uploads/` 目录，生产环境必须由静态层（如 nginx）直接服务 `/uploads` 路径：
-
-```nginx
-# nginx 配置示例：在 SPA fallback 之前配置
-location /uploads {
-    alias /path/to/apps/server/data/uploads;
-    expires 30d;
-    add_header Cache-Control "public, immutable";
-    add_header X-Content-Type-Options "nosniff";
-}
+docker compose up -d --build
+docker compose ps
+curl --fail http://127.0.0.1:8080/healthz
 ```
 
-**路由优先级**（从高到低）：
-1. `/uploads` — 上传文件（静态层）
-2. `/rss.xml`、`/sitemap.xml`、`/robots.txt` — SEO 端点（Hono）
-3. `/*.html` — 预渲染静态页面
-4. `/api/*` — API 接口（Hono 反代）
-5. 其他静态资源 — JS/CSS/字体等
-6. SPA fallback — `/200.html`
+默认包含：
 
-- 发布新文章后重跑上述构建并重新部署 `dist/` 即可；`prerender` 幂等，可单独重跑。
-- 上传目录 `data/uploads` **必须持久化**（容器部署需挂载卷），并与数据库一同定期备份。
+- `api`：Hono + Drizzle + SQLite；
+- `web`：Nginx 静态前端与反向代理；
+- `nowen-blog-data`：SQLite 与上传文件持久化卷；
+- API、Nginx 双健康检查；
+- `/uploads` 由 Nginx 从持久化卷只读直出；
+- `/api`、RSS、Sitemap、robots 反代到 Hono；
+- SPA 路由回退和静态资源长期缓存。
 
-详见：
-- [部署与备份指南](docs/BLOG-11.4-media-deployment-and-backup.md)（含 nginx 完整配置、备份脚本、故障排查）
-- [预渲染部署文档](docs/BLOG-10.4-prerender-deployment.md)（含生产验证清单）
+默认访问地址：http://localhost:8080
+
+## CI
+
+GitHub Actions 会执行：
+
+1. 工作区 TypeScript 类型检查；
+2. 单元测试与 Hono/SQLite 集成测试；
+3. Server 编译和 Web 构建；
+4. Playwright Chromium E2E；
+5. Docker Compose 构建、启动和健康探测。
+
+## 文档
+
+- [BLOG-18 生产化指南](docs/BLOG-18-production-readiness.md)
+- [媒体部署与备份指南](docs/BLOG-11.4-media-deployment-and-backup.md)
+- [预渲染部署文档](docs/BLOG-10.4-prerender-deployment.md)

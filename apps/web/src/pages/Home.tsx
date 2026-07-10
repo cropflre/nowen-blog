@@ -15,8 +15,9 @@ export function Home() {
   return (
     <div>
       <Seo
-        title={settings.data?.siteTitle ?? 'NOWEN Blog'}
-        description={settings.data?.siteDescription}
+        title={settings.data?.defaultSeoTitle || settings.data?.siteTitle || 'NOWEN Blog'}
+        description={settings.data?.defaultSeoDescription || settings.data?.siteDescription}
+        image={settings.data?.defaultOgImage}
       />
 
       <section className="border-b border-line">

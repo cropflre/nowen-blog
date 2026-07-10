@@ -10,6 +10,7 @@ data/uploads/*
 !data/uploads/.gitkeep
 apps/server/data/
 apps/server/data/*
+backups/
 
 # env
 .env

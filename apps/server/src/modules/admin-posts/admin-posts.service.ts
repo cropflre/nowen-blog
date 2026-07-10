@@ -87,17 +87,61 @@ function normalizeScheduledAt(status: string, value: string | null | undefined):
   return new Date(timestamp).toISOString();
 }
 
-function syncSearchIndex(post: {
+type SearchSyncPost = {
   id: string;
   title: string;
   summary: string | null;
   contentMd: string;
   status: string;
   visibility: string;
-}): void {
+};
+
+function syncSearchIndex(post: SearchSyncPost): void {
   removePostFromIndex(post.id);
   if (post.status === 'published' && post.visibility === 'public') {
     indexPost({ id: post.id, title: post.title, summary: post.summary, contentMd: post.contentMd });
+  }
+}
+
+function logAuxiliaryFailure(postId: string, operation: string, error: unknown): void {
+  console.error(`[admin-posts] 文章 ${postId} 已保存，但${operation}失败：`, error);
+}
+
+/**
+ * 搜索索引属于可重建的派生数据。索引维护失败时不能把已经成功的文章写入伪装成 500，
+ * 否则客户端会认为创建失败，而刷新后文章实际已经存在。
+ */
+function syncSearchIndexSafely(post: SearchSyncPost): void {
+  try {
+    syncSearchIndex(post);
+  } catch (error) {
+    logAuxiliaryFailure(post.id, '搜索索引同步', error);
+  }
+}
+
+/** 版本历史是辅助审计能力；主文章已持久化后，版本写入异常应记录日志而不是返回假失败。 */
+function savePostVersionSafely(postId: string, userId: string | null, reason: string): void {
+  try {
+    history.savePostVersion(postId, userId, reason);
+  } catch (error) {
+    logAuxiliaryFailure(postId, '版本历史写入', error);
+  }
+}
+
+/** 自动草稿清理失败不应影响正式内容保存。 */
+function deletePostAutosaveSafely(postId: string): void {
+  try {
+    history.deletePostAutosave(postId);
+  } catch (error) {
+    logAuxiliaryFailure(postId, '自动草稿清理', error);
+  }
+}
+
+function removePostFromIndexSafely(postId: string): void {
+  try {
+    removePostFromIndex(postId);
+  } catch (error) {
+    logAuxiliaryFailure(postId, '搜索索引删除', error);
   }
 }
 
@@ -171,9 +215,13 @@ export async function createPost(input: PostInput, authorId: string): Promise<Ad
     authorId,
   };
   const id = repo.insertPostTx(values, input.categoryIds, input.tagIds);
-  syncSearchIndex(values);
-  history.savePostVersion(id, authorId, input.status === 'scheduled' ? 'schedule' : 'create');
-  return toAdminView((await repo.getAdminPostById(id)) as PostRow);
+
+  syncSearchIndexSafely(values);
+  savePostVersionSafely(id, authorId, input.status === 'scheduled' ? 'schedule' : 'create');
+
+  const created = await repo.getAdminPostById(id);
+  if (!created) throw new Error(`文章 ${id} 创建成功后读取失败`);
+  return toAdminView(created);
 }
 
 export async function updatePost(
@@ -223,11 +271,13 @@ export async function updatePost(
 
   const updated = repo.updatePostTx(id, base, input.categoryIds, input.tagIds);
   if (!updated) return null;
-  const saved = (await repo.getAdminPostById(id)) as PostRow;
-  syncSearchIndex(saved);
-  history.deletePostAutosave(id);
+  const saved = await repo.getAdminPostById(id);
+  if (!saved) throw new Error(`文章 ${id} 更新成功后读取失败`);
+
+  syncSearchIndexSafely(saved);
+  deletePostAutosaveSafely(id);
   const versionReason = reason === 'restore' ? 'restore' : status === 'scheduled' ? 'schedule' : reason;
-  history.savePostVersion(id, userId, versionReason);
+  savePostVersionSafely(id, userId, versionReason);
   return toAdminView(saved);
 }
 
@@ -241,12 +291,14 @@ export async function setStatus(
   const publishedAt = status === 'published' ? existing.publishedAt ?? nowIso() : existing.publishedAt;
   const updated = await repo.setStatusTx(id, status, publishedAt, null);
   if (!updated) return null;
-  const saved = (await repo.getAdminPostById(id)) as PostRow;
-  syncSearchIndex(saved);
-  history.deletePostAutosave(id);
+  const saved = await repo.getAdminPostById(id);
+  if (!saved) throw new Error(`文章 ${id} 状态更新成功后读取失败`);
+
+  syncSearchIndexSafely(saved);
+  deletePostAutosaveSafely(id);
   const versionReason =
     status === 'published' ? 'publish' : status === 'archived' ? 'archive' : 'unpublish';
-  history.savePostVersion(id, userId, versionReason);
+  savePostVersionSafely(id, userId, versionReason);
   return toAdminView(saved);
 }
 
@@ -296,6 +348,6 @@ export async function deletePost(id: string): Promise<boolean> {
   const existing = await repo.getAdminPostById(id);
   if (!existing) return false;
   repo.deletePostTx(id);
-  removePostFromIndex(id);
+  removePostFromIndexSafely(id);
   return true;
 }

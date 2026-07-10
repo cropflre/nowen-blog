@@ -1,6 +1,6 @@
 import { Link, useParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { api } from '../lib/api';
 import { Markdown } from '../components/markdown/Markdown';
 import { Seo } from '../components/seo/Seo';
@@ -8,9 +8,11 @@ import { absUrl } from '../lib/seo';
 import { formatDate } from '../lib/format';
 import { CommentList } from '../components/comments/CommentList';
 import { CommentForm } from '../components/comments/CommentForm';
+import type { PostDetail as PostDetailData } from '../types';
 
 export function PostDetail() {
   const { slug } = useParams();
+  const queryClient = useQueryClient();
   const [commentPage, setCommentPage] = useState(1);
   const { data: post, isLoading } = useQuery({
     queryKey: ['post', slug],
@@ -18,6 +20,27 @@ export function PostDetail() {
     enabled: !!slug,
   });
   const { data: settings } = useQuery({ queryKey: ['site-settings'], queryFn: api.siteSettings });
+
+  useEffect(() => {
+    if (!post?.slug) return;
+    let cancelled = false;
+
+    void api
+      .trackPostView(post.slug)
+      .then((result) => {
+        if (cancelled) return;
+        queryClient.setQueryData<PostDetailData>(['post', slug], (current) =>
+          current ? { ...current, viewCount: result.viewCount } : current,
+        );
+      })
+      .catch(() => {
+        // 统计失败不应影响文章阅读体验。
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [post?.slug, queryClient, slug]);
 
   if (isLoading) {
     return <div className="mx-auto max-w-[760px] px-4 py-20 text-muted">加载中…</div>;

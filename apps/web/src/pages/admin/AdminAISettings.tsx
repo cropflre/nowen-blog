@@ -134,6 +134,9 @@ export function AdminAISettings() {
   }
 
   const provider = PROVIDERS.find((item) => item.id === form.provider) ?? PROVIDERS[0];
+  const providerHint = form.provider === 'ollama'
+    ? `${provider.hint}。Docker 部署时请填写 API 容器可访问的主机或 Ollama 服务地址，不能直接使用容器自身的 localhost。`
+    : provider.hint;
   const busy = saving || testing || loadingModels;
 
   return (
@@ -176,12 +179,12 @@ export function AdminAISettings() {
             <select value={form.provider} onChange={(event) => {
               const next = PROVIDERS.find((item) => item.id === event.target.value as AiProvider);
               if (!next) return;
-              setForm({ ...form, provider: next.id, apiUrl: next.apiUrl || form.apiUrl, model: next.model || form.model });
+              setForm({ ...form, provider: next.id, apiUrl: next.apiUrl, model: next.model });
               setModels([]);
             }} className={fieldClass}>
               {PROVIDERS.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
             </select>
-            <span className="mt-2 block text-xs font-normal text-muted">{provider.hint}</span>
+            <span className="mt-2 block text-xs font-normal text-muted">{providerHint}</span>
           </label>
 
           <label className="block text-sm font-medium">模型名称

@@ -7,7 +7,12 @@ import {
   useRef,
   useState,
 } from 'react';
-import type { HTMLAttributes, ImgHTMLAttributes, ReactNode } from 'react';
+import type {
+  HTMLAttributes,
+  ImgHTMLAttributes,
+  ReactNode,
+  SyntheticEvent,
+} from 'react';
 import ReactMarkdown from 'react-markdown';
 import type { Components } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -166,7 +171,7 @@ function MarkdownImage({
 }: ImgHTMLAttributes<HTMLImageElement> & { onOpen: (image: LightboxImage) => void }) {
   if (!src) return null;
 
-  const open = (event: React.SyntheticEvent<HTMLImageElement>) => {
+  const open = (event: SyntheticEvent<HTMLImageElement>) => {
     event.preventDefault();
     event.stopPropagation();
     onOpen({ src, alt: alt ?? '' });

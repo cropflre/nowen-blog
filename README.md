@@ -1,18 +1,26 @@
 # NOWEN Blog
 
-内容型博客 + 轻量 CMS。技术栈：**React + TypeScript + Vite** 前台/后台，**Hono + Drizzle + better-sqlite3** 后端，**Tailwind CSS v4** 视觉系统。
+内容型博客、个人品牌主页与轻量 CMS。技术栈：**React + TypeScript + Vite** 前台/后台，**Hono + Drizzle + better-sqlite3** 后端，**Tailwind CSS v4** 视觉系统。
+
+当前包含：
+
+- 文章创作、定时发布、版本历史与评论；
+- 个人品牌首页、精选文章和项目作品集；
+- GitHub 用户/仓库同步与项目后台管理；
+- 邮件订阅、签名退订、订阅者管理和文章通知；
+- SQLite 正式迁移、Docker Compose、Nginx、CI 与 Playwright E2E。
 
 ## 项目结构
 
 ```text
-apps/web          前台 + 管理后台（React）
-apps/server       Node API（Hono）
-packages/shared   通用类型 + Zod schema
-packages/config   共享 TypeScript / Prettier 配置
+apps/web            前台 + 管理后台（React）
+apps/server         Node API（Hono）
+packages/shared     通用类型 + Zod schema
+packages/config     共享 TypeScript / Prettier 配置
 apps/server/drizzle 版本化数据库迁移
-deploy/nginx      生产 Nginx 配置
-tests/e2e         Playwright 浏览器 E2E
-data/             本地 SQLite 数据库 + 上传文件
+deploy/nginx        生产 Nginx 配置
+tests/e2e           Playwright 浏览器 E2E
+data/               本地 SQLite 数据库 + 上传文件
 ```
 
 ## 本地开发
@@ -33,6 +41,48 @@ dev-admin-please-change
 ```
 
 生产环境必须显式设置强密码。
+
+## 项目展示与 GitHub 同步
+
+后台入口：`/admin/projects`
+
+支持：
+
+- 手动创建、编辑、排序、精选、隐藏项目；
+- 输入 GitHub 用户名批量同步最近更新的非 Fork 公开仓库；
+- 输入 `owner/repo` 或完整 GitHub URL 同步单个仓库；
+- 更新 Stars、Forks、语言、Topics 和最近推送时间；
+- 重复同步时保留后台设置的封面、精选状态和排序。
+
+公开仓库同步不强制要求令牌，但建议配置以提高 API 限额：
+
+```env
+GITHUB_TOKEN=github_pat_xxx
+```
+
+前台项目页：`/projects`
+
+## 邮件订阅
+
+首页订阅表单会把邮箱保存到 SQLite。订阅收集、退订和后台管理不依赖第三方邮件服务。
+
+要发送文章通知，配置 Resend：
+
+```env
+RESEND_API_KEY=re_xxx
+NEWSLETTER_FROM_EMAIL="NOWEN Blog <newsletter@example.com>"
+NEWSLETTER_REPLY_TO=hi@example.com
+```
+
+后台入口：`/admin/newsletter`
+
+支持：
+
+- 有效订阅、已退订和总量统计；
+- 手动启用、停用或删除订阅者；
+- 向已发布且公开的文章发送更新邮件；
+- 发送成功、失败和部分成功审计；
+- 邮件正文退订链接与标准 `List-Unsubscribe` 一键退订。
 
 ## 数据库迁移
 
@@ -72,6 +122,7 @@ pnpm exec playwright install chromium
 ```bash
 cp .env.example .env
 # 修改 SESSION_SECRET、ADMIN_PASSWORD、BASE_URL
+# 按需配置 GITHUB_TOKEN 和 Resend 邮件变量
 
 docker compose up -d --build
 docker compose ps

@@ -188,3 +188,38 @@ export interface AdminListCommentsParams {
   postId?: string;
   postSlug?: string;
 }
+
+export interface PostViewResult {
+  counted: boolean;
+  viewCount: number;
+}
+
+export interface DashboardStats {
+  summary: {
+    totalViews: number;
+    trackedViews: number;
+    uniqueVisitors: number;
+    viewsToday: number;
+    viewsLast7Days: number;
+    publishedPosts: number;
+    draftPosts: number;
+    pendingComments: number;
+    approvedComments: number;
+  };
+  trend: Array<{
+    date: string;
+    views: number;
+    visitors: number;
+  }>;
+  topPosts: Array<{
+    id: string;
+    title: string;
+    slug: string;
+    viewCount: number;
+    trackedViews: number;
+    uniqueVisitors: number;
+    lastViewedAt: string | null;
+  }>;
+  trackingStartedAt: string | null;
+  generatedAt: string;
+}

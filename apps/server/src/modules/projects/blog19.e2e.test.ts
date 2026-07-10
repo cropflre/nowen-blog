@@ -138,6 +138,27 @@ describe('BLOG-19 projects and newsletter', () => {
     assert.ok(row.unsubscribedAt);
   });
 
+  test('one-click unsubscribe endpoint accepts a signed query token', async () => {
+    const subscribeResponse = await app.request('/api/newsletter/subscribe', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-forwarded-for': '10.20.30.40' },
+      body: JSON.stringify({ email: 'reader@example.com', source: 'test', website: '' }),
+    });
+    assert.equal(subscribeResponse.status, 201);
+
+    const token = createUnsubscribeToken('reader@example.com');
+    const response = await app.request(
+      `/api/newsletter/unsubscribe-one-click?token=${encodeURIComponent(token)}`,
+      { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' } },
+    );
+    assert.equal(response.status, 200);
+
+    const row = sqlite
+      .prepare("SELECT status FROM newsletter_subscribers WHERE email = 'reader@example.com'")
+      .get() as { status: string };
+    assert.equal(row.status, 'unsubscribed');
+  });
+
   test('newsletter delivery reports missing provider configuration', async () => {
     const post = sqlite
       .prepare("SELECT id FROM posts WHERE status = 'published' AND visibility = 'public' LIMIT 1")

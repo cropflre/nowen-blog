@@ -8,7 +8,8 @@
     "seed": "tsx src/db/seed.ts",
     "prerender": "tsx src/scripts/prerender.ts",
     "typecheck": "tsc --noEmit",
-    "build": "tsc -p tsconfig.json"
+    "build": "tsc -p tsconfig.json",
+    "test:comments": "node --import tsx --test src/modules/comments/comments.e2e.test.ts"
   },
   "dependencies": {
     "@blog/shared": "workspace:*",

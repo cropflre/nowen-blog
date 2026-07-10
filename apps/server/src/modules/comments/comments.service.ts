@@ -1,4 +1,4 @@
-import { eq, desc, asc, and, isNull, isNotNull, count } from 'drizzle-orm';
+import { eq, desc, asc, and, isNull, isNotNull, count, inArray } from 'drizzle-orm';
 import { db } from '../../db/client';
 import { comments, posts } from '../../db/schema';
 import { randomId, nowIso } from '../../lib/format';
@@ -143,6 +143,9 @@ export async function getAdminComments(query: { page: number; pageSize: number; 
     });
     if (post) {
       conditions.push(eq(comments.postId, post.id));
+    } else {
+      // postSlug 不存在时，直接返回空结果
+      return { items: [], total: 0, page: query.page, pageSize: query.pageSize };
     }
   }
 
@@ -155,10 +158,14 @@ export async function getAdminComments(query: { page: number; pageSize: number; 
 
   // 获取文章标题
   const postIds = [...new Set(rows.map((r) => r.postId))];
-  const postList = await db.query.posts.findMany({
-    where: postIds.length > 0 ? undefined : undefined, // 简化：如果 postIds 为空则不查询
-  });
-  const postMap = new Map(postList.map((p) => [p.id, p.title]));
+  const postMap = new Map<string, string>();
+
+  if (postIds.length > 0) {
+    const postList = await db.query.posts.findMany({
+      where: inArray(posts.id, postIds),
+    });
+    postList.forEach((p) => postMap.set(p.id, p.title));
+  }
 
   const [{ total }] = await db.select({ total: count() }).from(comments).where(and(...conditions));
 
@@ -223,7 +230,15 @@ export async function updateComment(id: string, input: CommentUpdateInput): Prom
   if (input.authorEmail !== undefined) patch.authorEmail = input.authorEmail;
   if (input.authorWebsite !== undefined) patch.authorWebsite = input.authorWebsite || null;
   if (input.content !== undefined) patch.content = escapeHtml(input.content);
-  if (input.status !== undefined) patch.status = input.status;
+  if (input.status !== undefined) {
+    patch.status = input.status;
+    // 状态变更时同步更新 approvedAt
+    if (input.status === 'approved') {
+      patch.approvedAt = nowIso();
+    } else if (input.status === 'rejected' || input.status === 'spam' || input.status === 'pending') {
+      patch.approvedAt = null;
+    }
+  }
 
   await db.update(comments).set(patch).where(eq(comments.id, id)).run();
 

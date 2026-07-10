@@ -43,6 +43,18 @@ export const siteSettings = sqliteTable('site_settings', {
   updatedAt: text('updated_at').notNull(),
 });
 
+/** 单行 AI 写作助手配置，API Key 仅通过管理员接口写入且读取时掩码。 */
+export const aiSettings = sqliteTable('ai_settings', {
+  id: text('id').primaryKey(),
+  enabled: integer('enabled', { mode: 'boolean' }).notNull().default(false),
+  provider: text('provider').notNull().default('openai'),
+  apiUrl: text('api_url').notNull().default('https://api.openai.com/v1'),
+  apiKey: text('api_key'),
+  model: text('model').notNull().default('gpt-4o-mini'),
+  systemPrompt: text('system_prompt'),
+  updatedAt: text('updated_at').notNull(),
+});
+
 export const posts = sqliteTable(
   'posts',
   {

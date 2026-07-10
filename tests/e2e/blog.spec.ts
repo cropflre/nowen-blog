@@ -138,6 +138,37 @@ test.describe('NOWEN Blog smoke flows', () => {
     await expect(page.getByRole('button', { name: '切换到夜间模式' })).toBeVisible();
   });
 
+  test('previews and applies an AI-generated article title only after confirmation', async ({ page }) => {
+    await page.goto('/admin/login');
+    await page.getByPlaceholder('用户名').fill('NOWEN');
+    await page.getByPlaceholder('密码').fill('e2e-admin-password');
+    await page.getByRole('button', { name: '登录' }).click();
+    await expect(page).toHaveURL(/\/admin$/);
+
+    await page.route('**/api/admin/ai/generate', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          action: 'title',
+          text: 'AI 驱动的博客写作流程',
+          fields: { title: 'AI 驱动的博客写作流程' },
+        }),
+      });
+    });
+
+    await page.goto('/admin/posts/new');
+    await page.getByPlaceholder('# 正文内容').fill('# AI 写作\n\n介绍博客中的 AI 写作流程。');
+    await page.getByRole('button', { name: 'AI 写作' }).click();
+    await expect(page.getByRole('dialog', { name: 'AI 写作助手' })).toBeVisible();
+    await page.getByRole('button', { name: /生成标题/ }).click();
+    await page.getByRole('button', { name: '开始生成' }).click();
+    await expect(page.getByLabel('AI 生成结果')).toHaveValue('AI 驱动的博客写作流程');
+    await page.getByRole('button', { name: '应用到文章字段' }).click();
+    await expect(page.getByPlaceholder('文章标题')).toHaveValue('AI 驱动的博客写作流程');
+    await expect(page.getByText('AI 结果已应用到文章字段，保存后生效。')).toBeVisible();
+  });
+
   test('logs in, creates a project and renders it on the public projects page', async ({ page }) => {
     await page.goto('/admin/login');
     await page.getByPlaceholder('用户名').fill('NOWEN');

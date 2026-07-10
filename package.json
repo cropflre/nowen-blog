@@ -21,7 +21,7 @@
     "test:integration": "pnpm --filter @blog/server test:integration",
     "test:e2e": "playwright test",
     "e2e:server": "node scripts/start-e2e-server.mjs",
-    "e2e:web": "pnpm --filter @blog/web dev --host 127.0.0.1"
+    "e2e:web": "pnpm --filter @blog/web dev -- --host 127.0.0.1"
   },
   "devDependencies": {
     "@playwright/test": "^1.49.1"

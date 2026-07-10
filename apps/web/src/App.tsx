@@ -25,6 +25,7 @@ import { AdminComments } from './pages/admin/AdminComments';
 import { AdminSettings } from './pages/admin/AdminSettings';
 import { AdminProjects } from './pages/admin/AdminProjects';
 import { AdminNewsletter } from './pages/admin/AdminNewsletter';
+import { AdminAISettings } from './pages/admin/AdminAISettings';
 import { NotFound } from './pages/NotFound';
 
 export function App() {
@@ -55,6 +56,7 @@ export function App() {
             <Route path="/admin/posts" element={<AdminPosts />} />
             <Route path="/admin/posts/new" element={<AdminPostNew />} />
             <Route path="/admin/posts/:id/edit" element={<AdminPostEdit />} />
+            <Route path="/admin/ai" element={<AdminAISettings />} />
             <Route path="/admin/categories" element={<AdminCategories />} />
             <Route path="/admin/tags" element={<AdminTags />} />
             <Route path="/admin/projects" element={<AdminProjects />} />

@@ -15,6 +15,13 @@
       "when": 1783656060000,
       "tag": "0001_named_version_unique",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1783660800000,
+      "tag": "0002_projects_and_newsletter",
+      "breakpoints": true
     }
   ]
 }

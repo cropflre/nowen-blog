@@ -8,6 +8,7 @@ import { cn } from '../../lib/cn';
 
 const NAV = [
   { to: '/posts', label: '文章' },
+  { to: '/projects', label: '项目' },
   { to: '/categories', label: '分类' },
   { to: '/tags', label: '标签' },
   { to: '/archive', label: '归档' },

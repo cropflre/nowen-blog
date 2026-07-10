@@ -11,9 +11,12 @@
     "typecheck": "tsc --noEmit",
     "build": "tsc -p tsconfig.json",
     "test": "pnpm test:unit && pnpm test:integration",
-    "test:unit": "node --import tsx --test src/lib/format.test.ts src/db/migrations-fresh.test.ts src/db/migrations.test.ts",
+    "test:unit": "node --import tsx --test src/lib/format.test.ts src/lib/backup.test.ts src/db/migrations-fresh.test.ts src/db/migrations.test.ts",
     "test:integration": "node --import tsx --test src/modules/comments/comments.e2e.test.ts src/modules/projects/blog19.e2e.test.ts",
-    "test:comments": "node --import tsx --test src/modules/comments/comments.e2e.test.ts"
+    "test:comments": "node --import tsx --test src/modules/comments/comments.e2e.test.ts",
+    "ops:backup": "tsx src/scripts/backup.ts",
+    "ops:restore": "tsx src/scripts/restore.ts",
+    "ops:rehearse-backup": "tsx src/scripts/rehearse-backup.ts"
   },
   "dependencies": {
     "@blog/shared": "workspace:*",

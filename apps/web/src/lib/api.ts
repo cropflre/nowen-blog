@@ -23,9 +23,12 @@ import type {
   AdminCommentView,
   AdminListCommentsParams,
   CommentStatus,
+  PostViewResult,
+  DashboardStats,
 } from '../types';
 
 const BASE = '/api';
+const VISITOR_STORAGE_KEY = 'nowen-blog-visitor-id';
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${BASE}${path}`, {
@@ -50,6 +53,23 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return (await res.json()) as T;
 }
 
+function getAnonymousVisitorId(): string {
+  if (typeof window === 'undefined') return 'server-render';
+  try {
+    const existing = window.localStorage.getItem(VISITOR_STORAGE_KEY);
+    if (existing) return existing;
+    const id =
+      typeof crypto !== 'undefined' && 'randomUUID' in crypto
+        ? crypto.randomUUID()
+        : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
+    window.localStorage.setItem(VISITOR_STORAGE_KEY, id);
+    return id;
+  } catch {
+    // 禁用 localStorage 时仍可由后端使用 IP + User-Agent 匿名去重。
+    return `ephemeral-${Date.now().toString(36)}`;
+  }
+}
+
 export interface ListPostsParams {
   page?: number;
   pageSize?: number;
@@ -68,6 +88,14 @@ export const api = {
     return request<Paginated<PostSummary>>(`/posts${q ? `?${q}` : ''}`);
   },
   getPost: (slug: string) => request<PostDetail>(`/posts/${encodeURIComponent(slug)}`),
+  trackPostView: (slug: string) =>
+    request<PostViewResult>(`/posts/${encodeURIComponent(slug)}/views`, {
+      method: 'POST',
+      headers: { 'x-visitor-id': getAnonymousVisitorId() },
+      body: JSON.stringify({
+        referrer: typeof document !== 'undefined' && document.referrer ? document.referrer : null,
+      }),
+    }),
   listFeatured: () => request<{ items: PostSummary[] }>('/posts/featured'),
   listCategories: () => request<{ items: CategoryView[] }>('/categories'),
   listTags: () => request<{ items: TagView[] }>('/tags'),
@@ -89,6 +117,7 @@ export const api = {
     }),
   logout: () => request<{ ok: boolean }>('/admin/logout', { method: 'POST' }),
   getMe: () => request<{ user: AdminUser }>('/admin/me'),
+  getDashboardStats: () => request<DashboardStats>('/admin/analytics/dashboard'),
 
   // 后台文章管理
   listAdminPosts: (params: AdminListPostsParams = {}) => {

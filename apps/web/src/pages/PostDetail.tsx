@@ -6,6 +6,8 @@ import { Markdown } from '../components/markdown/Markdown';
 import { extractMarkdownHeadings } from '../components/markdown/headings';
 import { TableOfContents } from '../components/post/TableOfContents';
 import { ReadingProgress } from '../components/post/ReadingProgress';
+import { PostFooter } from '../components/post/PostFooter';
+import { ArticleCard } from '../components/post/ArticleCard';
 import { Seo } from '../components/seo/Seo';
 import { absUrl } from '../lib/seo';
 import { formatDate } from '../lib/format';
@@ -22,6 +24,11 @@ export function PostDetail() {
     queryKey: ['post', slug],
     queryFn: () => api.getPost(slug!),
     enabled: !!slug,
+  });
+  const { data: context } = useQuery({
+    queryKey: ['post-context', post?.slug],
+    queryFn: () => api.getPostContext(post!.slug),
+    enabled: !!post?.slug,
   });
   const { data: settings } = useQuery({ queryKey: ['site-settings'], queryFn: api.siteSettings });
   const markdownHeadings = useMemo(
@@ -129,6 +136,25 @@ export function PostDetail() {
                 </Link>
               ))}
             </div>
+          )}
+
+          <PostFooter post={post} context={context} />
+
+          {(context?.related.length ?? 0) > 0 && (
+            <section className="mt-12">
+              <div className="mb-5 flex items-end justify-between gap-4">
+                <div>
+                  <h2 className="text-2xl font-bold text-fg">相关文章</h2>
+                  <p className="mt-1 text-sm text-muted">根据共同分类和标签推荐。</p>
+                </div>
+                <Link to="/posts" className="text-sm text-brand hover:underline">更多文章</Link>
+              </div>
+              <div className="grid gap-5 sm:grid-cols-2">
+                {context!.related.map((relatedPost) => (
+                  <ArticleCard key={relatedPost.id} post={relatedPost} />
+                ))}
+              </div>
+            </section>
           )}
 
           {settings?.commentsEnabled !== false && (

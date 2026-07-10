@@ -103,10 +103,22 @@ CREATE TABLE IF NOT EXISTS comments (
   deleted_at TEXT
 );
 
+CREATE TABLE IF NOT EXISTS post_views (
+  id TEXT PRIMARY KEY,
+  post_id TEXT NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
+  visitor_hash TEXT NOT NULL,
+  ip_hash TEXT,
+  user_agent TEXT,
+  referrer TEXT,
+  created_at TEXT NOT NULL
+);
+
 CREATE INDEX IF NOT EXISTS idx_comments_post_id ON comments(post_id);
 CREATE INDEX IF NOT EXISTS idx_comments_status ON comments(status);
 CREATE INDEX IF NOT EXISTS idx_comments_created_at ON comments(created_at);
-
+CREATE INDEX IF NOT EXISTS idx_post_views_post_created ON post_views(post_id, created_at);
+CREATE INDEX IF NOT EXISTS idx_post_views_visitor_created ON post_views(visitor_hash, created_at);
+CREATE INDEX IF NOT EXISTS idx_post_views_created_at ON post_views(created_at);
 CREATE INDEX IF NOT EXISTS idx_posts_status_published ON posts(status, published_at);
 CREATE INDEX IF NOT EXISTS idx_posts_slug ON posts(slug);
 CREATE INDEX IF NOT EXISTS idx_posts_featured ON posts(is_featured);
@@ -132,7 +144,7 @@ export function initDb(): void {
   // 触发一次轻量查询，确保连接可用
   db.run(sql`SELECT 1`);
   seedIfEmpty();
-  // 兜底：索引为空时从存量已发布文章重建（避免存量数据搜不到）
+  // 兜底：索引为空时从存量已发布文章重建（避免存量数据搜索不到）
   ensureSearchIndex();
   initialized = true;
 }

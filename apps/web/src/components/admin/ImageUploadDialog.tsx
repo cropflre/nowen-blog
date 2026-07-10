@@ -13,6 +13,8 @@ const RATIO_VALUE: Record<Exclude<CropRatio, 'original'>, number> = {
   '16:9': 16 / 9,
 };
 
+const ALLOWED_OUTPUT = new Set(['image/webp', 'image/jpeg', 'image/png']);
+
 function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
@@ -30,12 +32,14 @@ function outputName(name: string, mime: string): string {
   return `${base}-${Date.now()}.${extensionFor(mime)}`;
 }
 
-async function loadImage(url: string): Promise<HTMLImageElement> {
-  const image = new Image();
-  image.decoding = 'async';
-  image.src = url;
-  await image.decode();
-  return image;
+function loadImage(url: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    image.decoding = 'async';
+    image.onload = () => resolve(image);
+    image.onerror = () => reject(new Error('无法读取图片'));
+    image.src = url;
+  });
 }
 
 function canvasBlob(canvas: HTMLCanvasElement, mime: string, quality: number): Promise<Blob> {
@@ -120,44 +124,45 @@ export function ImageUploadDialog({
     setPreviewUrl(url);
     setError(null);
     setCropRatio('original');
-    if (next.type === 'image/gif') setFormat('original');
-    else setFormat('image/webp');
+    setFormat(next.type === 'image/gif' ? 'original' : 'image/webp');
     try {
       const image = await loadImage(url);
       setDimensions({ width: image.naturalWidth, height: image.naturalHeight });
-    } catch {
-      setError('无法读取图片');
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : '无法读取图片');
       setDimensions(null);
     }
   };
 
   const createProcessedFile = async (): Promise<File> => {
     if (!file || !previewUrl) throw new Error('请先选择图片');
-    if (isGif || format === 'original' && cropRatio === 'original' && (!dimensions || dimensions.width <= maxWidth)) {
-      return file;
-    }
+    const noTransform =
+      format === 'original' &&
+      cropRatio === 'original' &&
+      (!dimensions || dimensions.width <= maxWidth);
+    if (isGif || noTransform) return file;
 
     const image = await loadImage(previewUrl);
     const sourceWidth = image.naturalWidth;
     const sourceHeight = image.naturalHeight;
-    let sx = 0;
-    let sy = 0;
-    let sw = sourceWidth;
-    let sh = sourceHeight;
+    let sourceX = 0;
+    let sourceY = 0;
+    let sourceCropWidth = sourceWidth;
+    let sourceCropHeight = sourceHeight;
 
     if (cropRatio !== 'original') {
       const ratio = RATIO_VALUE[cropRatio];
       if (sourceWidth / sourceHeight > ratio) {
-        sw = sourceHeight * ratio;
-        sx = (sourceWidth - sw) * (focusX / 100);
+        sourceCropWidth = sourceHeight * ratio;
+        sourceX = (sourceWidth - sourceCropWidth) * (focusX / 100);
       } else {
-        sh = sourceWidth / ratio;
-        sy = (sourceHeight - sh) * (focusY / 100);
+        sourceCropHeight = sourceWidth / ratio;
+        sourceY = (sourceHeight - sourceCropHeight) * (focusY / 100);
       }
     }
 
-    const targetWidth = Math.max(1, Math.round(Math.min(sw, maxWidth)));
-    const targetHeight = Math.max(1, Math.round(targetWidth * (sh / sw)));
+    const targetWidth = Math.max(1, Math.round(Math.min(sourceCropWidth, maxWidth)));
+    const targetHeight = Math.max(1, Math.round(targetWidth * (sourceCropHeight / sourceCropWidth)));
     const canvas = document.createElement('canvas');
     canvas.width = targetWidth;
     canvas.height = targetHeight;
@@ -165,15 +170,30 @@ export function ImageUploadDialog({
     if (!context) throw new Error('浏览器不支持图片处理');
     context.imageSmoothingEnabled = true;
     context.imageSmoothingQuality = 'high';
-    if ((format === 'image/jpeg' || (format === 'original' && file.type === 'image/jpeg'))) {
+
+    const requestedMime = format === 'original' ? file.type : format;
+    if (requestedMime === 'image/jpeg') {
       context.fillStyle = '#ffffff';
       context.fillRect(0, 0, targetWidth, targetHeight);
     }
-    context.drawImage(image, sx, sy, sw, sh, 0, 0, targetWidth, targetHeight);
+    context.drawImage(
+      image,
+      sourceX,
+      sourceY,
+      sourceCropWidth,
+      sourceCropHeight,
+      0,
+      0,
+      targetWidth,
+      targetHeight,
+    );
 
-    const mime = format === 'original' ? file.type : format;
-    const blob = await canvasBlob(canvas, mime, quality / 100);
-    return new File([blob], outputName(file.name, mime), { type: mime, lastModified: Date.now() });
+    const blob = await canvasBlob(canvas, requestedMime, quality / 100);
+    const actualMime = ALLOWED_OUTPUT.has(blob.type) ? blob.type : requestedMime;
+    return new File([blob], outputName(file.name, actualMime), {
+      type: actualMime,
+      lastModified: Date.now(),
+    });
   };
 
   const upload = async () => {
@@ -209,9 +229,7 @@ export function ImageUploadDialog({
             <h2 className="flex items-center gap-2 text-lg font-semibold"><Crop className="h-5 w-5 text-brand" />图片压缩与裁剪</h2>
             <p className="mt-1 text-xs text-muted">处理过程仅在浏览器中完成，上传前可调整比例、焦点、尺寸和质量。</p>
           </div>
-          <button type="button" onClick={close} disabled={uploading} className="rounded-lg p-2 text-muted hover:bg-surface hover:text-fg disabled:opacity-40" aria-label="关闭">
-            <X className="h-5 w-5" />
-          </button>
+          <button type="button" onClick={close} disabled={uploading} className="rounded-lg p-2 text-muted hover:bg-surface hover:text-fg disabled:opacity-40" aria-label="关闭"><X className="h-5 w-5" /></button>
         </header>
 
         <div className="grid gap-6 p-5 lg:grid-cols-[minmax(0,1.25fr)_360px]">

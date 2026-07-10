@@ -1,4 +1,4 @@
-import type { Paginated, PostSummary, PostDetail } from '@blog/shared';
+import type { Paginated, PostSummary, PostDetail, PostContext } from '@blog/shared';
 import { toSummary, type PostRow } from '../../lib/mapping';
 import * as repo from './posts.repository';
 
@@ -26,5 +26,19 @@ export async function getPublishedBySlug(slug: string): Promise<PostDetail | nul
     seoDescription: row.seoDescription ?? null,
     canonicalUrl: row.canonicalUrl ?? null,
     createdAt: row.createdAt,
+  };
+}
+
+export async function getPostContext(slug: string): Promise<PostContext | null> {
+  const row = await repo.getPostBySlug(slug);
+  if (!row) return null;
+  const [adjacent, related] = await Promise.all([
+    repo.getAdjacentPosts(row.id, row.publishedAt ?? null),
+    repo.getRelatedPosts(row.id, 4),
+  ]);
+  return {
+    previous: adjacent.previous ? toSummary(adjacent.previous) : null,
+    next: adjacent.next ? toSummary(adjacent.next) : null,
+    related: related.map(toSummary),
   };
 }

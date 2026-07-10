@@ -18,6 +18,29 @@ export const users = sqliteTable('users', {
   updatedAt: text('updated_at').notNull(),
 });
 
+/** 单行站点设置表，固定使用 id=site。 */
+export const siteSettings = sqliteTable('site_settings', {
+  id: text('id').primaryKey(),
+  siteTitle: text('site_title').notNull(),
+  siteDescription: text('site_description').notNull(),
+  slogan: text('slogan').notNull(),
+  logoUrl: text('logo_url'),
+  faviconUrl: text('favicon_url'),
+  authorName: text('author_name').notNull(),
+  githubUrl: text('github_url'),
+  twitterUrl: text('twitter_url'),
+  email: text('email'),
+  rssEnabled: integer('rss_enabled', { mode: 'boolean' }).notNull().default(true),
+  themeColor: text('theme_color').notNull().default('#6366f1'),
+  icp: text('icp'),
+  footerText: text('footer_text'),
+  defaultSeoTitle: text('default_seo_title'),
+  defaultSeoDescription: text('default_seo_description'),
+  defaultOgImage: text('default_og_image'),
+  commentsEnabled: integer('comments_enabled', { mode: 'boolean' }).notNull().default(true),
+  updatedAt: text('updated_at').notNull(),
+});
+
 export const posts = sqliteTable('posts', {
   id: text('id').primaryKey(),
   title: text('title').notNull(),
@@ -79,28 +102,18 @@ export const assets = sqliteTable('assets', {
 export const comments = sqliteTable('comments', {
   id: text('id').primaryKey(),
   postId: text('post_id').notNull().references(() => posts.id, { onDelete: 'cascade' }),
-  parentId: text('parent_id'), // 预留回复功能，第一版不使用
-
-  // 游客信息
+  parentId: text('parent_id'),
   authorName: text('author_name').notNull(),
   authorEmail: text('author_email').notNull(),
   authorWebsite: text('author_website'),
-
-  // 评论内容
   content: text('content').notNull(),
-
-  // 审核状态
-  status: text('status').notNull().default('pending'), // pending/approved/rejected/spam
-
-  // 安全审计
+  status: text('status').notNull().default('pending'),
   ipHash: text('ip_hash'),
   userAgent: text('user_agent'),
-
-  // 时间戳
   createdAt: text('created_at').notNull(),
   updatedAt: text('updated_at').notNull(),
   approvedAt: text('approved_at'),
-  deletedAt: text('deleted_at'), // 软删除
+  deletedAt: text('deleted_at'),
 });
 
 /** 匿名访问明细。只保存哈希标识，不保存原始 IP 或浏览器访客 ID。 */

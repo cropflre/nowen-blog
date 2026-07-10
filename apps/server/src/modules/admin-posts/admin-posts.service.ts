@@ -1,9 +1,10 @@
-import type { Category, Tag } from '@blog/shared';
+import type { Category, Tag, PostStatus, PostVisibility } from '@blog/shared';
 import type { PostRow } from '../../lib/mapping';
 import { slugify, estimateReadingTime, randomId, nowIso } from '../../lib/format';
 import { indexPost, removePostFromIndex } from '../search/search.service';
 import * as repo from './admin-posts.repository';
-import type { PostInput, PostUpdate } from './admin-posts.schema';
+import * as history from './post-history.service';
+import type { PostAutosaveInput, PostInput, PostUpdate } from './admin-posts.schema';
 
 export interface AdminPostView {
   id: string;
@@ -12,7 +13,8 @@ export interface AdminPostView {
   summary: string | null;
   contentMd: string;
   coverUrl: string | null;
-  status: string;
+  status: PostStatus;
+  visibility: PostVisibility;
   isFeatured: boolean;
   isPinned: boolean;
   readingTime: number;
@@ -22,6 +24,7 @@ export interface AdminPostView {
   seoTitle: string | null;
   seoDescription: string | null;
   canonicalUrl: string | null;
+  scheduledAt: string | null;
   publishedAt: string | null;
   createdAt: string;
   updatedAt: string;
@@ -32,17 +35,15 @@ export interface AdminPostView {
   tags: Tag[];
 }
 
-/** 业务冲突（如 slug 已存在），路由层捕获后返回 409。 */
+/** 业务冲突（如 slug 已存在或发布时间无效），路由层捕获后返回 409。 */
 export class ConflictError extends Error {}
 
-/** CJK 字符按字计，西文按词计，得到近似字数。 */
 function countWords(markdown: string): number {
   const words = markdown.trim().split(/\s+/).filter(Boolean).length;
   const cjk = (markdown.match(/[一-鿿]/g) || []).length;
   return words + cjk;
 }
 
-/** 基于标题/自定义 slug 生成唯一 slug，冲突时追加序号（仅用于未显式指定 slug 的场景）。 */
 async function uniqueSlug(base: string, exceptId?: string): Promise<string> {
   const root = slugify(base) || 'post';
   if (!(await repo.slugExists(root, exceptId))) return root;
@@ -51,19 +52,15 @@ async function uniqueSlug(base: string, exceptId?: string): Promise<string> {
   return `${root}-${i}`;
 }
 
-/** 创建时解析 slug：显式提供则校验唯一性，否则由标题自动生成。 */
 async function resolveCreateSlug(slugInput: string | undefined, title: string): Promise<string> {
   const provided = slugInput?.trim();
   if (!provided) return uniqueSlug(title);
   const desired = slugify(provided);
   if (!desired) return uniqueSlug(title);
-  if (await repo.slugExists(desired)) {
-    throw new ConflictError('slug 已存在，请换一个');
-  }
+  if (await repo.slugExists(desired)) throw new ConflictError('slug 已存在，请换一个');
   return desired;
 }
 
-/** 更新时解析 slug：显式提供则校验唯一性，留空则按标题重新生成，未提供则保留原值。 */
 async function resolveUpdateSlug(
   slugInput: string | undefined,
   existingSlug: string,
@@ -76,10 +73,32 @@ async function resolveUpdateSlug(
   const desired = slugify(provided);
   if (!desired) return uniqueSlug(title, id);
   if (desired === existingSlug) return existingSlug;
-  if (await repo.slugExists(desired, id)) {
-    throw new ConflictError('slug 已存在，请换一个');
-  }
+  if (await repo.slugExists(desired, id)) throw new ConflictError('slug 已存在，请换一个');
   return desired;
+}
+
+function normalizeScheduledAt(status: string, value: string | null | undefined): string | null {
+  if (status !== 'scheduled') return null;
+  if (!value) throw new ConflictError('定时发布必须选择发布时间');
+  const timestamp = new Date(value).getTime();
+  if (!Number.isFinite(timestamp) || timestamp <= Date.now()) {
+    throw new ConflictError('定时发布时间必须晚于当前时间');
+  }
+  return new Date(timestamp).toISOString();
+}
+
+function syncSearchIndex(post: {
+  id: string;
+  title: string;
+  summary: string | null;
+  contentMd: string;
+  status: string;
+  visibility: string;
+}): void {
+  removePostFromIndex(post.id);
+  if (post.status === 'published' && post.visibility === 'public') {
+    indexPost({ id: post.id, title: post.title, summary: post.summary, contentMd: post.contentMd });
+  }
 }
 
 function toAdminView(row: PostRow): AdminPostView {
@@ -90,7 +109,8 @@ function toAdminView(row: PostRow): AdminPostView {
     summary: row.summary ?? null,
     contentMd: row.contentMd,
     coverUrl: row.coverUrl ?? null,
-    status: row.status,
+    status: row.status as PostStatus,
+    visibility: row.visibility as PostVisibility,
     isFeatured: row.isFeatured,
     isPinned: row.isPinned,
     readingTime: row.readingTime,
@@ -100,6 +120,7 @@ function toAdminView(row: PostRow): AdminPostView {
     seoTitle: row.seoTitle ?? null,
     seoDescription: row.seoDescription ?? null,
     canonicalUrl: row.canonicalUrl ?? null,
+    scheduledAt: row.scheduledAt ?? null,
     publishedAt: row.publishedAt ?? null,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
@@ -111,11 +132,7 @@ function toAdminView(row: PostRow): AdminPostView {
   };
 }
 
-export async function listPosts(opts: {
-  page: number;
-  pageSize: number;
-  status?: string;
-}) {
+export async function listPosts(opts: { page: number; pageSize: number; status?: string }) {
   const { rows, total, page, pageSize } = await repo.listAdminPosts(opts);
   return { items: rows.map(toAdminView), total, page, pageSize };
 }
@@ -125,13 +142,10 @@ export async function getPost(id: string): Promise<AdminPostView | null> {
   return row ? toAdminView(row) : null;
 }
 
-export async function createPost(
-  input: PostInput,
-  authorId: string,
-): Promise<AdminPostView> {
+export async function createPost(input: PostInput, authorId: string): Promise<AdminPostView> {
   const slug = await resolveCreateSlug(input.slug, input.title);
   const now = nowIso();
-  const publishedAt = input.status === 'published' ? now : null;
+  const scheduledAt = normalizeScheduledAt(input.status, input.scheduledAt);
   const values: repo.PostInsertValues = {
     id: randomId('p_'),
     title: input.title,
@@ -140,6 +154,7 @@ export async function createPost(
     contentMd: input.contentMd,
     coverUrl: input.coverUrl ?? null,
     status: input.status,
+    visibility: input.visibility,
     isFeatured: input.isFeatured ?? false,
     isPinned: input.isPinned ?? false,
     readingTime: estimateReadingTime(input.contentMd),
@@ -149,46 +164,44 @@ export async function createPost(
     seoTitle: input.seoTitle ?? null,
     seoDescription: input.seoDescription ?? null,
     canonicalUrl: input.canonicalUrl ?? null,
-    publishedAt,
+    scheduledAt,
+    publishedAt: input.status === 'published' ? now : null,
     createdAt: now,
     updatedAt: now,
     authorId,
   };
-  const id = await repo.insertPostTx(values, input.categoryIds, input.tagIds);
-  // 新建即发布时写入 FTS 索引（新建文章恒为 public，只需判断 status）
-  if (values.status === 'published') {
-    indexPost({
-      id: values.id,
-      title: values.title,
-      summary: values.summary ?? null,
-      contentMd: values.contentMd,
-    });
-  }
+  const id = repo.insertPostTx(values, input.categoryIds, input.tagIds);
+  syncSearchIndex(values);
+  history.savePostVersion(id, authorId, input.status === 'scheduled' ? 'schedule' : 'create');
   return toAdminView((await repo.getAdminPostById(id)) as PostRow);
 }
 
 export async function updatePost(
   id: string,
   input: PostUpdate,
+  userId: string | null = null,
+  reason = 'save',
 ): Promise<AdminPostView | null> {
   const existing = await repo.getAdminPostById(id);
   if (!existing) return null;
 
-  const slug = await resolveUpdateSlug(input.slug, existing.slug, input.title ?? existing.title, id);
-
+  const title = input.title ?? existing.title;
+  const slug = await resolveUpdateSlug(input.slug, existing.slug, title, id);
   const contentMd = input.contentMd ?? existing.contentMd;
   const status = input.status ?? existing.status;
+  const visibility = input.visibility ?? existing.visibility;
+  const scheduledAt = normalizeScheduledAt(status, input.scheduledAt ?? existing.scheduledAt);
   const now = nowIso();
-  const publishedAt =
-    status === 'published' && !existing.publishedAt ? now : existing.publishedAt;
+  const publishedAt = status === 'published' ? existing.publishedAt ?? now : existing.publishedAt;
 
   const base: Partial<repo.PostInsertValues> = {
-    title: input.title ?? existing.title,
+    title,
     slug,
     summary: input.summary !== undefined ? input.summary ?? null : existing.summary,
     contentMd,
     coverUrl: input.coverUrl !== undefined ? input.coverUrl ?? null : existing.coverUrl,
     status,
+    visibility,
     isFeatured: input.isFeatured ?? existing.isFeatured,
     isPinned: input.isPinned ?? existing.isPinned,
     readingTime: estimateReadingTime(contentMd),
@@ -197,50 +210,84 @@ export async function updatePost(
     seoDescription:
       input.seoDescription !== undefined ? input.seoDescription ?? null : existing.seoDescription,
     canonicalUrl: input.canonicalUrl !== undefined ? input.canonicalUrl ?? null : existing.canonicalUrl,
+    scheduledAt,
     publishedAt,
     updatedAt: now,
   };
 
-  const updated = await repo.updatePostTx(id, base, input.categoryIds, input.tagIds);
+  const updated = repo.updatePostTx(id, base, input.categoryIds, input.tagIds);
   if (!updated) return null;
-  // 同步 FTS 索引：先移除再根据最终状态决定是否重新索引（覆盖标题/正文变更）
-  removePostFromIndex(id);
-  if (status === 'published') {
-    indexPost({
-      id,
-      title: base.title ?? existing.title,
-      summary: (base.summary ?? existing.summary) ?? null,
-      contentMd,
-    });
-  }
-  return toAdminView((await repo.getAdminPostById(id)) as PostRow);
+  const saved = (await repo.getAdminPostById(id)) as PostRow;
+  syncSearchIndex(saved);
+  history.deletePostAutosave(id);
+  history.savePostVersion(id, userId, status === 'scheduled' ? 'schedule' : reason);
+  return toAdminView(saved);
 }
 
-export async function setStatus(id: string, status: string): Promise<AdminPostView | null> {
+export async function setStatus(
+  id: string,
+  status: 'draft' | 'published' | 'archived',
+  userId: string | null = null,
+): Promise<AdminPostView | null> {
   const existing = await repo.getAdminPostById(id);
   if (!existing) return null;
-  const publishedAt =
-    status === 'published' ? existing.publishedAt ?? nowIso() : existing.publishedAt;
-  const updated = await repo.setStatusTx(id, status, publishedAt);
+  const publishedAt = status === 'published' ? existing.publishedAt ?? nowIso() : existing.publishedAt;
+  const updated = await repo.setStatusTx(id, status, publishedAt, null);
   if (!updated) return null;
-  // 发布入索引，取消发布移出索引
-  if (status === 'published') {
-    indexPost({
-      id,
-      title: existing.title,
-      summary: existing.summary ?? null,
-      contentMd: existing.contentMd,
-    });
-  } else {
-    removePostFromIndex(id);
+  const saved = (await repo.getAdminPostById(id)) as PostRow;
+  syncSearchIndex(saved);
+  history.deletePostAutosave(id);
+  const reason = status === 'published' ? 'publish' : status === 'archived' ? 'archive' : 'unpublish';
+  history.savePostVersion(id, userId, reason);
+  return toAdminView(saved);
+}
+
+export function listVersions(postId: string) {
+  return history.listPostVersions(postId);
+}
+
+export function getVersion(postId: string, versionId: string) {
+  return history.getPostVersion(postId, versionId);
+}
+
+export async function restoreVersion(
+  postId: string,
+  versionId: string,
+  userId: string,
+): Promise<AdminPostView | null> {
+  const version = history.getPostVersion(postId, versionId);
+  if (!version) return null;
+  const snapshot = { ...version.snapshot };
+  if (
+    snapshot.status === 'scheduled' &&
+    (!snapshot.scheduledAt || new Date(snapshot.scheduledAt).getTime() <= Date.now())
+  ) {
+    snapshot.status = 'draft';
+    snapshot.scheduledAt = null;
   }
-  return toAdminView((await repo.getAdminPostById(id)) as PostRow);
+  return updatePost(postId, snapshot as PostUpdate, userId, 'restore');
+}
+
+export async function saveAutosave(postId: string, userId: string, payload: PostAutosaveInput) {
+  const existing = await repo.getAdminPostById(postId);
+  if (!existing) return null;
+  return history.upsertPostAutosave(postId, userId, payload);
+}
+
+export async function getAutosave(postId: string, userId: string) {
+  const existing = await repo.getAdminPostById(postId);
+  if (!existing) return null;
+  return history.getPostAutosave(postId, userId);
+}
+
+export function deleteAutosave(postId: string, userId: string): boolean {
+  return history.deletePostAutosave(postId, userId);
 }
 
 export async function deletePost(id: string): Promise<boolean> {
   const existing = await repo.getAdminPostById(id);
   if (!existing) return false;
-  await repo.deletePostTx(id);
+  repo.deletePostTx(id);
   removePostFromIndex(id);
   return true;
 }

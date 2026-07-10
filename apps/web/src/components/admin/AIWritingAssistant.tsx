@@ -18,7 +18,7 @@ const ACTIONS: Array<{ id: AiAction; label: string; description: string }> = [
   { id: 'custom', label: '自定义', description: '按你的指令处理内容' },
 ];
 
-const FIELD_ACTIONS = new Set<AiAction>(['title', 'summary', 'seo']);
+const NON_TEXT_ACTIONS = new Set<AiAction>(['title', 'summary', 'seo', 'tags']);
 const FULL_ARTICLE_ACTIONS = new Set<AiAction>(['title', 'summary', 'seo', 'tags', 'outline', 'continue']);
 
 interface AIWritingAssistantProps {
@@ -81,7 +81,10 @@ export function AIWritingAssistant({
     ? contentMd.trim() || summary.trim() || title.trim()
     : selectedText || contentMd.trim();
   const actionMeta = ACTIONS.find((item) => item.id === action)!;
-  const canApplyFields = Boolean(result?.fields && Object.keys(result.fields).length > 0);
+  const canApplyFields = Boolean(
+    result?.fields &&
+      (result.fields.title || result.fields.summary || result.fields.seoTitle || result.fields.seoDescription),
+  );
 
   const generate = async () => {
     if (!sourceText) {
@@ -142,7 +145,7 @@ export function AIWritingAssistant({
             <p className="px-2 text-xs font-semibold uppercase tracking-[0.16em] text-muted">写作操作</p>
             <div className="mt-3 grid gap-2 sm:grid-cols-2 md:grid-cols-1">
               {ACTIONS.map((item) => (
-                <button key={item.id} type="button" disabled={loading} onClick={() => { setAction(item.id); setResult(null); setError(null); }} className={`nowen-focus rounded-xl border p-3 text-left transition ${action === item.id ? 'border-violet-500/40 bg-gradient-to-r from-violet-500/15 to-cyan-500/8' : 'border-transparent hover:border-[var(--color-border)] hover:bg-[var(--color-glass-hover)]'}`}>
+                <button key={item.id} type="button" disabled={loading} onClick={() => { setAction(item.id); setResult(null); setError(null); }} className={`nowen-focus rounded-xl border p-3 text-left transition ${action === item.id ? 'border-violet-500/40 bg-gradient-to-r from-violet-500/15 to-cyan-500/10' : 'border-transparent hover:border-[var(--color-border)] hover:bg-[var(--color-glass-hover)]'}`}>
                   <span className="block text-sm font-medium">{item.label}</span><span className="mt-1 block text-xs leading-5 text-muted">{item.description}</span>
                 </button>
               ))}
@@ -169,7 +172,7 @@ export function AIWritingAssistant({
               <button type="button" disabled={loading} onClick={() => void generate()} className="nowen-button-primary nowen-focus inline-flex min-h-11 items-center gap-2 px-4 text-sm font-medium disabled:opacity-50">{loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}{result ? '重新生成' : '开始生成'}</button>
               {result && <button type="button" onClick={() => void copy()} className="nowen-button-secondary nowen-focus inline-flex min-h-11 items-center gap-2 px-4 text-sm">{copied ? <Check className="h-4 w-4 text-emerald-500" /> : <Copy className="h-4 w-4" />}{copied ? '已复制' : '复制结果'}</button>}
               {result && canApplyFields && <button type="button" onClick={applyFields} className="nowen-button-secondary nowen-focus inline-flex min-h-11 items-center gap-2 px-4 text-sm"><Check className="h-4 w-4" />应用到文章字段</button>}
-              {result && !FIELD_ACTIONS.has(action) && <><button type="button" onClick={() => { onInsertText(result.text); onClose(); }} className="nowen-button-secondary nowen-focus inline-flex min-h-11 items-center gap-2 px-4 text-sm"><FilePenLine className="h-4 w-4" />插入到光标</button><button type="button" onClick={() => { onReplaceText(result.text); onClose(); }} className="nowen-button-secondary nowen-focus inline-flex min-h-11 items-center gap-2 px-4 text-sm">{selectedText ? '替换选中内容' : '替换全文'}</button></>}
+              {result && !NON_TEXT_ACTIONS.has(action) && <><button type="button" onClick={() => { onInsertText(result.text); onClose(); }} className="nowen-button-secondary nowen-focus inline-flex min-h-11 items-center gap-2 px-4 text-sm"><FilePenLine className="h-4 w-4" />插入到光标</button><button type="button" onClick={() => { onReplaceText(result.text); onClose(); }} className="nowen-button-secondary nowen-focus inline-flex min-h-11 items-center gap-2 px-4 text-sm">{selectedText ? '替换选中内容' : '替换全文'}</button></>}
             </footer>
           </div>
         </div>

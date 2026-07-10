@@ -2,18 +2,18 @@ import { Hono } from 'hono';
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve, extname, sep } from 'node:path';
 import * as service from './assets.service';
-import { UploadError } from './assets.service';
+import { AssetInUseError, UploadError } from './assets.service';
 import { authMiddleware } from '../../middleware/auth';
 import { assetListQuery, assetUpdateSchema } from './assets.schema';
 import { env } from '../../config/env';
 
-function asFile(v: unknown): File | null {
+function asFile(value: unknown): File | null {
   if (
-    v &&
-    typeof (v as { arrayBuffer?: unknown }).arrayBuffer === 'function' &&
-    typeof (v as { name?: unknown }).name !== 'undefined'
+    value &&
+    typeof (value as { arrayBuffer?: unknown }).arrayBuffer === 'function' &&
+    typeof (value as { name?: unknown }).name !== 'undefined'
   ) {
-    return v as File;
+    return value as File;
   }
   return null;
 }
@@ -27,7 +27,6 @@ const MIME_BY_EXT: Record<string, string> = {
 };
 
 export const adminAssetsRoutes = new Hono<{ Variables: { userId: string } }>();
-// 媒体库管理全部需要登录
 adminAssetsRoutes.use('*', authMiddleware);
 
 adminAssetsRoutes.post('/upload', async (c) => {
@@ -42,47 +41,55 @@ adminAssetsRoutes.post('/upload', async (c) => {
   try {
     const asset = await service.uploadAsset(file);
     return c.json(asset, 201);
-  } catch (e) {
-    if (e instanceof UploadError) return c.json({ error: e.message }, 400);
-    throw e;
+  } catch (error) {
+    if (error instanceof UploadError) return c.json({ error: error.message }, 400);
+    throw error;
   }
 });
 
 adminAssetsRoutes.get('/', async (c) => {
-  const q = assetListQuery.parse(c.req.query());
-  return c.json(await service.listAssets(q.page, q.pageSize));
+  const query = assetListQuery.parse(c.req.query());
+  return c.json(await service.listAssets(query.page, query.pageSize));
+});
+
+adminAssetsRoutes.get('/:id/references', async (c) => {
+  const result = await service.findAssetReferences(c.req.param('id'));
+  if (!result) return c.json({ error: 'Not Found' }, 404);
+  return c.json({ ...result, count: result.references.length });
 });
 
 adminAssetsRoutes.get('/:id', async (c) => {
-  const a = await service.getAssetById(c.req.param('id'));
-  if (!a) return c.json({ error: 'Not Found' }, 404);
-  return c.json(a);
+  const asset = await service.getAssetById(c.req.param('id'));
+  if (!asset) return c.json({ error: 'Not Found' }, 404);
+  return c.json(asset);
 });
 
 adminAssetsRoutes.patch('/:id', async (c) => {
   const parsed = assetUpdateSchema.safeParse(await c.req.json().catch(() => null));
-  if (!parsed.success)
+  if (!parsed.success) {
     return c.json({ error: '参数错误', issues: parsed.error.flatten() }, 400);
-  const a = await service.updateAsset(c.req.param('id'), parsed.data);
-  if (!a) return c.json({ error: 'Not Found' }, 404);
-  return c.json(a);
+  }
+  const asset = await service.updateAsset(c.req.param('id'), parsed.data);
+  if (!asset) return c.json({ error: 'Not Found' }, 404);
+  return c.json(asset);
 });
 
 adminAssetsRoutes.delete('/:id', async (c) => {
   try {
-    const ok = await service.deleteAsset(c.req.param('id'));
+    const force = c.req.query('force') === 'true';
+    const ok = await service.deleteAsset(c.req.param('id'), force);
     if (!ok) return c.json({ error: 'Not Found' }, 404);
     return c.json({ ok: true });
-  } catch (e) {
-    if (e instanceof UploadError) return c.json({ error: e.message }, 400);
-    throw e;
+  } catch (error) {
+    if (error instanceof AssetInUseError) {
+      return c.json({ error: error.message, references: error.references }, 409);
+    }
+    if (error instanceof UploadError) return c.json({ error: error.message }, 400);
+    throw error;
   }
 });
 
-/**
- * 开发环境（及生产静态层备选）暴露上传文件。
- * 生产部署优先由 nginx / 静态层直接服务 /uploads（见 BLOG-10.4 文档），此处作为兜底。
- */
+/** 开发环境及生产静态层备选：暴露上传文件。 */
 export const uploadsRoutes = new Hono();
 uploadsRoutes.get('/*', (c) => {
   const sub = c.req.path.replace(/^\/uploads\/?/, '');

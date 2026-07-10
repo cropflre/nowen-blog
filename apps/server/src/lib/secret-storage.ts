@@ -20,8 +20,10 @@ export function openSecret(value: string | null): string | null {
   if (!value) return null;
   if (!value.startsWith(`${PREFIX}:`)) return value;
   const parts = value.split(':');
-  if (parts.length !== 6) throw new Error('加密凭据格式无效');
-  const [, , , ivValue, tagValue, encryptedValue] = parts;
+  if (parts.length !== 5 || parts[0] !== 'enc' || parts[1] !== 'v1') {
+    throw new Error('加密凭据格式无效');
+  }
+  const [, , ivValue, tagValue, encryptedValue] = parts;
   if (!ivValue || !tagValue || !encryptedValue) throw new Error('加密凭据内容不完整');
   const decipher = createDecipheriv('aes-256-gcm', encryptionKey(), Buffer.from(ivValue, 'base64url'));
   decipher.setAuthTag(Buffer.from(tagValue, 'base64url'));

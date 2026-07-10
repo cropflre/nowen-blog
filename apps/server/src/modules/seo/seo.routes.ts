@@ -1,5 +1,4 @@
 import { Hono } from 'hono';
-import { siteSettings } from '../../config/site';
 import { env } from '../../config/env';
 import {
   absoluteUrl,
@@ -11,6 +10,7 @@ import {
 } from '../../lib/seo';
 import { listPublishedForFeed, listPublishedForSitemap } from '../posts/posts.repository';
 import { listCategories, listTags } from '../taxonomies/taxonomies.service';
+import { getSiteSettings } from '../settings/settings.service';
 import type { PostRow } from '../../lib/mapping';
 
 const RSS_LIMIT = 50;
@@ -19,22 +19,23 @@ const STATIC_PAGES = ['/', '/posts', '/categories', '/tags', '/archive', '/searc
 export const rssRoutes = new Hono();
 
 rssRoutes.get('/', async (c) => {
+  const settings = getSiteSettings();
   const posts = await listPublishedForFeed(RSS_LIMIT);
   const items = posts
-    .map((p: PostRow) => {
-      const desc = p.summary ?? truncateText(stripMarkdown(p.contentMd), 200);
-      const cats = (p.categoryLinks ?? [])
-        .map((l) => l.category.name)
+    .map((post: PostRow) => {
+      const description = post.summary ?? truncateText(stripMarkdown(post.contentMd), 200);
+      const categories = (post.categoryLinks ?? [])
+        .map((link) => link.category.name)
         .map(escapeXml)
         .join('</category><category>');
-      const url = absoluteUrl(`/posts/${p.slug}`);
+      const url = absoluteUrl(`/posts/${post.slug}`);
       return `    <item>
-      <title>${escapeXml(p.title)}</title>
+      <title>${escapeXml(post.title)}</title>
       <link>${escapeXml(url)}</link>
       <guid>${escapeXml(url)}</guid>
-      <pubDate>${formatRssDate(p.publishedAt)}</pubDate>
-      <description>${escapeXml(desc)}</description>
-      ${cats ? `<category>${cats}</category>` : ''}
+      <pubDate>${formatRssDate(post.publishedAt)}</pubDate>
+      <description>${escapeXml(description)}</description>
+      ${categories ? `<category>${categories}</category>` : ''}
     </item>`;
     })
     .join('\n');
@@ -42,9 +43,9 @@ rssRoutes.get('/', async (c) => {
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0">
   <channel>
-    <title>${escapeXml(siteSettings.siteTitle)}</title>
+    <title>${escapeXml(settings.siteTitle)}</title>
     <link>${escapeXml(env.baseUrl)}</link>
-    <description>${escapeXml(siteSettings.siteDescription)}</description>
+    <description>${escapeXml(settings.siteDescription)}</description>
     <lastBuildDate>${formatRssDate(new Date().toISOString())}</lastBuildDate>
     <generator>NOWEN Blog</generator>
 ${items}
@@ -77,19 +78,19 @@ sitemapRoutes.get('/', async (c) => {
   for (const path of STATIC_PAGES) {
     urls.push(urlXml(absoluteUrl(path), today, 'weekly', path === '/' ? '1.0' : '0.6'));
   }
-  for (const p of posts) {
+  for (const post of posts) {
     urls.push(
       urlXml(
-        absoluteUrl(`/posts/${p.slug}`),
-        formatSitemapDate(p.publishedAt ?? p.updatedAt),
+        absoluteUrl(`/posts/${post.slug}`),
+        formatSitemapDate(post.publishedAt ?? post.updatedAt),
         'weekly',
         '0.8',
       ),
     );
   }
-  for (const cat of categories) {
+  for (const category of categories) {
     urls.push(
-      urlXml(absoluteUrl(`/categories/${encodeURIComponent(cat.slug)}`), today, 'monthly', '0.5'),
+      urlXml(absoluteUrl(`/categories/${encodeURIComponent(category.slug)}`), today, 'monthly', '0.5'),
     );
   }
   for (const tag of tags) {
@@ -109,6 +110,6 @@ ${urls.join('\n')}
 export const robotsRoutes = new Hono();
 
 robotsRoutes.get('/', (c) => {
-  const txt = `User-agent: *\nAllow: /\nSitemap: ${absoluteUrl('/sitemap.xml')}\n`;
-  return c.body(txt, 200, { 'Content-Type': 'text/plain; charset=utf-8' });
+  const text = `User-agent: *\nAllow: /\nSitemap: ${absoluteUrl('/sitemap.xml')}\n`;
+  return c.body(text, 200, { 'Content-Type': 'text/plain; charset=utf-8' });
 });

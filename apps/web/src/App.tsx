@@ -20,13 +20,13 @@ import { AdminCategories } from './pages/admin/AdminCategories';
 import { AdminTags } from './pages/admin/AdminTags';
 import { AdminAssets } from './pages/admin/AdminAssets';
 import { AdminComments } from './pages/admin/AdminComments';
+import { AdminSettings } from './pages/admin/AdminSettings';
 import { NotFound } from './pages/NotFound';
 
 export function App() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* 前台 */}
         <Route element={<Layout />}>
           <Route path="/" element={<Home />} />
           <Route path="/posts" element={<Posts />} />
@@ -40,7 +40,6 @@ export function App() {
           <Route path="/about" element={<About />} />
         </Route>
 
-        {/* 后台：独立布局，不经过前台 Layout */}
         <Route element={<LoginRoute />}>
           <Route path="/admin/login" element={<Login />} />
         </Route>
@@ -54,6 +53,7 @@ export function App() {
             <Route path="/admin/tags" element={<AdminTags />} />
             <Route path="/admin/assets" element={<AdminAssets />} />
             <Route path="/admin/comments" element={<AdminComments />} />
+            <Route path="/admin/settings" element={<AdminSettings />} />
           </Route>
         </Route>
 

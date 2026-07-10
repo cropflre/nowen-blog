@@ -7,12 +7,14 @@ export interface PostRow {
   summary: string | null;
   coverUrl: string | null;
   status: string;
+  visibility: string;
   isFeatured: boolean;
   isPinned: boolean;
   readingTime: number;
   wordCount: number;
   viewCount: number;
   likeCount: number;
+  scheduledAt: string | null;
   publishedAt: string | null;
   updatedAt: string;
   contentMd: string;

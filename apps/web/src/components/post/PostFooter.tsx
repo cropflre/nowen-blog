@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Link2, Share2, Check, ChevronLeft, ChevronRight } from 'lucide-react';
 import type { PostContext, PostDetail } from '../../types';
@@ -20,10 +20,14 @@ async function copyText(value: string): Promise<void> {
 }
 
 export function PostFooter({ post, context }: { post: PostDetail; context?: PostContext }) {
+  const route = `/posts/${post.slug}`;
+  const [shareUrl, setShareUrl] = useState(route);
   const [copied, setCopied] = useState(false);
-  const canNativeShare = typeof navigator !== 'undefined' && typeof navigator.share === 'function';
-  const url = typeof window === 'undefined' ? `/posts/${post.slug}` : window.location.href.split('#')[0]!;
   const shareText = post.summary || post.title;
+
+  useEffect(() => {
+    setShareUrl(window.location.href.split('#')[0] ?? route);
+  }, [route]);
 
   const showCopied = () => {
     setCopied(true);
@@ -31,19 +35,19 @@ export function PostFooter({ post, context }: { post: PostDetail; context?: Post
   };
 
   const share = async () => {
-    if (canNativeShare) {
+    if (typeof navigator.share === 'function') {
       try {
-        await navigator.share({ title: post.title, text: shareText, url });
+        await navigator.share({ title: post.title, text: shareText, url: shareUrl });
         return;
       } catch (error) {
         if (typeof DOMException !== 'undefined' && error instanceof DOMException && error.name === 'AbortError') return;
       }
     }
-    await copyText(url);
+    await copyText(shareUrl);
     showCopied();
   };
 
-  const encodedUrl = encodeURIComponent(url);
+  const encodedUrl = encodeURIComponent(shareUrl);
   const encodedTitle = encodeURIComponent(post.title);
 
   return (
@@ -60,11 +64,11 @@ export function PostFooter({ post, context }: { post: PostDetail; context?: Post
             className="inline-flex items-center gap-2 rounded-lg bg-brand px-3 py-2 text-sm font-medium text-white transition hover:opacity-90"
           >
             <Share2 className="h-4 w-4" />
-            {canNativeShare ? '分享' : copied ? '已复制' : '复制链接'}
+            {copied ? '已复制' : '分享'}
           </button>
           <button
             type="button"
-            onClick={() => void copyText(url).then(showCopied)}
+            onClick={() => void copyText(shareUrl).then(showCopied)}
             className="inline-flex items-center gap-2 rounded-lg border border-line px-3 py-2 text-sm text-muted transition hover:border-brand/60 hover:text-fg"
           >
             {copied ? <Check className="h-4 w-4 text-emerald-500" /> : <Link2 className="h-4 w-4" />}

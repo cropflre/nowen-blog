@@ -122,14 +122,16 @@ function formFromPayload(payload: Partial<AdminPostInput>, fallback: FormState):
   return {
     title: payload.title ?? fallback.title,
     slug: payload.slug ?? fallback.slug,
-    summary: payload.summary ?? fallback.summary,
+    summary: payload.summary !== undefined ? payload.summary ?? '' : fallback.summary,
     contentMd: payload.contentMd ?? fallback.contentMd,
-    coverUrl: payload.coverUrl ?? fallback.coverUrl,
+    coverUrl: payload.coverUrl !== undefined ? payload.coverUrl ?? '' : fallback.coverUrl,
     categoryIds: payload.categoryIds ?? fallback.categoryIds,
     tagIds: payload.tagIds ?? fallback.tagIds,
-    seoTitle: payload.seoTitle ?? fallback.seoTitle,
-    seoDescription: payload.seoDescription ?? fallback.seoDescription,
-    canonicalUrl: payload.canonicalUrl ?? fallback.canonicalUrl,
+    seoTitle: payload.seoTitle !== undefined ? payload.seoTitle ?? '' : fallback.seoTitle,
+    seoDescription:
+      payload.seoDescription !== undefined ? payload.seoDescription ?? '' : fallback.seoDescription,
+    canonicalUrl:
+      payload.canonicalUrl !== undefined ? payload.canonicalUrl ?? '' : fallback.canonicalUrl,
     status: payload.status ?? fallback.status,
     visibility: payload.visibility ?? fallback.visibility,
     isFeatured: payload.isFeatured ?? fallback.isFeatured,
@@ -245,7 +247,7 @@ export function AdminPostEditor({ postId }: { postId?: string }) {
   }, [autosaveQuery.data, postQuery.data]);
 
   useEffect(() => {
-    if (!prefilled.current) return;
+    if (!prefilled.current || savingAction !== null || restoringVersionId !== null) return;
     const payload = buildPayload(form);
     const serialized = JSON.stringify(payload);
     if (postId && serialized === lastSavedJson.current) return;
@@ -267,7 +269,7 @@ export function AdminPostEditor({ postId }: { postId?: string }) {
       }
     }, AUTOSAVE_DELAY);
     return () => window.clearTimeout(timer);
-  }, [form, postId]);
+  }, [form, postId, restoringVersionId, savingAction]);
 
   const set = <K extends keyof FormState>(key: K, value: FormState[K]) =>
     setForm((current) => ({ ...current, [key]: value }));
@@ -416,7 +418,7 @@ export function AdminPostEditor({ postId }: { postId?: string }) {
 
   const fieldClass = 'w-full rounded-lg border border-line bg-bg px-3 py-2 text-fg outline-none transition focus:border-brand/60';
   const labelClass = 'mb-1 block text-sm font-medium text-fg';
-  const busy = savingAction !== null;
+  const busy = savingAction !== null || restoringVersionId !== null;
 
   return (
     <div className="space-y-6 p-6 lg:p-8">
@@ -575,7 +577,7 @@ export function AdminPostEditor({ postId }: { postId?: string }) {
                   <div key={version.id} className="rounded-xl border border-line p-3">
                     <div className="flex items-start justify-between gap-3">
                       <div><p className="text-sm font-medium">V{version.version} · {VERSION_REASON[version.reason] ?? version.reason}</p><p className="mt-1 text-xs text-muted">{formatTime(version.createdAt)} · {version.createdByName ?? '系统'}</p></div>
-                      <button type="button" disabled={restoringVersionId !== null || busy} onClick={() => void restoreVersion(version)} className="inline-flex items-center gap-1 rounded-lg border border-line px-2 py-1 text-xs transition hover:border-brand/60 disabled:opacity-40">
+                      <button type="button" disabled={busy} onClick={() => void restoreVersion(version)} className="inline-flex items-center gap-1 rounded-lg border border-line px-2 py-1 text-xs transition hover:border-brand/60 disabled:opacity-40">
                         {restoringVersionId === version.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RotateCcw className="h-3.5 w-3.5" />}恢复
                       </button>
                     </div>
@@ -588,7 +590,7 @@ export function AdminPostEditor({ postId }: { postId?: string }) {
       </div>
 
       <footer className="sticky bottom-0 z-20 -mx-6 flex flex-wrap items-center gap-3 border-t border-line bg-bg/95 px-6 py-4 backdrop-blur lg:-mx-8 lg:px-8">
-        <button type="button" disabled={busy} onClick={() => void save(form.status === 'archived' ? 'draft' : form.status)} className="inline-flex items-center gap-2 rounded-lg border border-line px-4 py-2 text-sm transition hover:border-brand/60 disabled:opacity-40">
+        <button type="button" disabled={busy} onClick={() => void save(form.status)} className="inline-flex items-center gap-2 rounded-lg border border-line px-4 py-2 text-sm transition hover:border-brand/60 disabled:opacity-40">
           {savingAction === form.status ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}保存更改
         </button>
         <button type="button" disabled={busy} onClick={() => void save('draft')} className="rounded-lg border border-line px-4 py-2 text-sm transition hover:border-brand/60 disabled:opacity-40">存为草稿</button>

@@ -42,7 +42,9 @@ export interface PostSummary {
   author: Author;
   categories: Category[];
   tags: Tag[];
-  /** 搜索命中时的高亮片段（含控制字符标记），非搜索场景为空。 */
+  /** 搜索命中的标题，使用控制字符包裹命中片段。 */
+  titleHighlight?: string | null;
+  /** 搜索命中的正文/摘要片段，使用控制字符包裹命中片段。 */
   snippet?: string | null;
 }
 
@@ -53,6 +55,13 @@ export interface PostDetail extends PostSummary {
   seoDescription: string | null;
   canonicalUrl: string | null;
   createdAt: string;
+}
+
+/** 文章详情页的上下篇和相关文章。previous 表示更早发布，next 表示更新发布。 */
+export interface PostContext {
+  previous: PostSummary | null;
+  next: PostSummary | null;
+  related: PostSummary[];
 }
 
 export interface ArchiveGroup {
@@ -98,6 +107,6 @@ export interface SearchResult {
   query: string;
   items: PostSummary[];
   total: number;
-  page?: number;
-  pageSize?: number;
+  page: number;
+  pageSize: number;
 }

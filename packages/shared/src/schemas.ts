@@ -42,6 +42,8 @@ export const postSummarySchema = z.object({
   author: authorSchema,
   categories: z.array(categorySchema),
   tags: z.array(tagSchema),
+  titleHighlight: z.string().nullable().optional(),
+  snippet: z.string().nullable().optional(),
 });
 
 export const postDetailSchema = postSummarySchema.extend({
@@ -50,6 +52,12 @@ export const postDetailSchema = postSummarySchema.extend({
   seoDescription: z.string().nullable(),
   canonicalUrl: z.string().nullable(),
   createdAt: z.string(),
+});
+
+export const postContextSchema = z.object({
+  previous: postSummarySchema.nullable(),
+  next: postSummarySchema.nullable(),
+  related: z.array(postSummarySchema),
 });
 
 export const archiveSchema = z.object({
@@ -90,6 +98,8 @@ export const searchResultSchema = z.object({
   query: z.string(),
   items: z.array(postSummarySchema),
   total: z.number(),
+  page: z.number(),
+  pageSize: z.number(),
 });
 
 export const paginatedSchema = <T extends z.ZodTypeAny>(item: T) =>

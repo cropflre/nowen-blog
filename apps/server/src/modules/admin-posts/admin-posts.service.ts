@@ -125,10 +125,10 @@ function toAdminView(row: PostRow): AdminPostView {
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
     author: row.author,
-    categoryIds: (row.categoryLinks ?? []).map((l) => l.category.id),
-    tagIds: (row.tagLinks ?? []).map((l) => l.tag.id),
-    categories: (row.categoryLinks ?? []).map((l) => l.category),
-    tags: (row.tagLinks ?? []).map((l) => l.tag),
+    categoryIds: (row.categoryLinks ?? []).map((link) => link.category.id),
+    tagIds: (row.tagLinks ?? []).map((link) => link.tag.id),
+    categories: (row.categoryLinks ?? []).map((link) => link.category),
+    tags: (row.tagLinks ?? []).map((link) => link.tag),
   };
 }
 
@@ -190,9 +190,15 @@ export async function updatePost(
   const contentMd = input.contentMd ?? existing.contentMd;
   const status = input.status ?? existing.status;
   const visibility = input.visibility ?? existing.visibility;
-  const scheduledAt = normalizeScheduledAt(status, input.scheduledAt ?? existing.scheduledAt);
+  const scheduleInput = input.scheduledAt !== undefined ? input.scheduledAt : existing.scheduledAt;
+  const scheduledAt = normalizeScheduledAt(status, scheduleInput);
   const now = nowIso();
-  const publishedAt = status === 'published' ? existing.publishedAt ?? now : existing.publishedAt;
+  const publishedAt =
+    status === 'published'
+      ? existing.publishedAt ?? now
+      : status === 'scheduled'
+        ? null
+        : existing.publishedAt;
 
   const base: Partial<repo.PostInsertValues> = {
     title,
@@ -220,7 +226,8 @@ export async function updatePost(
   const saved = (await repo.getAdminPostById(id)) as PostRow;
   syncSearchIndex(saved);
   history.deletePostAutosave(id);
-  history.savePostVersion(id, userId, status === 'scheduled' ? 'schedule' : reason);
+  const versionReason = reason === 'restore' ? 'restore' : status === 'scheduled' ? 'schedule' : reason;
+  history.savePostVersion(id, userId, versionReason);
   return toAdminView(saved);
 }
 
@@ -237,8 +244,9 @@ export async function setStatus(
   const saved = (await repo.getAdminPostById(id)) as PostRow;
   syncSearchIndex(saved);
   history.deletePostAutosave(id);
-  const reason = status === 'published' ? 'publish' : status === 'archived' ? 'archive' : 'unpublish';
-  history.savePostVersion(id, userId, reason);
+  const versionReason =
+    status === 'published' ? 'publish' : status === 'archived' ? 'archive' : 'unpublish';
+  history.savePostVersion(id, userId, versionReason);
   return toAdminView(saved);
 }
 

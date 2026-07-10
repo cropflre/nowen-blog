@@ -4,8 +4,10 @@ import { existsSync, mkdtempSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 
+type ClientModule = typeof import('./client');
+
 let testDir = '';
-let sqlite: import('better-sqlite3').Database;
+let sqlite: ClientModule['sqlite'];
 let initDb: () => void;
 
 describe('fresh database bootstrap', () => {

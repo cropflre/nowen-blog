@@ -161,3 +161,30 @@ export interface CommentSubmitResult {
   status: 'pending';
   message: string;
 }
+
+export type CommentStatus = 'pending' | 'approved' | 'rejected' | 'spam';
+
+export interface AdminCommentView {
+  id: string;
+  postId: string;
+  postTitle?: string;
+  authorName: string;
+  authorEmail: string;
+  authorWebsite: string | null;
+  content: string;
+  status: CommentStatus;
+  ipHash: string | null;
+  userAgent: string | null;
+  createdAt: string;
+  updatedAt: string;
+  approvedAt: string | null;
+  deletedAt: string | null;
+}
+
+export interface AdminListCommentsParams {
+  page?: number;
+  pageSize?: number;
+  status?: CommentStatus | 'all';
+  postId?: string;
+  postSlug?: string;
+}

@@ -103,6 +103,17 @@ export const comments = sqliteTable('comments', {
   deletedAt: text('deleted_at'), // 软删除
 });
 
+/** 匿名访问明细。只保存哈希标识，不保存原始 IP 或浏览器访客 ID。 */
+export const postViews = sqliteTable('post_views', {
+  id: text('id').primaryKey(),
+  postId: text('post_id').notNull().references(() => posts.id, { onDelete: 'cascade' }),
+  visitorHash: text('visitor_hash').notNull(),
+  ipHash: text('ip_hash'),
+  userAgent: text('user_agent'),
+  referrer: text('referrer'),
+  createdAt: text('created_at').notNull(),
+});
+
 export const postCategories = sqliteTable(
   'post_categories',
   {
@@ -137,6 +148,11 @@ export const postsRelations = relations(posts, ({ one, many }) => ({
   author: one(users, { fields: [posts.authorId], references: [users.id] }),
   categoryLinks: many(postCategories),
   tagLinks: many(postTags),
+  views: many(postViews),
+}));
+
+export const postViewsRelations = relations(postViews, ({ one }) => ({
+  post: one(posts, { fields: [postViews.postId], references: [posts.id] }),
 }));
 
 export const categoriesRelations = relations(categories, ({ many }) => ({

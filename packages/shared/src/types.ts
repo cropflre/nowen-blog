@@ -103,6 +103,29 @@ export interface SiteSettings {
   commentsEnabled: boolean;
 }
 
+export interface Project {
+  id: string;
+  name: string;
+  slug: string;
+  description: string | null;
+  coverUrl: string | null;
+  repositoryUrl: string | null;
+  homepageUrl: string | null;
+  language: string | null;
+  topics: string[];
+  stars: number;
+  forks: number;
+  source: 'manual' | 'github';
+  githubFullName: string | null;
+  githubPushedAt: string | null;
+  syncedAt: string | null;
+  isFeatured: boolean;
+  isPublished: boolean;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface SearchResult {
   query: string;
   items: PostSummary[];

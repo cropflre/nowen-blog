@@ -1,4 +1,4 @@
-import { and, asc, eq, desc, count } from 'drizzle-orm';
+import { and, asc, eq, desc, sql } from 'drizzle-orm';
 import type { PostSummary } from '@blog/shared';
 import { db } from '../../db/client';
 import { posts, categories, tags, postCategories, postTags } from '../../db/schema';
@@ -22,6 +22,8 @@ export interface TagView {
   postCount: number;
 }
 
+const publicPostCount = sql<number>`COUNT(CASE WHEN ${posts.status} = 'published' AND ${posts.visibility} = 'public' THEN 1 END)`;
+
 export async function listCategories(): Promise<CategoryView[]> {
   const rows = await db
     .select({
@@ -31,13 +33,14 @@ export async function listCategories(): Promise<CategoryView[]> {
       description: categories.description,
       color: categories.color,
       sortOrder: categories.sortOrder,
-      postCount: count(postCategories.postId),
+      postCount: publicPostCount,
     })
     .from(categories)
     .leftJoin(postCategories, eq(categories.id, postCategories.categoryId))
+    .leftJoin(posts, eq(postCategories.postId, posts.id))
     .groupBy(categories.id)
     .orderBy(asc(categories.sortOrder));
-  return rows;
+  return rows.map((row) => ({ ...row, postCount: Number(row.postCount) }));
 }
 
 export async function listTags(): Promise<TagView[]> {
@@ -47,13 +50,14 @@ export async function listTags(): Promise<TagView[]> {
       name: tags.name,
       slug: tags.slug,
       color: tags.color,
-      postCount: count(postTags.postId),
+      postCount: publicPostCount,
     })
     .from(tags)
     .leftJoin(postTags, eq(tags.id, postTags.tagId))
+    .leftJoin(posts, eq(postTags.postId, posts.id))
     .groupBy(tags.id)
-    .orderBy(desc(count(postTags.postId)));
-  return rows;
+    .orderBy(desc(publicPostCount));
+  return rows.map((row) => ({ ...row, postCount: Number(row.postCount) }));
 }
 
 export interface ArchiveMonth {
@@ -81,13 +85,11 @@ export async function getArchive(): Promise<ArchiveYear[]> {
   const summaries = (rows as unknown as PostRow[]).map(toSummary);
 
   const byYear = new Map<number, { year: number; total: number; months: Map<number, ArchiveMonth> }>();
-  for (const p of summaries) {
-    const d = new Date(p.publishedAt ?? p.updatedAt);
-    const year = d.getUTCFullYear();
-    const month = d.getUTCMonth() + 1;
-    if (!byYear.has(year)) {
-      byYear.set(year, { year, total: 0, months: new Map() });
-    }
+  for (const post of summaries) {
+    const date = new Date(post.publishedAt ?? post.updatedAt);
+    const year = date.getUTCFullYear();
+    const month = date.getUTCMonth() + 1;
+    if (!byYear.has(year)) byYear.set(year, { year, total: 0, months: new Map() });
     const yearGroup = byYear.get(year)!;
     yearGroup.total += 1;
     if (!yearGroup.months.has(month)) {
@@ -95,16 +97,16 @@ export async function getArchive(): Promise<ArchiveYear[]> {
     }
     const monthGroup = yearGroup.months.get(month)!;
     monthGroup.total += 1;
-    monthGroup.posts.push(p);
+    monthGroup.posts.push(post);
   }
 
   return Array.from(byYear.values())
     .sort((a, b) => b.year - a.year)
-    .map((g) => ({
-      year: g.year,
-      total: g.total,
-      months: Array.from(g.months.values())
+    .map((group) => ({
+      year: group.year,
+      total: group.total,
+      months: Array.from(group.months.values())
         .sort((a, b) => b.month - a.month)
-        .map((m) => ({ month: m.month, total: m.total, posts: m.posts })),
+        .map((month) => ({ month: month.month, total: month.total, posts: month.posts })),
     }));
 }

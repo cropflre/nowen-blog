@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '../../lib/api';
 
@@ -13,6 +14,7 @@ export function Footer() {
           <p>{settings?.footerText || settings?.slogan}</p>
         </div>
         <div className="flex flex-wrap gap-4">
+          <Link to="/projects">项目</Link>
           {settings?.social.github && <a href={settings.social.github} target="_blank" rel="noreferrer">GitHub</a>}
           {settings?.social.twitter && <a href={settings.social.twitter} target="_blank" rel="noreferrer">Twitter / X</a>}
           {settings?.social.email && <a href={`mailto:${settings.social.email}`}>Email</a>}

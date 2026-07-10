@@ -1,8 +1,8 @@
 import type { SiteSettings } from '@blog/shared';
 
 /**
- * 站点默认配置。后期可迁移到数据库 settings 表，
- * 并通过 /api/admin/settings 在后台编辑（见 BLOG 后续阶段）。
+ * 首次启动时写入数据库的站点默认配置。
+ * 环境变量仅作为初始化默认值；后台保存后以数据库配置为准。
  */
 export const siteSettings: SiteSettings = {
   siteTitle: process.env.SITE_TITLE ?? 'NOWEN Blog',
@@ -20,4 +20,9 @@ export const siteSettings: SiteSettings = {
   },
   themeColor: process.env.SITE_THEME_COLOR ?? '#6366f1',
   icp: process.env.SITE_ICP ?? null,
+  footerText: process.env.SITE_FOOTER_TEXT ?? null,
+  defaultSeoTitle: process.env.SITE_DEFAULT_SEO_TITLE ?? null,
+  defaultSeoDescription: process.env.SITE_DEFAULT_SEO_DESCRIPTION ?? null,
+  defaultOgImage: process.env.SITE_DEFAULT_OG_IMAGE ?? null,
+  commentsEnabled: process.env.SITE_COMMENTS_ENABLED !== 'false',
 };

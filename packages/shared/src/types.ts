@@ -1,4 +1,4 @@
-export type PostStatus = 'draft' | 'published' | 'archived';
+export type PostStatus = 'draft' | 'scheduled' | 'published' | 'archived';
 export type PostVisibility = 'public' | 'private';
 
 export interface Category {

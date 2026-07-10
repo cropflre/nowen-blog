@@ -76,7 +76,8 @@ describe('AI writing assistant', () => {
     const row = sqlite
       .prepare("SELECT api_key AS apiKey FROM ai_settings WHERE id = 'default'")
       .get() as { apiKey: string };
-    assert.equal(row.apiKey, 'test-secret-key-1234');
+    assert.match(row.apiKey, /^enc:v1:/);
+    assert.notEqual(row.apiKey, 'test-secret-key-1234');
 
     globalThis.fetch = async (input, init) => {
       const url = String(input);

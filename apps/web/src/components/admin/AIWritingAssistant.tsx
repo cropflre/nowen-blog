@@ -53,6 +53,7 @@ export function AIWritingAssistant({
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const loadingRef = useRef(false);
+  const onCloseRef = useRef(onClose);
 
   const selectedText = useMemo(
     () => contentMd.slice(Math.max(0, selectionStart), Math.max(selectionStart, selectionEnd)).trim(),
@@ -64,6 +65,10 @@ export function AIWritingAssistant({
   }, [loading]);
 
   useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
+
+  useEffect(() => {
     if (!open) return;
     setResult(null);
     setError(null);
@@ -71,14 +76,14 @@ export function AIWritingAssistant({
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape' && !loadingRef.current) onClose();
+      if (event.key === 'Escape' && !loadingRef.current) onCloseRef.current();
     };
     window.addEventListener('keydown', onKeyDown);
     return () => {
       document.body.style.overflow = previousOverflow;
       window.removeEventListener('keydown', onKeyDown);
     };
-  }, [onClose, open]);
+  }, [open]);
 
   if (!open) return null;
 

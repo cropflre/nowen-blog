@@ -41,6 +41,82 @@ test.describe('NOWEN Blog smoke flows', () => {
     await expect(page.locator('html')).toHaveClass(/dark/);
   });
 
+  test('shows a GitHub account public projects without login or persistence', async ({ page }) => {
+    await page.route('https://api.github.com/users/cropflre', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          login: 'cropflre',
+          name: 'Cropflre',
+          avatar_url: 'https://avatars.githubusercontent.com/u/21305704?v=4',
+          bio: 'Open-source builder',
+          html_url: 'https://github.com/cropflre',
+          blog: 'https://example.com',
+          location: 'Shenzhen',
+          public_repos: 10,
+          followers: 20,
+          following: 3,
+        }),
+      });
+    });
+    await page.route('https://api.github.com/users/cropflre/repos?*', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify([
+          {
+            id: 1701,
+            name: 'nowen-note',
+            full_name: 'cropflre/nowen-note',
+            description: 'A public note project loaded directly from GitHub.',
+            html_url: 'https://github.com/cropflre/nowen-note',
+            homepage: 'https://note.example.com',
+            language: 'TypeScript',
+            topics: ['react', 'electron'],
+            stargazers_count: 88,
+            forks_count: 9,
+            fork: false,
+            archived: false,
+            disabled: false,
+            pushed_at: '2026-07-10T00:00:00Z',
+            created_at: '2025-01-01T00:00:00Z',
+            updated_at: '2026-07-10T00:00:00Z',
+          },
+          {
+            id: 1702,
+            name: 'ignored-fork',
+            full_name: 'cropflre/ignored-fork',
+            description: 'This fork must not be displayed.',
+            html_url: 'https://github.com/cropflre/ignored-fork',
+            homepage: null,
+            language: 'JavaScript',
+            topics: [],
+            stargazers_count: 0,
+            forks_count: 0,
+            fork: true,
+            archived: false,
+            disabled: false,
+            pushed_at: null,
+            created_at: '2025-01-01T00:00:00Z',
+            updated_at: '2025-01-01T00:00:00Z',
+          },
+        ]),
+      });
+    });
+
+    await page.goto('/projects');
+    await page.getByLabel('GitHub 账号或主页').fill('https://github.com/cropflre/');
+    await page.getByRole('button', { name: '一键展示项目' }).click();
+
+    await expect(page).toHaveURL(/\/projects\?github=cropflre/);
+    await expect(page.getByRole('heading', { name: 'Cropflre' })).toBeVisible();
+    await expect(page.getByText('@cropflre', { exact: true })).toBeVisible();
+    await expect(page.getByText('nowen-note', { exact: true })).toBeVisible();
+    await expect(page.getByText('ignored-fork', { exact: true })).toHaveCount(0);
+    await expect(page.getByRole('link', { name: /查看 GitHub 主页/ })).toHaveAttribute('href', 'https://github.com/cropflre');
+  });
+
   test('persists admin day mode across reloads and authenticated pages', async ({ page }) => {
     await page.goto('/admin/login');
     await expect(page.locator('html')).toHaveClass(/dark/);
@@ -80,6 +156,7 @@ test.describe('NOWEN Blog smoke flows', () => {
     await page.getByRole('button', { name: '创建项目' }).click();
     await expect(page.getByText('项目已创建。')).toBeVisible();
 
+    await page.route('https://api.github.com/**', (route) => route.abort());
     await page.goto('/projects');
     await expect(page.getByRole('heading', { name: '项目与作品' })).toBeVisible();
     await expect(page.getByText('E2E Portfolio Project', { exact: true })).toBeVisible();

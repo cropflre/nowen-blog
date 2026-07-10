@@ -24,7 +24,6 @@ export function PostDetail() {
   useEffect(() => {
     if (!post?.slug) return;
     let cancelled = false;
-
     void api
       .trackPostView(post.slug)
       .then((result) => {
@@ -33,10 +32,7 @@ export function PostDetail() {
           current ? { ...current, viewCount: result.viewCount } : current,
         );
       })
-      .catch(() => {
-        // 统计失败不应影响文章阅读体验。
-      });
-
+      .catch(() => undefined);
     return () => {
       cancelled = true;
     };
@@ -50,21 +46,19 @@ export function PostDetail() {
     return (
       <div className="mx-auto max-w-[760px] px-4 py-20">
         <p className="text-lg">文章不存在或已被删除。</p>
-        <Link to="/posts" className="mt-4 inline-block text-brand">
-          返回文章列表
-        </Link>
+        <Link to="/posts" className="mt-4 inline-block text-brand">返回文章列表</Link>
       </div>
     );
   }
 
+  const seoDescription = post.seoDescription || post.summary || settings?.defaultSeoDescription;
+  const seoImage = post.coverUrl || settings?.defaultOgImage;
   const jsonLd = {
     '@context': 'https://schema.org',
     '@type': 'BlogPosting',
     headline: post.seoTitle || post.title,
-    ...(post.seoDescription || post.summary
-      ? { description: post.seoDescription || post.summary }
-      : {}),
-    ...(post.coverUrl ? { image: absUrl(post.coverUrl) } : {}),
+    ...(seoDescription ? { description: seoDescription } : {}),
+    ...(seoImage ? { image: absUrl(seoImage) } : {}),
     author: { '@type': 'Person', name: post.author.username },
     ...(post.publishedAt ? { datePublished: post.publishedAt } : {}),
     ...(post.updatedAt ? { dateModified: post.updatedAt } : {}),
@@ -76,27 +70,22 @@ export function PostDetail() {
     <article className="mx-auto max-w-[760px] px-4 py-12">
       <Seo
         title={post.seoTitle || post.title}
-        description={post.seoDescription || post.summary}
+        description={seoDescription}
         canonical={post.canonicalUrl || `/posts/${post.slug}`}
-        image={post.coverUrl}
+        image={seoImage}
         type="article"
         jsonLd={jsonLd}
       />
 
       <div className="mb-3 flex flex-wrap gap-2 text-xs">
-        {post.categories.map((c) => (
-          <Link
-            key={c.id}
-            to={`/categories/${c.slug}`}
-            className="rounded-full border border-line px-2 py-0.5 text-muted transition hover:text-brand"
-          >
-            {c.name}
+        {post.categories.map((category) => (
+          <Link key={category.id} to={`/categories/${category.slug}`} className="rounded-full border border-line px-2 py-0.5 text-muted transition hover:text-brand">
+            {category.name}
           </Link>
         ))}
       </div>
 
       <h1 className="text-3xl font-bold text-fg">{post.title}</h1>
-
       <div className="mt-3 flex flex-wrap gap-3 text-sm text-muted">
         <span>{post.author.username}</span>
         <span>{formatDate(post.publishedAt)}</span>
@@ -105,35 +94,27 @@ export function PostDetail() {
       </div>
 
       <hr className="my-6 border-line" />
-
       <Markdown content={post.contentMd} />
 
       {post.tags.length > 0 && (
         <div className="mt-10 flex flex-wrap gap-2">
-          {post.tags.map((t) => (
-            <Link
-              key={t.id}
-              to={`/tags/${t.slug}`}
-              className="rounded-full border border-line px-3 py-1 text-sm text-muted transition hover:text-brand"
-            >
-              {t.name}
+          {post.tags.map((tag) => (
+            <Link key={tag.id} to={`/tags/${tag.slug}`} className="rounded-full border border-line px-3 py-1 text-sm text-muted transition hover:text-brand">
+              {tag.name}
             </Link>
           ))}
         </div>
       )}
 
-      {/* 评论区 */}
-      <section className="mt-12 border-t border-line pt-8">
-        <h2 className="mb-6 text-2xl font-bold text-fg">评论</h2>
-        <CommentForm postSlug={post.slug} />
-        <div className="mt-8">
-          <CommentList
-            postSlug={post.slug}
-            page={commentPage}
-            onPageChange={setCommentPage}
-          />
-        </div>
-      </section>
+      {settings?.commentsEnabled !== false && (
+        <section className="mt-12 border-t border-line pt-8">
+          <h2 className="mb-6 text-2xl font-bold text-fg">评论</h2>
+          <CommentForm postSlug={post.slug} />
+          <div className="mt-8">
+            <CommentList postSlug={post.slug} page={commentPage} onPageChange={setCommentPage} />
+          </div>
+        </section>
+      )}
     </article>
   );
 }

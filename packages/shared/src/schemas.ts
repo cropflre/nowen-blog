@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-export const postStatusSchema = z.enum(['draft', 'published', 'archived']);
+export const postStatusSchema = z.enum(['draft', 'scheduled', 'published', 'archived']);
 
 export const categorySchema = z.object({
   id: z.string(),
@@ -79,6 +79,11 @@ export const siteSettingsSchema = z.object({
   }),
   themeColor: z.string(),
   icp: z.string().nullable(),
+  footerText: z.string().nullable(),
+  defaultSeoTitle: z.string().nullable(),
+  defaultSeoDescription: z.string().nullable(),
+  defaultOgImage: z.string().nullable(),
+  commentsEnabled: z.boolean(),
 });
 
 export const searchResultSchema = z.object({

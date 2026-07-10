@@ -20,8 +20,8 @@ export function Header() {
   const navigate = useNavigate();
   const [q, setQ] = useState('');
 
-  const onSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const onSubmit = (event: React.FormEvent) => {
+    event.preventDefault();
     const term = q.trim();
     navigate(term ? `/search?q=${encodeURIComponent(term)}` : '/search');
   };
@@ -29,18 +29,22 @@ export function Header() {
   return (
     <header className="sticky top-0 z-50 border-b border-line bg-bg/80 backdrop-blur">
       <div className="mx-auto flex h-16 max-w-[1120px] items-center gap-4 px-4">
-        <Link to="/" className="flex items-center gap-2 font-semibold">
-          <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-brand to-brand-2 text-white">
-            N
-          </span>
-          <span>{settings?.siteTitle ?? 'NOWEN Blog'}</span>
+        <Link to="/" className="flex min-w-0 items-center gap-2 font-semibold">
+          {settings?.logoUrl ? (
+            <img src={settings.logoUrl} alt="" className="h-8 w-8 shrink-0 rounded-lg object-contain" />
+          ) : (
+            <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-brand to-brand-2 text-white">
+              {(settings?.siteTitle ?? 'NOWEN Blog').slice(0, 1).toUpperCase()}
+            </span>
+          )}
+          <span className="truncate">{settings?.siteTitle ?? 'NOWEN Blog'}</span>
         </Link>
 
         <nav className="hidden items-center gap-1 md:flex">
-          {NAV.map((n) => (
+          {NAV.map((item) => (
             <NavLink
-              key={n.to}
-              to={n.to}
+              key={item.to}
+              to={item.to}
               className={({ isActive }) =>
                 cn(
                   'rounded-lg px-3 py-2 text-sm text-muted transition hover:text-fg',
@@ -48,7 +52,7 @@ export function Header() {
                 )
               }
             >
-              {n.label}
+              {item.label}
             </NavLink>
           ))}
         </nav>
@@ -58,7 +62,7 @@ export function Header() {
             <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
             <input
               value={q}
-              onChange={(e) => setQ(e.target.value)}
+              onChange={(event) => setQ(event.target.value)}
               placeholder="搜索"
               className="w-32 rounded-lg border border-line bg-surface py-2 pl-8 pr-3 text-sm outline-none transition focus:border-brand md:w-48"
             />

@@ -11,6 +11,8 @@ import { Tags } from './pages/Tags';
 import { Archive } from './pages/Archive';
 import { Search } from './pages/Search';
 import { About } from './pages/About';
+import { Projects } from './pages/Projects';
+import { Unsubscribe } from './pages/Unsubscribe';
 import { Login } from './pages/admin/Login';
 import { Dashboard } from './pages/admin/Dashboard';
 import { AdminPosts } from './pages/admin/AdminPosts';
@@ -21,6 +23,8 @@ import { AdminTags } from './pages/admin/AdminTags';
 import { AdminAssets } from './pages/admin/AdminAssets';
 import { AdminComments } from './pages/admin/AdminComments';
 import { AdminSettings } from './pages/admin/AdminSettings';
+import { AdminProjects } from './pages/admin/AdminProjects';
+import { AdminNewsletter } from './pages/admin/AdminNewsletter';
 import { NotFound } from './pages/NotFound';
 
 export function App() {
@@ -31,6 +35,7 @@ export function App() {
           <Route path="/" element={<Home />} />
           <Route path="/posts" element={<Posts />} />
           <Route path="/posts/:slug" element={<PostDetail />} />
+          <Route path="/projects" element={<Projects />} />
           <Route path="/categories" element={<Categories />} />
           <Route path="/categories/:slug" element={<Posts taxonomy="category" />} />
           <Route path="/tags" element={<Tags />} />
@@ -38,6 +43,7 @@ export function App() {
           <Route path="/archive" element={<Archive />} />
           <Route path="/search" element={<Search />} />
           <Route path="/about" element={<About />} />
+          <Route path="/unsubscribe" element={<Unsubscribe />} />
         </Route>
 
         <Route element={<LoginRoute />}>
@@ -51,8 +57,10 @@ export function App() {
             <Route path="/admin/posts/:id/edit" element={<AdminPostEdit />} />
             <Route path="/admin/categories" element={<AdminCategories />} />
             <Route path="/admin/tags" element={<AdminTags />} />
+            <Route path="/admin/projects" element={<AdminProjects />} />
             <Route path="/admin/assets" element={<AdminAssets />} />
             <Route path="/admin/comments" element={<AdminComments />} />
+            <Route path="/admin/newsletter" element={<AdminNewsletter />} />
             <Route path="/admin/settings" element={<AdminSettings />} />
           </Route>
         </Route>

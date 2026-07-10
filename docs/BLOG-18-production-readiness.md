@@ -4,7 +4,7 @@
 
 ## 1. 数据库迁移
 
-数据库结构由 `apps/server/drizzle/` 下的版本化 SQL 管理，服务启动顺序为：
+数据库结构由 `apps/server/drizzle/` 下的版本化 SQL 和 `meta/_journal.json` 管理，服务启动顺序为：
 
 1. 执行旧库兼容桥；
 2. 执行尚未应用的 Drizzle migrations；
@@ -12,19 +12,27 @@
 4. 初始化站点设置；
 5. 校验并重建全文搜索索引。
 
-常用命令：
+手动执行尚未应用的 migration：
 
 ```bash
 pnpm db:migrate
-pnpm db:check
-pnpm db:generate
 ```
+
+新增结构变更的标准流程：
+
+1. 更新 `apps/server/src/db/schema.ts`；
+2. 在 `apps/server/drizzle/` 新增连续编号 SQL，例如 `0002_add_xxx.sql`；
+3. 使用 `--> statement-breakpoint` 分隔独立语句；
+4. 在 `apps/server/drizzle/meta/_journal.json` 登记相同 tag；
+5. 更新或新增迁移兼容测试；
+6. 执行 `pnpm typecheck && pnpm test && pnpm build`。
 
 规则：
 
 - 不再在 `init.ts` 中新增 `CREATE TABLE` 或 `ALTER TABLE`；
 - 所有结构变更必须新增 migration；
 - 已提交并在生产执行过的 migration 不允许修改；
+- 旧库兼容桥只允许处理正式迁移体系建立之前的历史结构；
 - 部署前必须备份 SQLite 数据库和上传目录；
 - SQLite 数据库使用 WAL 模式，备份时优先停止写入或使用 SQLite backup API。
 

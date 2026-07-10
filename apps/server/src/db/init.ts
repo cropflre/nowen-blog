@@ -163,7 +163,6 @@ CREATE INDEX IF NOT EXISTS idx_post_views_visitor_created ON post_views(visitor_
 CREATE INDEX IF NOT EXISTS idx_post_views_created_at ON post_views(created_at);
 CREATE INDEX IF NOT EXISTS idx_post_versions_post_version ON post_versions(post_id, version DESC);
 CREATE INDEX IF NOT EXISTS idx_posts_status_published ON posts(status, published_at);
-CREATE INDEX IF NOT EXISTS idx_posts_status_scheduled ON posts(status, scheduled_at);
 CREATE INDEX IF NOT EXISTS idx_posts_slug ON posts(slug);
 CREATE INDEX IF NOT EXISTS idx_posts_featured ON posts(is_featured);
 `;
@@ -192,6 +191,7 @@ export function initDb(): void {
   // CREATE TABLE IF NOT EXISTS 不会为旧库补列，显式做向前兼容迁移。
   ensureColumn('posts', 'visibility', "TEXT NOT NULL DEFAULT 'public'");
   ensureColumn('posts', 'scheduled_at', 'TEXT');
+  sqlite.exec('CREATE INDEX IF NOT EXISTS idx_posts_status_scheduled ON posts(status, scheduled_at)');
   sqlite.exec(CREATE_FTS);
   db.run(sql`SELECT 1`);
   seedIfEmpty();

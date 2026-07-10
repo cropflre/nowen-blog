@@ -48,6 +48,16 @@ newsletterRoutes.post('/unsubscribe', async (c) => {
   }
 });
 
+newsletterRoutes.post('/unsubscribe-one-click', (c) => {
+  const parsed = unsubscribeSchema.safeParse({ token: c.req.query('token') });
+  if (!parsed.success) return c.json({ error: '退订链接无效' }, 400);
+  try {
+    return c.json(service.unsubscribeByToken(parsed.data.token));
+  } catch (error) {
+    return c.json({ error: error instanceof Error ? error.message : '退订失败' }, 400);
+  }
+});
+
 export const adminNewsletterRoutes = new Hono<{ Variables: { userId: string } }>();
 adminNewsletterRoutes.use('*', authMiddleware);
 

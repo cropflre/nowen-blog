@@ -13,6 +13,8 @@ import { rssRoutes, sitemapRoutes, robotsRoutes } from './modules/seo/seo.routes
 import { adminAssetsRoutes, uploadsRoutes } from './modules/assets/assets.routes';
 import { commentsRoutes, adminCommentsRoutes } from './modules/comments/comments.routes';
 import { postViewRoutes, adminAnalyticsRoutes } from './modules/analytics/analytics.routes';
+import { projectsRoutes, adminProjectsRoutes } from './modules/projects/projects.routes';
+import { newsletterRoutes, adminNewsletterRoutes } from './modules/newsletter/newsletter.routes';
 
 export const app = new Hono();
 
@@ -30,11 +32,15 @@ app.route('/api/categories', categoriesRoutes);
 app.route('/api/tags', tagsRoutes);
 app.route('/api/search', searchRoutes);
 app.route('/api/archive', archiveRoutes);
+app.route('/api/projects', projectsRoutes);
+app.route('/api/newsletter', newsletterRoutes);
 app.route('/api/site-settings', settingsRoutes);
 app.route('/api/admin/settings', adminSettingsRoutes);
 app.route('/api/admin/posts', adminPostsRoutes);
 app.route('/api/admin/categories', adminCategoriesRoutes);
 app.route('/api/admin/tags', adminTagsRoutes);
+app.route('/api/admin/projects', adminProjectsRoutes);
+app.route('/api/admin/newsletter', adminNewsletterRoutes);
 app.route('/api/admin', adminRoutes);
 app.route('/api/admin/assets', adminAssetsRoutes);
 app.route('/api/posts', commentsRoutes);

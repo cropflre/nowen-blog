@@ -5,7 +5,7 @@ import { formatDate } from '../../lib/format';
 import { cn } from '../../lib/cn';
 import { Highlight } from './Highlight';
 
-export type ArticleCardVariant = 'default' | 'home-featured' | 'home-compact';
+export type ArticleCardVariant = 'default' | 'home-featured' | 'home-standard' | 'home-compact';
 
 export function ArticleCard({
   post,
@@ -30,6 +30,7 @@ export function ArticleCard({
           : 'rounded-card border border-line bg-surface transition hover:-translate-y-0.5 hover:border-brand/60',
         featured && variant === 'default' && 'md:col-span-2',
         variant === 'home-featured' && 'min-h-[26rem]',
+        variant === 'home-standard' && 'min-h-[22rem]',
         isCompact && 'min-h-36 p-5',
       )}
     >
@@ -78,7 +79,7 @@ export function ArticleCard({
         </div>
 
         {!isCompact && (post.snippet ? (
-          <p className={cn('mt-3 text-sm leading-6 text-[var(--color-text-secondary)]', isHome ? 'line-clamp-3' : 'line-clamp-3')}>
+          <p className="mt-3 line-clamp-3 text-sm leading-6 text-[var(--color-text-secondary)]">
             <Highlight text={post.snippet} />
           </p>
         ) : post.summary ? (
@@ -87,7 +88,7 @@ export function ArticleCard({
           </p>
         ) : null)}
 
-        <div className={cn('flex items-center gap-3 text-xs text-[var(--color-text-muted)]', isCompact ? 'mt-auto pt-5' : 'mt-auto pt-5')}>
+        <div className="mt-auto flex items-center gap-3 pt-5 text-xs text-[var(--color-text-muted)]">
           {!isCompact && <span className="font-mono tabular-nums">{formatDate(post.publishedAt)}</span>}
           <span className="flex items-center gap-1">
             <Clock className="h-3 w-3" />

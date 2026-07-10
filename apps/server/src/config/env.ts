@@ -9,4 +9,8 @@ export const env = {
   adminPassword: process.env.ADMIN_PASSWORD,
   uploadDir: process.env.UPLOAD_DIR ?? 'data/uploads',
   maxUploadSize: Number(process.env.MAX_UPLOAD_SIZE ?? 5 * 1024 * 1024),
+  githubToken: process.env.GITHUB_TOKEN,
+  resendApiKey: process.env.RESEND_API_KEY,
+  newsletterFromEmail: process.env.NEWSLETTER_FROM_EMAIL,
+  newsletterReplyTo: process.env.NEWSLETTER_REPLY_TO,
 };

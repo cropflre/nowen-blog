@@ -60,6 +60,7 @@ export const posts = sqliteTable('posts', {
   seoTitle: text('seo_title'),
   seoDescription: text('seo_description'),
   canonicalUrl: text('canonical_url'),
+  scheduledAt: text('scheduled_at'),
   publishedAt: text('published_at'),
   createdAt: text('created_at').notNull(),
   updatedAt: text('updated_at').notNull(),
@@ -125,6 +126,25 @@ export const postViews = sqliteTable('post_views', {
   userAgent: text('user_agent'),
   referrer: text('referrer'),
   createdAt: text('created_at').notNull(),
+});
+
+/** 手动保存、发布、归档和恢复时生成的不可变版本快照。 */
+export const postVersions = sqliteTable('post_versions', {
+  id: text('id').primaryKey(),
+  postId: text('post_id').notNull().references(() => posts.id, { onDelete: 'cascade' }),
+  version: integer('version').notNull(),
+  snapshotJson: text('snapshot_json').notNull(),
+  reason: text('reason').notNull(),
+  createdBy: text('created_by').references(() => users.id),
+  createdAt: text('created_at').notNull(),
+});
+
+/** 编辑中的自动草稿，与正式文章分离，避免自动保存直接修改线上内容。 */
+export const postAutosaves = sqliteTable('post_autosaves', {
+  postId: text('post_id').primaryKey().references(() => posts.id, { onDelete: 'cascade' }),
+  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  payloadJson: text('payload_json').notNull(),
+  updatedAt: text('updated_at').notNull(),
 });
 
 export const postCategories = sqliteTable(

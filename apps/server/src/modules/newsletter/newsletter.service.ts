@@ -250,14 +250,15 @@ function emailHtml(post: PublishedPostRow, email: string): string {
 
 async function sendWithResend(email: string, subject: string, post: PublishedPostRow): Promise<void> {
   if (!env.resendApiKey || !env.newsletterFromEmail) throw new Error('邮件服务未配置');
-  const unsubscribeUrl = absoluteUrl(`/unsubscribe?token=${encodeURIComponent(createUnsubscribeToken(email))}`);
+  const token = encodeURIComponent(createUnsubscribeToken(email));
+  const oneClickUrl = absoluteUrl(`/api/newsletter/unsubscribe-one-click?token=${token}`);
   const body: Record<string, unknown> = {
     from: env.newsletterFromEmail,
     to: [email],
     subject,
     html: emailHtml(post, email),
     headers: {
-      'List-Unsubscribe': `<${unsubscribeUrl}>`,
+      'List-Unsubscribe': `<${oneClickUrl}>`,
       'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
     },
   };

@@ -58,6 +58,7 @@ CREATE TABLE IF NOT EXISTS posts (
   seo_title TEXT,
   seo_description TEXT,
   canonical_url TEXT,
+  scheduled_at TEXT,
   published_at TEXT,
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL,
@@ -136,13 +137,33 @@ CREATE TABLE IF NOT EXISTS post_views (
   created_at TEXT NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS post_versions (
+  id TEXT PRIMARY KEY,
+  post_id TEXT NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
+  version INTEGER NOT NULL,
+  snapshot_json TEXT NOT NULL,
+  reason TEXT NOT NULL,
+  created_by TEXT REFERENCES users(id),
+  created_at TEXT NOT NULL,
+  UNIQUE(post_id, version)
+);
+
+CREATE TABLE IF NOT EXISTS post_autosaves (
+  post_id TEXT PRIMARY KEY REFERENCES posts(id) ON DELETE CASCADE,
+  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  payload_json TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+
 CREATE INDEX IF NOT EXISTS idx_comments_post_id ON comments(post_id);
 CREATE INDEX IF NOT EXISTS idx_comments_status ON comments(status);
 CREATE INDEX IF NOT EXISTS idx_comments_created_at ON comments(created_at);
 CREATE INDEX IF NOT EXISTS idx_post_views_post_created ON post_views(post_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_post_views_visitor_created ON post_views(visitor_hash, created_at);
 CREATE INDEX IF NOT EXISTS idx_post_views_created_at ON post_views(created_at);
+CREATE INDEX IF NOT EXISTS idx_post_versions_post_version ON post_versions(post_id, version DESC);
 CREATE INDEX IF NOT EXISTS idx_posts_status_published ON posts(status, published_at);
+CREATE INDEX IF NOT EXISTS idx_posts_status_scheduled ON posts(status, scheduled_at);
 CREATE INDEX IF NOT EXISTS idx_posts_slug ON posts(slug);
 CREATE INDEX IF NOT EXISTS idx_posts_featured ON posts(is_featured);
 `;
@@ -156,11 +177,21 @@ const CREATE_FTS =
   "  tokenize = 'unicode61'" +
   ")";
 
+function ensureColumn(table: string, column: string, definition: string): void {
+  const columns = sqlite.prepare(`PRAGMA table_info(${table})`).all() as Array<{ name: string }>;
+  if (!columns.some((item) => item.name === column)) {
+    sqlite.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
+  }
+}
+
 let initialized = false;
 
 export function initDb(): void {
   if (initialized) return;
   sqlite.exec(CREATE_TABLES);
+  // CREATE TABLE IF NOT EXISTS 不会为旧库补列，显式做向前兼容迁移。
+  ensureColumn('posts', 'visibility', "TEXT NOT NULL DEFAULT 'public'");
+  ensureColumn('posts', 'scheduled_at', 'TEXT');
   sqlite.exec(CREATE_FTS);
   db.run(sql`SELECT 1`);
   seedIfEmpty();

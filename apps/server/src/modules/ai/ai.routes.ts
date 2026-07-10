@@ -1,4 +1,4 @@
-import { Hono } from 'hono';
+import { Hono, type Context } from 'hono';
 import { authMiddleware } from '../../middleware/auth';
 import { aiGenerateSchema, aiSettingsUpdateSchema } from './ai.schema';
 import * as service from './ai.service';
@@ -8,7 +8,7 @@ adminAiRoutes.use('*', authMiddleware);
 
 const activeUsers = new Set<string>();
 
-function errorResponse(c: Parameters<Parameters<typeof adminAiRoutes.onError>[0]>[1], error: unknown) {
+function errorResponse(c: Context, error: unknown) {
   const message = error instanceof Error ? error.message : 'AI 请求失败';
   const status = error instanceof service.AiConfigError ? 400 : 502;
   return c.json({ error: message }, status);

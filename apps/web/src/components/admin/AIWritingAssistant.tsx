@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Check, Copy, FilePenLine, Loader2, Settings, Sparkles, Wand2, X } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { aiApi, type AiAction, type AiGeneratedFields, type AiGenerateResult } from '../../lib/aiApi';
@@ -52,11 +52,16 @@ export function AIWritingAssistant({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const loadingRef = useRef(false);
 
   const selectedText = useMemo(
     () => contentMd.slice(Math.max(0, selectionStart), Math.max(selectionStart, selectionEnd)).trim(),
     [contentMd, selectionEnd, selectionStart],
   );
+
+  useEffect(() => {
+    loadingRef.current = loading;
+  }, [loading]);
 
   useEffect(() => {
     if (!open) return;
@@ -66,14 +71,14 @@ export function AIWritingAssistant({
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape' && !loading) onClose();
+      if (event.key === 'Escape' && !loadingRef.current) onClose();
     };
     window.addEventListener('keydown', onKeyDown);
     return () => {
       document.body.style.overflow = previousOverflow;
       window.removeEventListener('keydown', onKeyDown);
     };
-  }, [loading, onClose, open]);
+  }, [onClose, open]);
 
   if (!open) return null;
 
@@ -133,7 +138,7 @@ export function AIWritingAssistant({
 
   return (
     <div className="fixed inset-0 z-[99] flex items-center justify-center p-3 sm:p-6" role="presentation">
-      <button type="button" aria-label="关闭 AI 写作助手" onClick={onClose} className="absolute inset-0 bg-black/55 backdrop-blur-sm" />
+      <button type="button" disabled={loading} aria-label="关闭 AI 写作助手" onClick={onClose} className="absolute inset-0 bg-black/55 backdrop-blur-sm disabled:cursor-wait" />
       <section role="dialog" aria-modal="true" aria-labelledby="ai-writing-title" className="relative z-[100] flex h-[min(90vh,780px)] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-[var(--color-glass-border)] bg-[var(--color-bg-secondary)] shadow-2xl">
         <header className="flex shrink-0 items-start justify-between gap-4 border-b border-[var(--color-border)] px-5 py-4 sm:px-6">
           <div className="flex items-start gap-3"><span className="rounded-xl border border-violet-500/25 bg-gradient-to-br from-violet-500/15 to-cyan-500/10 p-2.5 text-violet-500"><Sparkles className={`h-5 w-5 ${loading ? 'animate-spin' : ''}`} /></span><div><h2 id="ai-writing-title" className="font-semibold">AI 写作助手</h2><p className="mt-1 text-sm text-muted">选择操作并预览结果，确认后才会修改文章。</p></div></div>

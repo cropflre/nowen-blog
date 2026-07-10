@@ -27,6 +27,12 @@ postsRoutes.get('/featured', async (c) => {
   return c.json({ items });
 });
 
+postsRoutes.get('/:slug/context', async (c) => {
+  const context = await service.getPostContext(c.req.param('slug'));
+  if (!context) return c.json({ error: 'Not Found' }, 404);
+  return c.json(context);
+});
+
 postsRoutes.get('/:slug', async (c) => {
   const slug = c.req.param('slug');
   const post = await service.getPublishedBySlug(slug);

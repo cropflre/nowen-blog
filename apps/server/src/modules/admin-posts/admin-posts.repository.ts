@@ -18,6 +18,7 @@ export interface PostInsertValues {
   contentMd: string;
   coverUrl: string | null;
   status: string;
+  visibility: string;
   isFeatured: boolean;
   isPinned: boolean;
   readingTime: number;
@@ -27,6 +28,7 @@ export interface PostInsertValues {
   seoTitle: string | null;
   seoDescription: string | null;
   canonicalUrl: string | null;
+  scheduledAt: string | null;
   publishedAt: string | null;
   createdAt: string;
   updatedAt: string;
@@ -127,14 +129,18 @@ export function updatePostTx(
 }
 
 export function deletePostTx(id: string) {
-  // 外键 onDelete: cascade 会清理 post_categories / post_tags
   db.delete(posts).where(eq(posts.id, id)).run();
 }
 
-export async function setStatusTx(id: string, status: string, publishedAt: string | null) {
+export async function setStatusTx(
+  id: string,
+  status: string,
+  publishedAt: string | null,
+  scheduledAt: string | null = null,
+) {
   const [post] = await db
     .update(posts)
-    .set({ status, publishedAt, updatedAt: nowIso() })
+    .set({ status, publishedAt, scheduledAt, updatedAt: nowIso() })
     .where(eq(posts.id, id))
     .returning();
   return post ?? null;

@@ -111,11 +111,14 @@ export function updateAiSettings(input: AiSettingsUpdate): AiSettingsView {
   return getAiSettings();
 }
 
-function effectiveSettings(requireEnabled: boolean): AiClientSettings & { systemPrompt: string } {
+function effectiveSettings(options: {
+  requireEnabled?: boolean;
+  requireModel?: boolean;
+} = {}): AiClientSettings & { systemPrompt: string } {
   const row = getRow();
-  if (requireEnabled && !row.enabled) throw new AiConfigError('AI 写作助手尚未启用');
+  if (options.requireEnabled && !row.enabled) throw new AiConfigError('AI 写作助手尚未启用');
   if (!row.apiUrl.trim()) throw new AiConfigError('AI API 地址未配置');
-  if (!row.model.trim()) throw new AiConfigError('AI 模型未配置');
+  if (options.requireModel !== false && !row.model.trim()) throw new AiConfigError('AI 模型未配置');
   if (!NO_KEY_PROVIDERS.has(row.provider) && !row.apiKey) throw new AiConfigError('AI API Key 未配置');
   return {
     provider: row.provider,
@@ -127,7 +130,7 @@ function effectiveSettings(requireEnabled: boolean): AiClientSettings & { system
 }
 
 export async function testAiConnection() {
-  const settings = effectiveSettings(false);
+  const settings = effectiveSettings({ requireModel: true });
   const text = await callAiCompletion(settings, [
     { role: 'system', content: '你是连接测试助手，只回复 OK。' },
     { role: 'user', content: '请回复 OK' },
@@ -136,7 +139,7 @@ export async function testAiConnection() {
 }
 
 export async function listAiModels(): Promise<string[]> {
-  return fetchAiModels(effectiveSettings(false));
+  return fetchAiModels(effectiveSettings({ requireModel: false }));
 }
 
 function extractJsonObject(raw: string): Record<string, unknown> | null {
@@ -184,7 +187,7 @@ function buildFields(action: AiAction, text: string): AiGeneratedFields | undefi
 }
 
 export async function generateWithAi(input: AiGenerateInput): Promise<AiGenerateResult> {
-  const settings = effectiveSettings(true);
+  const settings = effectiveSettings({ requireEnabled: true, requireModel: true });
   const instruction = input.action === 'custom'
     ? `${input.customPrompt!.trim()}。直接输出结果，不要解释。`
     : ACTION_PROMPTS[input.action];

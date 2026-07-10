@@ -22,7 +22,7 @@ export async function listPosts(opts: ListPostsOptions = {}) {
   const pageSize = Math.min(50, Math.max(1, opts.pageSize ?? 10));
   const offset = (page - 1) * pageSize;
 
-  const conditions = [eq(posts.status, 'published')];
+  const conditions = [eq(posts.status, 'published'), eq(posts.visibility, 'public')];
   if (opts.featured) conditions.push(eq(posts.isFeatured, true));
 
   let idFilter: string[] | null = null;
@@ -42,13 +42,12 @@ export async function listPosts(opts: ListPostsOptions = {}) {
   });
 
   const [{ total }] = await db.select({ total: count() }).from(posts).where(where);
-
   return { rows: rows as unknown as PostRow[], total, page, pageSize };
 }
 
 export async function getPostBySlug(slug: string): Promise<PostRow | null> {
   const row = await db.query.posts.findFirst({
-    where: and(eq(posts.slug, slug), eq(posts.status, 'published')),
+    where: and(eq(posts.slug, slug), eq(posts.status, 'published'), eq(posts.visibility, 'public')),
     with: POST_RELATIONS,
   });
   return (row as unknown as PostRow) ?? null;
@@ -80,7 +79,7 @@ export async function listPublishedForSitemap(): Promise<
     .orderBy(desc(posts.publishedAt));
 }
 
-/** 供预渲染使用：全部「已发布且公开」文章（含 relations），不限数量。与 RSS/Sitemap 同源过滤。 */
+/** 供预渲染使用：全部已发布且公开文章。 */
 export async function listPublishedForPrerender(): Promise<PostRow[]> {
   return (await db.query.posts.findMany({
     where: and(eq(posts.status, 'published'), eq(posts.visibility, 'public')),

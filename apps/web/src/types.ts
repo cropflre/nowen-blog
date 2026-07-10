@@ -7,6 +7,7 @@ import type {
   Paginated,
   SearchResult,
   PostStatus,
+  PostVisibility,
   Author,
 } from '@blog/shared';
 
@@ -19,6 +20,7 @@ export type {
   Paginated,
   SearchResult,
   PostStatus,
+  PostVisibility,
   Author,
 };
 
@@ -30,6 +32,7 @@ export interface AdminPostView {
   contentMd: string;
   coverUrl: string | null;
   status: PostStatus;
+  visibility: PostVisibility;
   isFeatured: boolean;
   isPinned: boolean;
   readingTime: number;
@@ -39,6 +42,7 @@ export interface AdminPostView {
   seoTitle: string | null;
   seoDescription: string | null;
   canonicalUrl: string | null;
+  scheduledAt: string | null;
   publishedAt: string | null;
   createdAt: string;
   updatedAt: string;
@@ -56,8 +60,10 @@ export interface AdminPostInput {
   contentMd: string;
   coverUrl?: string | null;
   status?: PostStatus;
+  visibility?: PostVisibility;
   isFeatured?: boolean;
   isPinned?: boolean;
+  scheduledAt?: string | null;
   categoryIds?: string[];
   tagIds?: string[];
   seoTitle?: string | null;
@@ -69,6 +75,45 @@ export interface AdminListPostsParams {
   page?: number;
   pageSize?: number;
   status?: PostStatus | 'all';
+}
+
+export interface PostVersionItem {
+  id: string;
+  version: number;
+  reason: string;
+  title: string;
+  status: PostStatus;
+  createdBy: string | null;
+  createdByName: string | null;
+  createdAt: string;
+}
+
+export interface PostVersionSnapshot {
+  title: string;
+  slug: string;
+  summary: string | null;
+  contentMd: string;
+  coverUrl: string | null;
+  status: PostStatus;
+  visibility: PostVisibility;
+  isFeatured: boolean;
+  isPinned: boolean;
+  scheduledAt: string | null;
+  seoTitle: string | null;
+  seoDescription: string | null;
+  canonicalUrl: string | null;
+  categoryIds: string[];
+  tagIds: string[];
+}
+
+export interface PostVersionDetail extends PostVersionItem {
+  snapshot: PostVersionSnapshot;
+}
+
+export interface PostAutosaveView {
+  postId: string;
+  payload: Partial<AdminPostInput>;
+  updatedAt: string;
 }
 
 export interface AdminCategoryView {
@@ -151,7 +196,7 @@ export interface CommentView {
   id: string;
   authorName: string;
   authorWebsite: string | null;
-  content: string; // 已转义 HTML
+  content: string;
   createdAt: string;
   approvedAt: string | null;
 }

@@ -1,5 +1,6 @@
 import { sqlite } from '../../db/client';
 import { nowIso } from '../../lib/format';
+import { openSecret, sealSecret } from '../../lib/secret-storage';
 import { callAiCompletion, extractAiTitle, fetchAiModels, type AiClientSettings } from './ai.client';
 import { ACTION_PROMPTS, DEFAULT_SYSTEM_PROMPT, actionOptions } from './ai.prompts';
 import type { AiAction, AiGenerateInput, AiSettingsUpdate } from './ai.schema';
@@ -61,9 +62,9 @@ export function ensureAiSettings(): void {
 
 function getRow(): AiSettingsRow {
   ensureAiSettings();
-  const row = sqlite.prepare(SELECT_SETTINGS).get() as AiSettingsRow | undefined;
-  if (!row) throw new Error('AI 设置初始化失败');
-  return row;
+  const stored = sqlite.prepare(SELECT_SETTINGS).get() as AiSettingsRow | undefined;
+  if (!stored) throw new Error('AI 设置初始化失败');
+  return { ...stored, apiKey: openSecret(stored.apiKey) };
 }
 
 function maskApiKey(value: string | null): string | null {
@@ -102,7 +103,7 @@ export function updateAiSettings(input: AiSettingsUpdate): AiSettingsView {
     input.enabled ? 1 : 0,
     input.provider,
     input.apiUrl.replace(/\/+$/, ''),
-    nextKey,
+    nextKey ? sealSecret(nextKey) : null,
     input.model.trim(),
     input.systemPrompt?.trim() || DEFAULT_SYSTEM_PROMPT,
     nowIso(),

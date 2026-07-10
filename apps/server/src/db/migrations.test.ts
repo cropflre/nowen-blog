@@ -98,7 +98,17 @@ describe('Drizzle migration system', () => {
     assert.ok(postColumns.some((column) => column.name === 'visibility'));
     assert.ok(postColumns.some((column) => column.name === 'scheduled_at'));
 
-    const requiredTables = ['site_settings', 'comments', 'post_views', 'post_versions', 'post_autosaves', 'posts_fts'];
+    const requiredTables = [
+      'site_settings',
+      'comments',
+      'post_views',
+      'post_versions',
+      'post_autosaves',
+      'posts_fts',
+      'projects',
+      'newsletter_subscribers',
+      'newsletter_campaigns',
+    ];
     for (const table of requiredTables) {
       const row = sqlite
         .prepare("SELECT name FROM sqlite_master WHERE name = ? LIMIT 1")
@@ -109,7 +119,7 @@ describe('Drizzle migration system', () => {
     const migrationCount = sqlite
       .prepare('SELECT COUNT(*) AS total FROM __drizzle_migrations')
       .get() as { total: number };
-    assert.equal(migrationCount.total, 2);
+    assert.equal(migrationCount.total, 3);
   });
 
   test('is idempotent when migrations are run again', () => {
@@ -119,7 +129,7 @@ describe('Drizzle migration system', () => {
     const migrationCount = sqlite
       .prepare('SELECT COUNT(*) AS total FROM __drizzle_migrations')
       .get() as { total: number };
-    assert.equal(migrationCount.total, 2);
+    assert.equal(migrationCount.total, 3);
 
     const legacyPost = sqlite
       .prepare('SELECT title, visibility FROM posts WHERE id = ?')

@@ -1,6 +1,17 @@
 import { Link, Outlet, useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
-import { LogOut, FileText, Folder, Tag, Image, MessageSquare, Settings, FolderGit2, Mail } from 'lucide-react';
+import {
+  LogOut,
+  FileText,
+  Folder,
+  Tag,
+  Image,
+  MessageSquare,
+  Settings,
+  FolderGit2,
+  Mail,
+  Sparkles,
+} from 'lucide-react';
 import { api } from '../../lib/api';
 import { ThemeToggle } from '../ui/ThemeToggle';
 
@@ -25,6 +36,7 @@ export function AdminLayout() {
         <nav className="space-y-1 text-sm" aria-label="后台导航">
           <Link to="/admin" className="block rounded-lg px-3 py-2 text-muted transition hover:bg-[var(--color-glass-hover)] hover:text-fg">仪表盘</Link>
           <Link to="/admin/posts" className="flex items-center gap-2 rounded-lg px-3 py-2 text-muted transition hover:bg-[var(--color-glass-hover)] hover:text-fg"><FileText className="h-4 w-4" />文章管理</Link>
+          <Link to="/admin/ai" className="flex items-center gap-2 rounded-lg border border-transparent px-3 py-2 text-muted transition hover:border-violet-500/20 hover:bg-gradient-to-r hover:from-violet-500/10 hover:to-cyan-500/5 hover:text-fg"><Sparkles className="h-4 w-4 text-violet-500" />AI 写作</Link>
           <Link to="/admin/projects" className="flex items-center gap-2 rounded-lg px-3 py-2 text-muted transition hover:bg-[var(--color-glass-hover)] hover:text-fg"><FolderGit2 className="h-4 w-4" />项目管理</Link>
           <Link to="/admin/categories" className="flex items-center gap-2 rounded-lg px-3 py-2 text-muted transition hover:bg-[var(--color-glass-hover)] hover:text-fg"><Folder className="h-4 w-4" />分类管理</Link>
           <Link to="/admin/tags" className="flex items-center gap-2 rounded-lg px-3 py-2 text-muted transition hover:bg-[var(--color-glass-hover)] hover:text-fg"><Tag className="h-4 w-4" />标签管理</Link>

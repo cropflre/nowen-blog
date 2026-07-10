@@ -12,6 +12,7 @@ import { adminCategoriesRoutes, adminTagsRoutes } from './modules/admin-taxonomi
 import { rssRoutes, sitemapRoutes, robotsRoutes } from './modules/seo/seo.routes';
 import { adminAssetsRoutes, uploadsRoutes } from './modules/assets/assets.routes';
 import { commentsRoutes, adminCommentsRoutes } from './modules/comments/comments.routes';
+import { postViewRoutes, adminAnalyticsRoutes } from './modules/analytics/analytics.routes';
 
 export const app = new Hono();
 
@@ -47,6 +48,10 @@ app.route('/api/posts', commentsRoutes);
 
 // 评论后台管理接口
 app.route('/api/admin/comments', adminCommentsRoutes);
+
+// 真实访问统计与后台数据看板
+app.route('/api/posts', postViewRoutes);
+app.route('/api/admin/analytics', adminAnalyticsRoutes);
 
 // 开发环境（及生产静态层备选）暴露上传文件 /uploads
 app.route('/uploads', uploadsRoutes);

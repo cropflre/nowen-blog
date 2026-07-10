@@ -1,6 +1,7 @@
 import type {
   PostSummary,
   PostDetail,
+  PostContext,
   SiteSettings,
   Category,
   Tag,
@@ -14,6 +15,7 @@ import type {
 export type {
   PostSummary,
   PostDetail,
+  PostContext,
   SiteSettings,
   Category,
   Tag,
@@ -190,6 +192,26 @@ export interface AssetView {
   contentHash: string | null;
   createdAt: string;
   updatedAt: string;
+}
+
+export type AssetReferenceType =
+  | 'post_cover'
+  | 'post_content'
+  | 'site_setting'
+  | 'version'
+  | 'autosave';
+
+export interface AssetReference {
+  type: AssetReferenceType;
+  id: string;
+  title: string;
+  field: string;
+}
+
+export interface AssetReferencesResult {
+  asset: AssetView;
+  references: AssetReference[];
+  count: number;
 }
 
 export interface CommentView {

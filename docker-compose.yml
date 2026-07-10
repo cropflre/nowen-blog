@@ -77,4 +77,4 @@ services:
 
 volumes:
   blog-data:
-    name: nowen-blog-data
+    name: ${DATA_VOLUME_NAME:-nowen-blog-data}

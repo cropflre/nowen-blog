@@ -12,7 +12,7 @@ export function slugifyHeading(value: string): string {
   const normalized = value
     .normalize('NFKC')
     .trim()
-    .toLocaleLowerCase()
+    .toLowerCase()
     .replace(/<[^>]*>/g, '')
     .replace(/[^\p{L}\p{N}\s-]/gu, '')
     .replace(/[\s_-]+/g, '-')

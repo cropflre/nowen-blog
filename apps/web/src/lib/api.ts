@@ -184,10 +184,10 @@ export const api = {
       total: number;
       page: number;
       pageSize: number;
-    }>(`/api/posts/${slug}/comments?${qs.toString()}`);
+    }>(`/posts/${slug}/comments?${qs.toString()}`);
   },
   submitComment: (slug: string, data: { authorName: string; authorEmail: string; content: string; authorWebsite?: string }) =>
-    request<{ id: string; status: string; message: string }>(`/api/posts/${slug}/comments`, {
+    request<{ id: string; status: string; message: string }>(`/posts/${slug}/comments`, {
       method: 'POST',
       body: JSON.stringify(data),
     }),

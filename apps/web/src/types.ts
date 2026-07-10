@@ -155,3 +155,9 @@ export interface CommentView {
   createdAt: string;
   approvedAt: string | null;
 }
+
+export interface CommentSubmitResult {
+  id: string;
+  status: 'pending';
+  message: string;
+}

@@ -14,10 +14,10 @@ export async function listFeatured(): Promise<PostSummary[]> {
   return rows.map(toSummary);
 }
 
+/** 获取文章数据不再直接增加阅读量；真实访问由浏览器显式调用 views 接口记录。 */
 export async function getPublishedBySlug(slug: string): Promise<PostDetail | null> {
   const row = await repo.getPostBySlug(slug);
   if (!row) return null;
-  await repo.incrementView(row.id);
   const base = toSummary(row as PostRow);
   return {
     ...base,

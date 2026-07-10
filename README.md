@@ -36,13 +36,18 @@ dev-admin-please-change
 
 ## 数据库迁移
 
-数据库结构不再由 `init.ts` 手写创建，服务启动时会自动执行 `apps/server/drizzle/` 中尚未应用的 migrations。
+数据库结构不再由 `init.ts` 手写创建，服务启动时会自动执行 `apps/server/drizzle/` 中尚未应用的版本化 SQL migration。
 
 ```bash
 pnpm db:migrate
-pnpm db:check
-pnpm db:generate
 ```
+
+新增结构变更时：
+
+1. 更新 `apps/server/src/db/schema.ts`；
+2. 在 `apps/server/drizzle/` 新增下一个编号的 SQL 文件；
+3. 在 `apps/server/drizzle/meta/_journal.json` 登记 migration；
+4. 运行迁移测试、类型检查和构建。
 
 旧版 SQLite 会通过一次性兼容桥补齐历史字段，然后登记 Drizzle migration 状态。不要修改已在生产执行过的 migration。
 

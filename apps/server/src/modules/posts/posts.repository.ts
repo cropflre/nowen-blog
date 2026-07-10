@@ -1,4 +1,4 @@
-import { and, desc, eq, inArray, sql, count } from 'drizzle-orm';
+import { and, desc, eq, inArray, count } from 'drizzle-orm';
 import { db } from '../../db/client';
 import { posts, categories, tags, postCategories, postTags } from '../../db/schema';
 import type { PostRow } from '../../lib/mapping';
@@ -52,10 +52,6 @@ export async function getPostBySlug(slug: string): Promise<PostRow | null> {
     with: POST_RELATIONS,
   });
   return (row as unknown as PostRow) ?? null;
-}
-
-export async function incrementView(id: string) {
-  await db.update(posts).set({ viewCount: sql`${posts.viewCount} + 1` }).where(eq(posts.id, id));
 }
 
 /** 供 RSS 使用：已发布且公开的全体文章，按发布时间倒序。 */

@@ -146,3 +146,12 @@ export interface AssetView {
   createdAt: string;
   updatedAt: string;
 }
+
+export interface CommentView {
+  id: string;
+  authorName: string;
+  authorWebsite: string | null;
+  content: string; // 已转义 HTML
+  createdAt: string;
+  approvedAt: string | null;
+}

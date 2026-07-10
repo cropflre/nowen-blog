@@ -18,6 +18,7 @@ import type {
   AdminCategoryInput,
   AdminTagInput,
   AssetView,
+  CommentView,
 } from '../types';
 
 const BASE = '/api';
@@ -173,4 +174,21 @@ export const api = {
     }),
   deleteAsset: (id: string) =>
     request<{ ok: boolean }>(`/admin/assets/${id}`, { method: 'DELETE' }),
+
+  // 评论功能
+  getPostComments: (slug: string, page: number = 1) => {
+    const qs = new URLSearchParams();
+    qs.set('page', String(page));
+    return request<{
+      items: CommentView[];
+      total: number;
+      page: number;
+      pageSize: number;
+    }>(`/api/posts/${slug}/comments?${qs.toString()}`);
+  },
+  submitComment: (slug: string, data: { authorName: string; authorEmail: string; content: string; authorWebsite?: string }) =>
+    request<{ id: string; status: string; message: string }>(`/api/posts/${slug}/comments`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
 };

@@ -1,13 +1,17 @@
 import { Link, useParams } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useState } from 'react';
 import { api } from '../lib/api';
 import { Markdown } from '../components/markdown/Markdown';
 import { Seo } from '../components/seo/Seo';
 import { absUrl } from '../lib/seo';
 import { formatDate } from '../lib/format';
+import { CommentList } from '../components/comments/CommentList';
+import { CommentForm } from '../components/comments/CommentForm';
 
 export function PostDetail() {
   const { slug } = useParams();
+  const [commentPage, setCommentPage] = useState(1);
   const { data: post, isLoading } = useQuery({
     queryKey: ['post', slug],
     queryFn: () => api.getPost(slug!),
@@ -94,6 +98,19 @@ export function PostDetail() {
           ))}
         </div>
       )}
+
+      {/* 评论区 */}
+      <section className="mt-12 border-t border-line pt-8">
+        <h2 className="mb-6 text-2xl font-bold text-fg">评论</h2>
+        <CommentForm postSlug={post.slug} />
+        <div className="mt-8">
+          <CommentList
+            postSlug={post.slug}
+            page={commentPage}
+            onPageChange={setCommentPage}
+          />
+        </div>
+      </section>
     </article>
   );
 }

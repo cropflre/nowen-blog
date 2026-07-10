@@ -14,6 +14,7 @@
     "seed": "pnpm --filter @blog/server seed",
     "prerender": "pnpm --filter @blog/server prerender",
     "db:migrate": "pnpm --filter @blog/server db:migrate",
+    "db:bootstrap": "pnpm --filter @blog/server db:bootstrap",
     "test": "pnpm --filter @blog/server test",
     "test:unit": "pnpm --filter @blog/server test:unit",
     "test:integration": "pnpm --filter @blog/server test:integration",

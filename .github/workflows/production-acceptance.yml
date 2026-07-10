@@ -3,10 +3,6 @@ name: Production acceptance
 on:
   workflow_dispatch:
     inputs:
-      base_url:
-        description: Public production URL, for example https://blog.example.com
-        required: true
-        type: string
       run_project_initialization:
         description: Synchronize GitHub projects through the protected admin API
         required: true
@@ -43,6 +39,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     environment: production
+    env:
+      PRODUCTION_BASE_URL: ${{ vars.PRODUCTION_BASE_URL }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -52,13 +50,21 @@ jobs:
         with:
           node-version: 22
 
+      - name: Validate protected production URL
+        run: |
+          test -n "$PRODUCTION_BASE_URL" || { echo "production environment variable PRODUCTION_BASE_URL is required"; exit 1; }
+          case "$PRODUCTION_BASE_URL" in
+            https://*) ;;
+            *) echo "PRODUCTION_BASE_URL must use HTTPS"; exit 1 ;;
+          esac
+
       - name: Verify public production endpoints
-        run: node scripts/ops/verify-production.mjs --base-url "${{ inputs.base_url }}"
+        run: node scripts/ops/verify-production.mjs --base-url "$PRODUCTION_BASE_URL"
 
       - name: Initialize GitHub project content
         if: ${{ inputs.run_project_initialization }}
         env:
-          BASE_URL: ${{ inputs.base_url }}
+          BASE_URL: ${{ vars.PRODUCTION_BASE_URL }}
           ADMIN_USERNAME: ${{ secrets.ADMIN_USERNAME }}
           ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD }}
           GITHUB_SYNC_TARGET: ${{ inputs.github_target }}
@@ -84,7 +90,7 @@ jobs:
           {
             echo "## Production acceptance"
             echo ""
-            echo "- URL: ${{ inputs.base_url }}"
+            echo "- URL: $PRODUCTION_BASE_URL"
             echo "- Public endpoints: executed"
             echo "- Project initialization: ${{ inputs.run_project_initialization }}"
             echo "- Real email acceptance: ${{ inputs.run_email_acceptance }}"

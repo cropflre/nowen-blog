@@ -2,6 +2,7 @@ import type {
   Paginated,
   PostSummary,
   PostDetail,
+  PostContext,
   SiteSettings,
   SearchResult,
 } from '@blog/shared';
@@ -18,6 +19,7 @@ import type {
   AdminCategoryInput,
   AdminTagInput,
   AssetView,
+  AssetReferencesResult,
   CommentView,
   CommentSubmitResult,
   AdminCommentView,
@@ -31,14 +33,14 @@ const BASE = '/api';
 const VISITOR_STORAGE_KEY = 'nowen-blog-visitor-id';
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  const headers = new Headers(init?.headers);
+  if (!(init?.body instanceof FormData) && init?.body && !headers.has('Content-Type')) {
+    headers.set('Content-Type', 'application/json');
+  }
   const res = await fetch(`${BASE}${path}`, {
     ...init,
-    // 始终携带 Cookie（含 session），确保 HttpOnly Cookie 随请求收发
     credentials: 'include',
-    headers: {
-      'Content-Type': 'application/json',
-      ...(init?.headers ?? {}),
-    },
+    headers,
   });
   if (!res.ok) {
     let message = `请求失败: ${res.status}`;
@@ -65,7 +67,6 @@ function getAnonymousVisitorId(): string {
     window.localStorage.setItem(VISITOR_STORAGE_KEY, id);
     return id;
   } catch {
-    // 禁用 localStorage 时仍可由后端使用 IP + User-Agent 匿名去重。
     return `ephemeral-${Date.now().toString(36)}`;
   }
 }
@@ -88,6 +89,8 @@ export const api = {
     return request<Paginated<PostSummary>>(`/posts${q ? `?${q}` : ''}`);
   },
   getPost: (slug: string) => request<PostDetail>(`/posts/${encodeURIComponent(slug)}`),
+  getPostContext: (slug: string) =>
+    request<PostContext>(`/posts/${encodeURIComponent(slug)}/context`),
   trackPostView: (slug: string) =>
     request<PostViewResult>(`/posts/${encodeURIComponent(slug)}/views`, {
       method: 'POST',
@@ -109,7 +112,6 @@ export const api = {
   archive: () => request<{ groups: ArchiveYear[] }>('/archive'),
   siteSettings: () => request<SiteSettings>('/site-settings'),
 
-  // 后台认证
   login: (username: string, password: string) =>
     request<{ user: AdminUser }>('/admin/login', {
       method: 'POST',
@@ -119,7 +121,6 @@ export const api = {
   getMe: () => request<{ user: AdminUser }>('/admin/me'),
   getDashboardStats: () => request<DashboardStats>('/admin/analytics/dashboard'),
 
-  // 后台文章管理
   listAdminPosts: (params: AdminListPostsParams = {}) => {
     const qs = new URLSearchParams();
     if (params.page) qs.set('page', String(params.page));
@@ -148,7 +149,6 @@ export const api = {
   unpublishAdminPost: (id: string) =>
     request<AdminPostView>(`/admin/posts/${id}/unpublish`, { method: 'POST' }),
 
-  // 后台分类管理
   listAdminCategories: () => request<{ items: AdminCategoryView[] }>('/admin/categories'),
   getAdminCategory: (id: string) => request<AdminCategoryView>(`/admin/categories/${id}`),
   createAdminCategory: (payload: AdminCategoryInput) =>
@@ -164,7 +164,6 @@ export const api = {
   deleteAdminCategory: (id: string) =>
     request<{ ok: boolean }>(`/admin/categories/${id}`, { method: 'DELETE' }),
 
-  // 后台标签管理
   listAdminTags: () => request<{ items: AdminTagView[] }>('/admin/tags'),
   getAdminTag: (id: string) => request<AdminTagView>(`/admin/tags/${id}`),
   createAdminTag: (payload: AdminTagInput) =>
@@ -180,14 +179,12 @@ export const api = {
   deleteAdminTag: (id: string) =>
     request<{ ok: boolean }>(`/admin/tags/${id}`, { method: 'DELETE' }),
 
-  // 媒体库管理
   uploadAsset: (file: File) => {
     const formData = new FormData();
     formData.append('file', file);
     return request<AssetView>('/admin/assets/upload', {
       method: 'POST',
       body: formData,
-      headers: {}, // 让浏览器自动设置 Content-Type 为 multipart/form-data
     });
   },
   listAssets: (params: { page?: number; pageSize?: number } = {}) => {
@@ -200,15 +197,18 @@ export const api = {
     );
   },
   getAsset: (id: string) => request<AssetView>(`/admin/assets/${id}`),
+  getAssetReferences: (id: string) =>
+    request<AssetReferencesResult>(`/admin/assets/${id}/references`),
   updateAsset: (id: string, payload: { alt?: string | null; filename?: string | null }) =>
     request<AssetView>(`/admin/assets/${id}`, {
       method: 'PATCH',
       body: JSON.stringify(payload),
     }),
-  deleteAsset: (id: string) =>
-    request<{ ok: boolean }>(`/admin/assets/${id}`, { method: 'DELETE' }),
+  deleteAsset: (id: string, force = false) =>
+    request<{ ok: boolean }>(`/admin/assets/${id}${force ? '?force=true' : ''}`, {
+      method: 'DELETE',
+    }),
 
-  // 前台评论
   getPostComments: (slug: string, page: number = 1) => {
     const qs = new URLSearchParams();
     qs.set('page', String(page));
@@ -233,7 +233,6 @@ export const api = {
       body: JSON.stringify(data),
     }),
 
-  // 后台评论管理
   listAdminComments: (params: AdminListCommentsParams = {}) => {
     const qs = new URLSearchParams();
     if (params.page) qs.set('page', String(params.page));

@@ -13,8 +13,6 @@
     "typecheck": "pnpm -r typecheck",
     "seed": "pnpm --filter @blog/server seed",
     "prerender": "pnpm --filter @blog/server prerender",
-    "db:generate": "pnpm --filter @blog/server db:generate",
-    "db:check": "pnpm --filter @blog/server db:check",
     "db:migrate": "pnpm --filter @blog/server db:migrate",
     "test": "pnpm --filter @blog/server test",
     "test:unit": "pnpm --filter @blog/server test:unit",

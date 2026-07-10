@@ -89,10 +89,14 @@ export function Projects() {
     setAccountError(null);
     try {
       const account = parseGitHubAccount(accountInput);
+      setAccountInput(account);
+      if (hasUrlTarget && account === urlAccount) {
+        void github.refetch();
+        return;
+      }
       const next = new URLSearchParams(searchParams);
       next.set('github', account);
       setSearchParams(next);
-      setAccountInput(account);
     } catch (error) {
       setAccountError(error instanceof Error ? error.message : 'GitHub 账号格式不正确');
     }

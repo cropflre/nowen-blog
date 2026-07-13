@@ -41,7 +41,7 @@ describe('fresh database bootstrap', () => {
     const migrationCount = sqlite
       .prepare('SELECT COUNT(*) AS total FROM __drizzle_migrations')
       .get() as { total: number };
-    assert.equal(migrationCount.total, 4);
+    assert.equal(migrationCount.total, 5);
 
     const user = sqlite
       .prepare('SELECT username, email FROM users LIMIT 1')
@@ -54,9 +54,21 @@ describe('fresh database bootstrap', () => {
     assert.ok(postCount.total > 0);
     assert.equal(indexedCount.total, postCount.total);
 
-    for (const table of ['projects', 'newsletter_subscribers', 'newsletter_campaigns', 'ai_settings']) {
+    for (const table of [
+      'projects',
+      'newsletter_subscribers',
+      'newsletter_campaigns',
+      'ai_settings',
+      'doc_spaces',
+      'doc_versions',
+      'documents',
+      'document_revisions',
+      'document_redirects',
+      'document_feedback',
+      'documents_fts',
+    ]) {
       const row = sqlite
-        .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = ?")
+        .prepare("SELECT name FROM sqlite_master WHERE name = ?")
         .get(table) as { name: string } | undefined;
       assert.equal(row?.name, table);
     }

@@ -16,6 +16,7 @@ import { postViewRoutes, adminAnalyticsRoutes } from './modules/analytics/analyt
 import { projectsRoutes, adminProjectsRoutes } from './modules/projects/projects.routes';
 import { newsletterRoutes, adminNewsletterRoutes } from './modules/newsletter/newsletter.routes';
 import { adminAiRoutes } from './modules/ai/ai.routes';
+import { docsRoutes, adminDocsRoutes } from './modules/docs/docs.routes';
 
 export const app = new Hono();
 
@@ -34,11 +35,13 @@ app.route('/api/tags', tagsRoutes);
 app.route('/api/search', searchRoutes);
 app.route('/api/archive', archiveRoutes);
 app.route('/api/projects', projectsRoutes);
+app.route('/api/docs', docsRoutes);
 app.route('/api/newsletter', newsletterRoutes);
 app.route('/api/site-settings', settingsRoutes);
 app.route('/api/admin/settings', adminSettingsRoutes);
 app.route('/api/admin/ai', adminAiRoutes);
 app.route('/api/admin/posts', adminPostsRoutes);
+app.route('/api/admin/docs', adminDocsRoutes);
 app.route('/api/admin/categories', adminCategoriesRoutes);
 app.route('/api/admin/tags', adminTagsRoutes);
 app.route('/api/admin/projects', adminProjectsRoutes);

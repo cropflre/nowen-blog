@@ -109,6 +109,13 @@ describe('Drizzle migration system', () => {
       'newsletter_subscribers',
       'newsletter_campaigns',
       'ai_settings',
+      'doc_spaces',
+      'doc_versions',
+      'documents',
+      'document_revisions',
+      'document_redirects',
+      'document_feedback',
+      'documents_fts',
     ];
     for (const table of requiredTables) {
       const row = sqlite
@@ -120,7 +127,7 @@ describe('Drizzle migration system', () => {
     const migrationCount = sqlite
       .prepare('SELECT COUNT(*) AS total FROM __drizzle_migrations')
       .get() as { total: number };
-    assert.equal(migrationCount.total, 4);
+    assert.equal(migrationCount.total, 5);
   });
 
   test('is idempotent when migrations are run again', () => {
@@ -130,7 +137,7 @@ describe('Drizzle migration system', () => {
     const migrationCount = sqlite
       .prepare('SELECT COUNT(*) AS total FROM __drizzle_migrations')
       .get() as { total: number };
-    assert.equal(migrationCount.total, 4);
+    assert.equal(migrationCount.total, 5);
 
     const legacyPost = sqlite
       .prepare('SELECT title, visibility FROM posts WHERE id = ?')

@@ -1,15 +1,20 @@
 # NOWEN Blog
 
-内容型博客、个人品牌主页与轻量 CMS。技术栈：**React + TypeScript + Vite** 前台/后台，**Hono + Drizzle + better-sqlite3** 后端，**Tailwind CSS v4** 视觉系统。
+[![CI](https://github.com/cropflre/nowen-blog/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/cropflre/nowen-blog/actions/workflows/ci.yml)
+
+NOWEN 官方内容平台：集成**多项目官方文档、帮助中心、项目展示、技术博客与轻量 CMS**。技术栈为 **React + TypeScript + Vite** 前台/后台、**Hono + Drizzle + better-sqlite3** 后端，以及 **Tailwind CSS v4** 视觉系统。
 
 当前包含：
 
+- 多项目、多版本、层级目录的官方文档中心；
+- 后台 Markdown 文档编辑、发布、修订快照与路径重定向；
+- GitHub `README.md` 与 `docs/**/*.md(x)` 增量同步；
+- 文档全文搜索、帮助反馈、三栏阅读器与移动端目录；
 - 文章创作、定时发布、版本历史与评论；
-- 参考 nowen-note 的 OpenAI-compatible AI 写作助手；
-- 个人品牌首页、精选文章和项目作品集；
-- GitHub 用户/仓库同步与项目后台管理；
-- 邮件订阅、签名退订、订阅者管理和文章通知；
-- SQLite 正式迁移、Docker Compose、Nginx、CI、备份恢复与 Playwright E2E。
+- OpenAI-compatible AI 写作助手；
+- 项目作品集与 GitHub 仓库同步；
+- 邮件订阅、文章通知、SEO、Sitemap 与静态预渲染；
+- Docker Compose、Nginx、CI、备份恢复与 Playwright E2E。
 
 ## 项目结构
 
@@ -44,6 +49,57 @@ dev-admin-please-change
 
 生产环境必须显式设置强密码。
 
+## 官方文档中心
+
+前台入口：`/docs`
+
+后台入口：`/admin/docs`
+
+支持：
+
+- 为 Nowen Note、Nowen Reader、Nowen Video 等项目创建独立文档空间；
+- 为每个空间维护 `latest`、稳定版、旧版本或开发版；
+- 使用父子关系维护多级目录，并配置排序、状态和可见性；
+- Markdown、GFM、代码高亮、代码复制、图片预览、标题锚点与 GitHub 风格提示块；
+- 文档项目内搜索和全站文档搜索；
+- 页面路径变更后自动记录 301 重定向；
+- 保存前生成不可变修订快照；
+- 文档反馈、上一篇/下一篇、面包屑、版本切换和“在 GitHub 编辑”；
+- 文档 Sitemap、`TechArticle` 结构化数据和构建期静态预渲染。
+
+### GitHub 文档同步
+
+创建文档空间时将内容来源设为“GitHub 仓库同步”，填写：
+
+```text
+仓库：cropflre/nowen-note
+文档目录：docs
+版本 source ref：main、v1.3.0 或其他分支/Tag
+```
+
+同步器会读取：
+
+```text
+README.md
+docs/**/*.md
+docs/**/*.mdx
+```
+
+文档可使用简单 Frontmatter：
+
+```yaml
+---
+title: Docker Compose 部署
+description: 使用 Docker Compose 部署 Nowen Note
+order: 10
+draft: false
+---
+```
+
+同步采用 Git Blob SHA 增量判断，自动生成目录节点、更新变化页面、归档已删除文件，并在 CMS 页面与 GitHub 页面路径冲突时保留 CMS 内容并报告冲突。
+
+公开仓库可匿名同步；生产环境建议设置 `GITHUB_TOKEN`，提高 API 限额并支持私有仓库访问。
+
 ## AI 写作助手
 
 后台入口：`/admin/ai`
@@ -63,15 +119,6 @@ dev-admin-please-change
 2. 选择服务商，填写 API 地址、模型和 API Key；
 3. 点击“保存并测试”；
 4. 在新建或编辑文章页面点击“AI 写作”。
-
-编辑器支持：
-
-- 生成标题、摘要、SEO 和标签建议；
-- 生成 Markdown 文章大纲；
-- 润色、改写、精简、扩写和续写；
-- Markdown 排版和自定义指令；
-- 对选中文本操作，或没有选区时处理全文；
-- 结果预览、复制、光标插入、选区替换和字段应用。
 
 AI 输出不会自动保存或发布，必须由管理员确认应用后再手动保存。API Key 不会通过读取接口返回明文。
 
@@ -120,8 +167,6 @@ EMAIL_SMOKE_TO=you@example.com pnpm ops:email-acceptance
 
 后台入口：`/admin/newsletter`
 
-支持订阅统计、状态管理、文章通知、发送审计、正文退订和标准一键退订。
-
 ## 数据库迁移
 
 服务启动时会自动执行 `apps/server/drizzle/` 中尚未应用的版本化 SQL migration。
@@ -132,7 +177,7 @@ pnpm db:migrate
 
 新增结构变更时：
 
-1. 更新 `apps/server/src/db/schema.ts`；
+1. 按需要更新 `apps/server/src/db/schema.ts` 或领域 SQL 查询；
 2. 在 `apps/server/drizzle/` 新增下一个编号的 SQL 文件；
 3. 在 `apps/server/drizzle/meta/_journal.json` 登记 migration；
 4. 运行迁移测试、类型检查和构建。
@@ -203,7 +248,7 @@ GitHub Actions 会执行：
 
 另有绑定 GitHub `production` Environment 的手动生产验收工作流，用于真实域名、Resend 投递和 GitHub 项目初始化。
 
-## 文档
+## 运维文档
 
 - [BLOG-20 生产收口、验收与恢复手册](docs/BLOG-20-production-acceptance.md)
 - [BLOG-18 生产化指南](docs/BLOG-18-production-readiness.md)

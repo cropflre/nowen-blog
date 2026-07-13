@@ -12,12 +12,15 @@ import { Archive } from './pages/Archive';
 import { Search } from './pages/Search';
 import { About } from './pages/About';
 import { Projects } from './pages/Projects';
+import { DocsHome } from './pages/docs/DocsHome';
+import { DocPage } from './pages/docs/DocPage';
 import { Unsubscribe } from './pages/Unsubscribe';
 import { Login } from './pages/admin/Login';
 import { Dashboard } from './pages/admin/Dashboard';
 import { AdminPosts } from './pages/admin/AdminPosts';
 import { AdminPostNew } from './pages/admin/AdminPostNew';
 import { AdminPostEdit } from './pages/admin/AdminPostEdit';
+import { AdminDocs } from './pages/admin/AdminDocs';
 import { AdminCategories } from './pages/admin/AdminCategories';
 import { AdminTags } from './pages/admin/AdminTags';
 import { AdminAssets } from './pages/admin/AdminAssets';
@@ -34,6 +37,11 @@ export function App() {
       <Routes>
         <Route element={<Layout />}>
           <Route path="/" element={<Home />} />
+          <Route path="/docs" element={<DocsHome />} />
+          <Route path="/docs/:spaceSlug" element={<DocPage />} />
+          <Route path="/docs/:spaceSlug/:version/*" element={<DocPage />} />
+          <Route path="/blog" element={<Posts />} />
+          <Route path="/blog/:slug" element={<PostDetail />} />
           <Route path="/posts" element={<Posts />} />
           <Route path="/posts/:slug" element={<PostDetail />} />
           <Route path="/projects" element={<Projects />} />
@@ -56,6 +64,7 @@ export function App() {
             <Route path="/admin/posts" element={<AdminPosts />} />
             <Route path="/admin/posts/new" element={<AdminPostNew />} />
             <Route path="/admin/posts/:id/edit" element={<AdminPostEdit />} />
+            <Route path="/admin/docs" element={<AdminDocs />} />
             <Route path="/admin/ai" element={<AdminAISettings />} />
             <Route path="/admin/categories" element={<AdminCategories />} />
             <Route path="/admin/tags" element={<AdminTags />} />

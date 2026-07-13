@@ -3,6 +3,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import {
   LogOut,
   FileText,
+  BookOpen,
   Folder,
   Tag,
   Image,
@@ -36,6 +37,7 @@ export function AdminLayout() {
         <nav className="space-y-1 text-sm" aria-label="后台导航">
           <Link to="/admin" className="block rounded-lg px-3 py-2 text-muted transition hover:bg-[var(--color-glass-hover)] hover:text-fg">仪表盘</Link>
           <Link to="/admin/posts" className="flex items-center gap-2 rounded-lg px-3 py-2 text-muted transition hover:bg-[var(--color-glass-hover)] hover:text-fg"><FileText className="h-4 w-4" />文章管理</Link>
+          <Link to="/admin/docs" className="flex items-center gap-2 rounded-lg border border-transparent px-3 py-2 text-muted transition hover:border-[color-mix(in_srgb,var(--color-primary)_20%,transparent)] hover:bg-[color-mix(in_srgb,var(--color-primary)_8%,transparent)] hover:text-fg"><BookOpen className="h-4 w-4 text-[var(--color-primary)]" />文档中心</Link>
           <Link to="/admin/ai" className="flex items-center gap-2 rounded-lg border border-transparent px-3 py-2 text-muted transition hover:border-violet-500/20 hover:bg-gradient-to-r hover:from-violet-500/10 hover:to-cyan-500/5 hover:text-fg"><Sparkles className="h-4 w-4 text-violet-500" />AI 写作</Link>
           <Link to="/admin/projects" className="flex items-center gap-2 rounded-lg px-3 py-2 text-muted transition hover:bg-[var(--color-glass-hover)] hover:text-fg"><FolderGit2 className="h-4 w-4" />项目管理</Link>
           <Link to="/admin/categories" className="flex items-center gap-2 rounded-lg px-3 py-2 text-muted transition hover:bg-[var(--color-glass-hover)] hover:text-fg"><Folder className="h-4 w-4" />分类管理</Link>
@@ -52,7 +54,7 @@ export function AdminLayout() {
         <header className="flex min-h-16 shrink-0 items-center justify-between gap-4 border-b border-[var(--color-border)] bg-[var(--color-glass)] px-6 backdrop-blur-xl">
           <div>
             <p className="text-sm font-medium text-[var(--color-text-primary)]">管理后台</p>
-            <p className="text-xs text-[var(--color-text-muted)]">主题偏好会自动保存</p>
+            <p className="text-xs text-[var(--color-text-muted)]">统一管理博客、项目与官方文档</p>
           </div>
           <div className="flex items-center gap-2">
             <ThemeToggle showLabel />

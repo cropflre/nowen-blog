@@ -125,8 +125,9 @@ export function DocPage() {
   });
   const feedback = useMutation({
     mutationFn: (helpful: boolean) => {
-      if (!page.data?.page.id) throw new Error('文档不存在');
-      return helpCenterApi.feedback(page.data.page.id, helpful);
+      const documentId = page.data?.page.id;
+      if (!documentId) throw new Error('文档不存在');
+      return helpCenterApi.feedback(documentId, helpful);
     },
     onSuccess: () => setFeedbackSent(true),
   });
@@ -140,9 +141,12 @@ export function DocPage() {
 
   const helpCenter = tree.data?.helpCenter ?? page.data?.helpCenter;
   const activePage = page.data?.page;
+  const treeItems = tree.data?.items ?? [];
+  const previousPage = page.data?.previous ?? null;
+  const nextPage = page.data?.next ?? null;
   const parent = useMemo(
-    () => tree.data?.items.find((item) => item.id === activePage?.parentId) ?? null,
-    [activePage?.parentId, tree.data?.items],
+    () => treeItems.find((item) => item.id === activePage?.parentId) ?? null,
+    [activePage?.parentId, treeItems],
   );
   const searchItems = search.data?.items ?? [];
 
@@ -230,7 +234,7 @@ export function DocPage() {
       <div className="grid lg:grid-cols-[280px_minmax(0,1fr)]">
         <aside className="hidden min-h-[calc(100vh-8rem)] border-r border-[var(--color-border)] bg-[var(--color-bg-secondary)] lg:block">
           <div className="sticky top-32 max-h-[calc(100vh-8rem)] overflow-y-auto px-4 py-6">
-            <HelpSidebar items={tree.data.items} activeId={activePage.id} spaceSlug={helpCenter.slug} />
+            <HelpSidebar items={treeItems} activeId={activePage.id} spaceSlug={helpCenter.slug} />
           </div>
         </aside>
 
@@ -269,24 +273,24 @@ export function DocPage() {
                 <div className="flex flex-col items-center justify-between gap-4 sm:flex-row">
                   <p className="text-sm font-medium text-[var(--color-text-primary)]">这篇文档对你有帮助吗？</p>
                   <div className="flex gap-2">
-                    <button type="button" onClick={() => feedback.mutate(true)} className="nowen-button-secondary nowen-focus inline-flex items-center gap-2 px-4 py-2 text-sm"><ThumbsUp className="h-4 w-4" />有帮助</button>
-                    <button type="button" onClick={() => feedback.mutate(false)} className="nowen-button-secondary nowen-focus inline-flex items-center gap-2 px-4 py-2 text-sm"><ThumbsDown className="h-4 w-4" />没解决</button>
+                    <button type="button" disabled={feedback.isPending} onClick={() => feedback.mutate(true)} className="nowen-button-secondary nowen-focus inline-flex items-center gap-2 px-4 py-2 text-sm"><ThumbsUp className="h-4 w-4" />有帮助</button>
+                    <button type="button" disabled={feedback.isPending} onClick={() => feedback.mutate(false)} className="nowen-button-secondary nowen-focus inline-flex items-center gap-2 px-4 py-2 text-sm"><ThumbsDown className="h-4 w-4" />没解决</button>
                   </div>
                 </div>
               )}
             </section>
 
             <nav className="mt-8 grid gap-3 border-t border-[var(--color-border)] pt-8 sm:grid-cols-2" aria-label="上一篇和下一篇">
-              {page.data.previous ? (
-                <Link to={`/docs/${helpCenter.slug}/${page.data.previous.path}`} className="nowen-focus rounded-xl border border-[var(--color-border)] p-4 transition hover:border-[var(--color-primary)]">
+              {previousPage ? (
+                <Link to={`/docs/${helpCenter.slug}/${previousPage.path}`} className="nowen-focus rounded-xl border border-[var(--color-border)] p-4 transition hover:border-[var(--color-primary)]">
                   <span className="flex items-center gap-1 text-xs text-[var(--color-text-muted)]"><ArrowLeft className="h-3.5 w-3.5" />上一篇</span>
-                  <p className="mt-2 text-sm font-medium text-[var(--color-text-primary)]">{page.data.previous.title}</p>
+                  <p className="mt-2 text-sm font-medium text-[var(--color-text-primary)]">{previousPage.title}</p>
                 </Link>
               ) : <span />}
-              {page.data.next && (
-                <Link to={`/docs/${helpCenter.slug}/${page.data.next.path}`} className="nowen-focus rounded-xl border border-[var(--color-border)] p-4 text-right transition hover:border-[var(--color-primary)]">
+              {nextPage && (
+                <Link to={`/docs/${helpCenter.slug}/${nextPage.path}`} className="nowen-focus rounded-xl border border-[var(--color-border)] p-4 text-right transition hover:border-[var(--color-primary)]">
                   <span className="flex items-center justify-end gap-1 text-xs text-[var(--color-text-muted)]">下一篇<ArrowRight className="h-3.5 w-3.5" /></span>
-                  <p className="mt-2 text-sm font-medium text-[var(--color-text-primary)]">{page.data.next.title}</p>
+                  <p className="mt-2 text-sm font-medium text-[var(--color-text-primary)]">{nextPage.title}</p>
                 </Link>
               )}
             </nav>
@@ -303,7 +307,7 @@ export function DocPage() {
               <button type="button" onClick={() => setMenuOpen(false)} className="nowen-focus flex h-9 w-9 items-center justify-center rounded-lg"><X className="h-5 w-5" /></button>
             </div>
             <div className="px-4 py-6">
-              <HelpSidebar items={tree.data.items} activeId={activePage.id} spaceSlug={helpCenter.slug} onNavigate={() => setMenuOpen(false)} />
+              <HelpSidebar items={treeItems} activeId={activePage.id} spaceSlug={helpCenter.slug} onNavigate={() => setMenuOpen(false)} />
             </div>
           </aside>
         </div>

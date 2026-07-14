@@ -38,6 +38,7 @@ test.describe('NOWEN Blog smoke flows', () => {
     const hasHorizontalOverflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1);
     expect(hasHorizontalOverflow).toBe(false);
 
+    await page.getByRole('button', { name: '打开导航' }).click();
     await page.getByRole('button', { name: '切换主题' }).click();
     await expect(page.locator('html')).toHaveClass(/dark/);
   });
@@ -53,7 +54,7 @@ test.describe('NOWEN Blog smoke flows', () => {
     await expect(page.getByRole('heading', { name: '像写笔记一样维护帮助文档' })).toBeVisible();
     await page.getByRole('button', { name: '新建项目帮助中心' }).click();
     await page.getByLabel('项目名称').fill('E2E Note');
-    await page.getByLabel('一句话说明').fill('E2E 项目的安装和使用帮助。');
+    await page.getByLabel('一句话说明', { exact: true }).fill('E2E 项目的安装和使用帮助。');
     await page.getByRole('button', { name: '创建并开始写' }).click();
     await expect(page.getByText(/帮助中心已创建/)).toBeVisible();
 

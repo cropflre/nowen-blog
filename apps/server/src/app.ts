@@ -19,6 +19,7 @@ import { adminAiRoutes } from './modules/ai/ai.routes';
 import { docsRoutes, adminDocsRoutes } from './modules/docs/docs.routes';
 import { helpCentersRoutes } from './modules/docs/help-centers.public.routes';
 import { adminHelpCentersRoutes } from './modules/docs/help-centers.admin.routes';
+import { adminHelpCenterAgentRoutes } from './modules/docs/help-center-agent.routes';
 
 export const app = new Hono();
 
@@ -44,6 +45,7 @@ app.route('/api/site-settings', settingsRoutes);
 app.route('/api/admin/settings', adminSettingsRoutes);
 app.route('/api/admin/ai', adminAiRoutes);
 app.route('/api/admin/posts', adminPostsRoutes);
+app.route('/api/admin/help-centers', adminHelpCenterAgentRoutes);
 app.route('/api/admin/help-centers', adminHelpCentersRoutes);
 app.route('/api/admin/docs', adminDocsRoutes);
 app.route('/api/admin/categories', adminCategoriesRoutes);

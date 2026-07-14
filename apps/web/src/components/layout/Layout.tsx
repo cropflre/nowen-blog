@@ -1,8 +1,8 @@
 import { useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Outlet } from 'react-router-dom';
 import { Header } from './Header';
 import { Footer } from './Footer';
+import { MotionOutlet } from '../motion/MotionOutlet';
 import { api } from '../../lib/api';
 
 export function Layout() {
@@ -36,7 +36,7 @@ export function Layout() {
   return (
     <div className="flex min-h-screen flex-col">
       <Header />
-      <main className="flex-1"><Outlet /></main>
+      <main className="flex-1 overflow-clip"><MotionOutlet /></main>
       <Footer />
     </div>
   );

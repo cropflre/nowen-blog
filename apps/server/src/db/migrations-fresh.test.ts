@@ -122,5 +122,42 @@ describe('fresh database bootstrap', () => {
       .get() as { title: string; path: string };
     assert.equal(notesDoc.title, '笔记 API');
     assert.equal(notesDoc.path, 'core/notes');
+
+    const helpSpace = sqlite
+      .prepare(
+        `SELECT id, name, default_version_id AS defaultVersionId, is_published AS isPublished
+         FROM doc_spaces WHERE slug = 'nowen-note-help'`,
+      )
+      .get() as { id: string; name: string; defaultVersionId: string; isPublished: number };
+    assert.equal(helpSpace.name, 'Nowen Note 安装与问题解答');
+    assert.equal(helpSpace.isPublished, 1);
+    assert.ok(helpSpace.defaultVersionId);
+
+    const helpDocumentStats = sqlite
+      .prepare(
+        `SELECT COUNT(*) AS total, MAX(depth) AS maxDepth,
+                SUM(CASE WHEN status = 'published' THEN 1 ELSE 0 END) AS published
+         FROM documents WHERE space_id = ?`,
+      )
+      .get(helpSpace.id) as { total: number; maxDepth: number; published: number };
+    assert.equal(helpDocumentStats.total, 28);
+    assert.equal(helpDocumentStats.maxDepth, 1);
+    assert.equal(helpDocumentStats.published, 28);
+
+    const helpIndexedCount = sqlite
+      .prepare(
+        `SELECT COUNT(*) AS total
+         FROM documents_fts f
+         JOIN documents d ON d.rowid = f.rowid
+         WHERE d.space_id = ?`,
+      )
+      .get(helpSpace.id) as { total: number };
+    assert.equal(helpIndexedCount.total, 28);
+
+    const brokenImagesDoc = sqlite
+      .prepare("SELECT title, path FROM documents WHERE id = 'doc_nn_help_broken_images'")
+      .get() as { title: string; path: string };
+    assert.equal(brokenImagesDoc.title, '图片刷新后裂图或变成 127.0.0.1');
+    assert.equal(brokenImagesDoc.path, 'troubleshooting/images-after-refresh');
   });
 });

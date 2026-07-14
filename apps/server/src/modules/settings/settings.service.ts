@@ -11,7 +11,6 @@ interface SiteSettingsRow {
   logoUrl: string | null;
   faviconUrl: string | null;
   authorName: string;
-  githubUrl: string | null;
   twitterUrl: string | null;
   email: string | null;
   rssEnabled: number;
@@ -36,7 +35,6 @@ const SELECT_SETTINGS = `
          logo_url AS logoUrl,
          favicon_url AS faviconUrl,
          author_name AS authorName,
-         github_url AS githubUrl,
          twitter_url AS twitterUrl,
          email,
          rss_enabled AS rssEnabled,
@@ -62,7 +60,6 @@ function toSettings(row: SiteSettingsRow): AdminSiteSettings {
     faviconUrl: row.faviconUrl,
     authorName: row.authorName,
     social: {
-      github: row.githubUrl,
       twitter: row.twitterUrl,
       email: row.email,
       rss: Boolean(row.rssEnabled),
@@ -90,7 +87,7 @@ export function ensureSiteSettings(): void {
         author_name, github_url, twitter_url, email, rss_enabled, theme_color,
         icp, footer_text, default_seo_title, default_seo_description,
         default_og_image, comments_enabled, updated_at
-      ) VALUES ('site', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      ) VALUES ('site', ?, ?, ?, ?, ?, ?, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     )
     .run(
       defaultSettings.siteTitle,
@@ -99,7 +96,6 @@ export function ensureSiteSettings(): void {
       defaultSettings.logoUrl,
       defaultSettings.faviconUrl,
       defaultSettings.authorName,
-      defaultSettings.social.github,
       defaultSettings.social.twitter,
       defaultSettings.social.email,
       defaultSettings.social.rss ? 1 : 0,
@@ -138,7 +134,7 @@ export function updateSiteSettings(input: SiteSettingsInput): AdminSiteSettings 
         logo_url = ?,
         favicon_url = ?,
         author_name = ?,
-        github_url = ?,
+        github_url = NULL,
         twitter_url = ?,
         email = ?,
         rss_enabled = ?,
@@ -159,7 +155,6 @@ export function updateSiteSettings(input: SiteSettingsInput): AdminSiteSettings 
       input.logoUrl,
       input.faviconUrl,
       input.authorName,
-      input.social.github,
       input.social.twitter,
       input.social.email,
       input.social.rss ? 1 : 0,

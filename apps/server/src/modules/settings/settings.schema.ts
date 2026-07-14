@@ -28,7 +28,6 @@ export const siteSettingsSchema = z.object({
   faviconUrl: nullableUrl,
   authorName: z.string().trim().min(1, '作者名称不能为空').max(80),
   social: z.object({
-    github: nullableUrl,
     twitter: nullableUrl,
     email: nullableEmail,
     rss: z.boolean(),

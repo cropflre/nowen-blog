@@ -180,4 +180,4 @@ jobs:
         if: always()
         run: |
           docker compose down --volumes --remove-orphans
-          rm -rf .tmp/ci-backups
+          sudo rm -rf .tmp/ci-backups

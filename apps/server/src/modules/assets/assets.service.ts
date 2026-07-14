@@ -281,8 +281,10 @@ export async function deleteAsset(id: string, force = false): Promise<boolean> {
   if (!result) return false;
   if (!force && result.references.length > 0) throw new AssetInUseError(result.references);
 
+  const asset = result.asset;
+  if (!asset) return false;
   await db.delete(assets).where(eq(assets.id, id)).run();
-  const full = safeStoragePath(result.asset.storageKey);
+  const full = safeStoragePath(asset.storageKey);
   if (existsSync(full)) {
     try {
       unlinkSync(full);

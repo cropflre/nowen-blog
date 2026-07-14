@@ -38,8 +38,7 @@ export function App() {
         <Route element={<Layout />}>
           <Route path="/" element={<Home />} />
           <Route path="/docs" element={<DocsHome />} />
-          <Route path="/docs/:spaceSlug" element={<DocPage />} />
-          <Route path="/docs/:spaceSlug/:version/*" element={<DocPage />} />
+          <Route path="/docs/:spaceSlug/*" element={<DocPage />} />
           <Route path="/blog" element={<Posts />} />
           <Route path="/blog/:slug" element={<PostDetail />} />
           <Route path="/posts" element={<Posts />} />

@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
+  ArrowDown,
+  ArrowUp,
   BookOpen,
-  ChevronRight,
+  ExternalLink,
   Eye,
   FilePlus2,
   FolderPlus,
@@ -10,167 +12,129 @@ import {
   Loader2,
   Plus,
   Save,
+  Settings2,
   Trash2,
 } from 'lucide-react';
-import {
-  docsApi,
-  type DocSpace,
-  type DocumentInput,
-  type DocumentItem,
-  type SpaceInput,
-  type VersionInput,
-} from '../../lib/docsApi';
+import { helpCenterApi, type HelpCenter, type HelpDocumentInput } from '../../lib/helpCenterApi';
+import type { DocumentItem, SpaceInput } from '../../lib/docsApi';
 import { Markdown } from '../../components/markdown/Markdown';
 import { normalizeDocsMarkdown } from '../../lib/docsMarkdown';
 
 interface DocumentFormState {
   title: string;
-  path: string;
   parentId: string;
   description: string;
   contentMd: string;
-  status: 'draft' | 'published' | 'archived';
-  visibility: 'public' | 'private';
-  sortOrder: number;
-  editUrl: string;
-  seoTitle: string;
-  seoDescription: string;
+  status: 'draft' | 'published';
 }
 
 const EMPTY_DOCUMENT: DocumentFormState = {
   title: '',
-  path: '',
   parentId: '',
   description: '',
-  contentMd: '# 新文档\n\n在这里编写 Markdown 文档内容。',
+  contentMd: '# 新文档\n\n在这里填写用户可以直接照着操作的步骤。',
   status: 'draft',
-  visibility: 'public',
-  sortOrder: 0,
-  editUrl: '',
-  seoTitle: '',
-  seoDescription: '',
 };
 
 function formFromDocument(document: DocumentItem): DocumentFormState {
   return {
     title: document.title,
-    path: document.path,
     parentId: document.parentId ?? '',
     description: document.description ?? '',
     contentMd: document.contentMd,
-    status: document.status,
-    visibility: document.visibility,
-    sortOrder: document.sortOrder,
-    editUrl: document.editUrl ?? '',
-    seoTitle: document.seoTitle ?? '',
-    seoDescription: document.seoDescription ?? '',
+    status: document.status === 'published' ? 'published' : 'draft',
   };
 }
 
-function documentPayload(form: DocumentFormState) {
+function centerFormDefaults(): SpaceInput {
   return {
-    parentId: form.parentId || null,
-    title: form.title.trim(),
-    path: form.path.trim() || undefined,
-    description: form.description.trim() || null,
-    contentMd: form.contentMd,
-    status: form.status,
-    visibility: form.visibility,
-    sortOrder: Number(form.sortOrder) || 0,
-    editUrl: form.editUrl.trim() || null,
-    seoTitle: form.seoTitle.trim() || null,
-    seoDescription: form.seoDescription.trim() || null,
+    name: '',
+    description: '',
+    repositoryFullName: '',
+    sourceMode: 'cms',
+    docsRoot: 'docs',
+    isPublished: true,
+    sortOrder: 0,
   };
 }
 
-function SpaceBadge({ space, selected, onClick }: { space: DocSpace; selected: boolean; onClick: () => void }) {
+function sortedItems(items: DocumentItem[]): DocumentItem[] {
+  return [...items].sort((a, b) => a.sortOrder - b.sortOrder || a.title.localeCompare(b.title, 'zh-CN'));
+}
+
+function CenterButton({ center, active, onClick }: { center: HelpCenter; active: boolean; onClick: () => void }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className={`nowen-focus w-full rounded-xl border p-3 text-left transition ${
-        selected
-          ? 'border-[color-mix(in_srgb,var(--color-primary)_45%,var(--color-border))] bg-[color-mix(in_srgb,var(--color-primary)_10%,transparent)]'
+      className={`nowen-focus w-full rounded-xl border p-3.5 text-left transition ${
+        active
+          ? 'border-[color-mix(in_srgb,var(--color-primary)_48%,var(--color-border))] bg-[color-mix(in_srgb,var(--color-primary)_10%,transparent)]'
           : 'border-[var(--color-border)] hover:bg-[var(--color-glass-hover)]'
       }`}
     >
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p className="truncate text-sm font-semibold text-[var(--color-text-primary)]">{space.name}</p>
-          <p className="mt-1 truncate text-xs text-[var(--color-text-muted)]">/docs/{space.slug}</p>
+      <div className="flex items-start gap-3">
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[var(--color-bg-tertiary)] text-[var(--color-primary)]">
+          <BookOpen className="h-4 w-4" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-semibold text-[var(--color-text-primary)]">{center.name}</p>
+          <p className="mt-1 text-xs text-[var(--color-text-muted)]">{center.documentCount} 篇已发布</p>
         </div>
-        <span className={`h-2 w-2 shrink-0 rounded-full ${space.isPublished ? 'bg-emerald-500' : 'bg-amber-500'}`} />
+        <span className={`mt-1.5 h-2 w-2 rounded-full ${center.isPublished ? 'bg-emerald-500' : 'bg-amber-500'}`} />
       </div>
-      <p className="mt-2 text-xs text-[var(--color-text-secondary)]">{space.documentCount} 篇已发布文档</p>
     </button>
   );
 }
 
 export function AdminDocs() {
   const queryClient = useQueryClient();
-  const [selectedSpaceId, setSelectedSpaceId] = useState('');
-  const [selectedVersionId, setSelectedVersionId] = useState('');
+  const [selectedCenterId, setSelectedCenterId] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [documentForm, setDocumentForm] = useState<DocumentFormState>(EMPTY_DOCUMENT);
   const [showPreview, setShowPreview] = useState(false);
-  const [spaceFormOpen, setSpaceFormOpen] = useState(false);
-  const [versionFormOpen, setVersionFormOpen] = useState(false);
-  const [spaceForm, setSpaceForm] = useState<SpaceInput>({
-    name: '',
-    slug: '',
-    description: '',
-    sourceMode: 'cms',
-    repositoryFullName: '',
-    docsRoot: 'docs',
-    isPublished: true,
-    sortOrder: 0,
-  });
-  const [versionForm, setVersionForm] = useState<VersionInput>({
-    version: '',
-    label: '',
-    sourceRef: '',
-    status: 'published',
-    isDefault: false,
-    isDeprecated: false,
-    sortOrder: 0,
-  });
+  const [createOpen, setCreateOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [centerForm, setCenterForm] = useState<SpaceInput>(centerFormDefaults());
+  const [settingsForm, setSettingsForm] = useState<SpaceInput>(centerFormDefaults());
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const spacesQuery = useQuery({ queryKey: ['admin', 'docs', 'spaces'], queryFn: docsApi.listAdminSpaces });
-  const selectedSpace = useMemo(
-    () => spacesQuery.data?.items.find((space) => space.id === selectedSpaceId) ?? null,
-    [selectedSpaceId, spacesQuery.data?.items],
-  );
-  const selectedVersion = useMemo(
-    () => selectedSpace?.versions?.find((version) => version.id === selectedVersionId) ?? null,
-    [selectedSpace, selectedVersionId],
+  const centersQuery = useQuery({
+    queryKey: ['admin', 'help-centers'],
+    queryFn: helpCenterApi.listAdmin,
+  });
+  const selectedCenter = useMemo(
+    () => centersQuery.data?.items.find((item) => item.id === selectedCenterId) ?? null,
+    [centersQuery.data?.items, selectedCenterId],
   );
   const documentsQuery = useQuery({
-    queryKey: ['admin', 'docs', 'documents', selectedSpaceId, selectedVersionId],
-    queryFn: () => docsApi.listDocuments(selectedSpaceId, selectedVersionId),
-    enabled: Boolean(selectedSpaceId && selectedVersionId),
+    queryKey: ['admin', 'help-centers', selectedCenterId, 'documents'],
+    queryFn: () => helpCenterApi.listDocuments(selectedCenterId),
+    enabled: Boolean(selectedCenterId),
   });
 
   useEffect(() => {
-    const items = spacesQuery.data?.items ?? [];
+    const items = centersQuery.data?.items ?? [];
     if (!items.length) {
-      setSelectedSpaceId('');
+      setSelectedCenterId('');
       return;
     }
-    if (!items.some((space) => space.id === selectedSpaceId)) setSelectedSpaceId(items[0].id);
-  }, [selectedSpaceId, spacesQuery.data?.items]);
+    if (!items.some((item) => item.id === selectedCenterId)) setSelectedCenterId(items[0].id);
+  }, [centersQuery.data?.items, selectedCenterId]);
 
   useEffect(() => {
-    const versions = selectedSpace?.versions ?? [];
-    if (!versions.length) {
-      setSelectedVersionId('');
-      return;
-    }
-    if (!versions.some((version) => version.id === selectedVersionId)) {
-      setSelectedVersionId((versions.find((version) => version.isDefault) ?? versions[0]).id);
-    }
-  }, [selectedSpace, selectedVersionId]);
+    if (!selectedCenter) return;
+    setSettingsForm({
+      name: selectedCenter.name,
+      description: selectedCenter.description ?? '',
+      repositoryFullName: selectedCenter.repositoryFullName ?? '',
+      sourceMode: selectedCenter.sourceMode,
+      docsRoot: selectedCenter.docsRoot,
+      isPublished: selectedCenter.isPublished,
+      sortOrder: selectedCenter.sortOrder,
+    });
+  }, [selectedCenter]);
 
   useEffect(() => {
     if (!editingId) return;
@@ -181,102 +145,146 @@ export function AdminDocs() {
     }
   }, [documentsQuery.data?.items, editingId]);
 
-  const invalidateSpaces = () => queryClient.invalidateQueries({ queryKey: ['admin', 'docs', 'spaces'] });
+  const invalidateCenters = () => queryClient.invalidateQueries({ queryKey: ['admin', 'help-centers'] });
   const invalidateDocuments = () =>
-    queryClient.invalidateQueries({ queryKey: ['admin', 'docs', 'documents', selectedSpaceId, selectedVersionId] });
+    queryClient.invalidateQueries({ queryKey: ['admin', 'help-centers', selectedCenterId, 'documents'] });
 
-  const createSpace = useMutation({
-    mutationFn: docsApi.createSpace,
-    onSuccess: (space) => {
-      setSelectedSpaceId(space.id);
-      setSpaceFormOpen(false);
-      setSpaceForm({ name: '', slug: '', description: '', sourceMode: 'cms', repositoryFullName: '', docsRoot: 'docs', isPublished: true, sortOrder: 0 });
-      setMessage('文档空间已创建，并自动生成 Latest 版本。');
+  const createCenter = useMutation({
+    mutationFn: (payload: SpaceInput) => helpCenterApi.create(payload),
+    onSuccess: (center) => {
+      setSelectedCenterId(center.id);
+      setCreateOpen(false);
+      setCenterForm(centerFormDefaults());
+      setMessage(center.sourceMode === 'github' ? '帮助中心已创建，正在从 GitHub 导入文档…' : '帮助中心已创建，并生成了“开始使用”草稿。');
       setError(null);
-      void invalidateSpaces();
+      void invalidateCenters();
+      if (center.sourceMode === 'github') {
+        void helpCenterApi
+          .sync(center.id)
+          .then((result) => {
+            setMessage(`导入完成：新增 ${result.created}，更新 ${result.updated}，归档 ${result.archived}。`);
+            void invalidateCenters();
+            void queryClient.invalidateQueries({ queryKey: ['admin', 'help-centers', center.id, 'documents'] });
+          })
+          .catch((reason: unknown) => setError(reason instanceof Error ? reason.message : 'GitHub 导入失败'));
+      }
     },
-    onError: (reason) => setError(reason instanceof Error ? reason.message : '创建文档空间失败'),
+    onError: (reason) => setError(reason instanceof Error ? reason.message : '创建帮助中心失败'),
   });
 
-  const updateSpace = useMutation({
-    mutationFn: ({ id, payload }: { id: string; payload: Partial<SpaceInput> }) => docsApi.updateSpace(id, payload),
+  const updateCenter = useMutation({
+    mutationFn: ({ id, payload }: { id: string; payload: Partial<SpaceInput> }) => helpCenterApi.update(id, payload),
     onSuccess: () => {
-      setMessage('文档空间设置已更新。');
+      setMessage('帮助中心设置已保存。');
       setError(null);
-      void invalidateSpaces();
+      setSettingsOpen(false);
+      void invalidateCenters();
     },
-    onError: (reason) => setError(reason instanceof Error ? reason.message : '更新文档空间失败'),
+    onError: (reason) => setError(reason instanceof Error ? reason.message : '保存帮助中心设置失败'),
   });
 
-  const createVersion = useMutation({
-    mutationFn: ({ spaceId, payload }: { spaceId: string; payload: VersionInput }) => docsApi.createVersion(spaceId, payload),
-    onSuccess: (version) => {
-      setSelectedVersionId(version.id);
-      setVersionFormOpen(false);
-      setVersionForm({ version: '', label: '', sourceRef: '', status: 'published', isDefault: false, isDeprecated: false, sortOrder: 0 });
-      setMessage('文档版本已创建。');
+  const removeCenter = useMutation({
+    mutationFn: helpCenterApi.remove,
+    onSuccess: () => {
+      setSelectedCenterId('');
+      setEditingId(null);
+      setDocumentForm(EMPTY_DOCUMENT);
+      setMessage('帮助中心已删除。');
       setError(null);
-      void invalidateSpaces();
+      void invalidateCenters();
     },
-    onError: (reason) => setError(reason instanceof Error ? reason.message : '创建版本失败'),
+    onError: (reason) => setError(reason instanceof Error ? reason.message : '删除帮助中心失败'),
   });
 
-  const syncSpace = useMutation({
+  const syncCenter = useMutation({
     mutationFn: () => {
-      if (!selectedSpace || !selectedVersion) throw new Error('请先选择文档空间和版本');
-      return docsApi.syncSpace(selectedSpace.id, { versionId: selectedVersion.id });
+      if (!selectedCenter) throw new Error('请先选择帮助中心');
+      return helpCenterApi.sync(selectedCenter.id);
     },
     onSuccess: (result) => {
-      setMessage(
-        `GitHub 同步完成：扫描 ${result.scanned} 个文件，新增 ${result.created}、更新 ${result.updated}、未变化 ${result.unchanged}、归档 ${result.archived}${result.conflicts ? `、冲突 ${result.conflicts}` : ''}。`,
-      );
+      setMessage(`同步完成：扫描 ${result.scanned}，新增 ${result.created}，更新 ${result.updated}，归档 ${result.archived}${result.conflicts ? `，跳过冲突 ${result.conflicts}` : ''}。`);
       setError(null);
       void invalidateDocuments();
-      void invalidateSpaces();
+      void invalidateCenters();
     },
-    onError: (reason) => setError(reason instanceof Error ? reason.message : 'GitHub 文档同步失败'),
+    onError: (reason) => setError(reason instanceof Error ? reason.message : 'GitHub 同步失败'),
   });
 
   const saveDocument = useMutation({
     mutationFn: async () => {
-      if (!selectedSpace || !selectedVersion) throw new Error('请先选择文档空间和版本');
-      const payload = documentPayload(documentForm);
-      if (!payload.title) throw new Error('请输入文档标题');
-      if (editingId) return docsApi.updateDocument(editingId, payload);
-      const createPayload: DocumentInput = {
-        spaceId: selectedSpace.id,
-        versionId: selectedVersion.id,
-        ...payload,
+      if (!selectedCenter) throw new Error('请先选择帮助中心');
+      const payload: HelpDocumentInput = {
+        parentId: documentForm.parentId || null,
+        title: documentForm.title.trim(),
+        description: documentForm.description.trim() || null,
+        contentMd: documentForm.contentMd,
+        status: documentForm.status,
       };
-      return docsApi.createDocument(createPayload);
+      if (!payload.title) throw new Error('请输入标题');
+      return editingId
+        ? helpCenterApi.updateDocument(editingId, payload)
+        : helpCenterApi.createDocument(selectedCenter.id, payload);
     },
     onSuccess: (document) => {
       setEditingId(document.id);
       setDocumentForm(formFromDocument(document));
-      setMessage(document.status === 'published' ? '文档已保存并发布。' : '文档草稿已保存。');
+      setMessage(document.status === 'published' ? '文档已保存并公开。' : '草稿已保存。');
       setError(null);
       void invalidateDocuments();
-      void invalidateSpaces();
+      void invalidateCenters();
     },
     onError: (reason) => setError(reason instanceof Error ? reason.message : '保存文档失败'),
   });
 
   const deleteDocument = useMutation({
-    mutationFn: docsApi.deleteDocument,
+    mutationFn: helpCenterApi.deleteDocument,
     onSuccess: () => {
       setEditingId(null);
       setDocumentForm(EMPTY_DOCUMENT);
-      setMessage('文档已删除。');
+      setMessage('文档已删除。栏目下的文章会自动提升为一级页面。');
       setError(null);
       void invalidateDocuments();
-      void invalidateSpaces();
+      void invalidateCenters();
     },
     onError: (reason) => setError(reason instanceof Error ? reason.message : '删除文档失败'),
   });
 
-  const startNewDocument = () => {
+  const reorderDocument = useMutation({
+    mutationFn: async ({ document, direction }: { document: DocumentItem; direction: -1 | 1 }) => {
+      const siblings = sortedItems(
+        (documentsQuery.data?.items ?? []).filter((item) => item.parentId === document.parentId),
+      );
+      const index = siblings.findIndex((item) => item.id === document.id);
+      const target = siblings[index + direction];
+      if (!target) return;
+      await Promise.all([
+        helpCenterApi.updateDocument(document.id, { sortOrder: target.sortOrder }),
+        helpCenterApi.updateDocument(target.id, { sortOrder: document.sortOrder }),
+      ]);
+    },
+    onSuccess: () => void invalidateDocuments(),
+    onError: (reason) => setError(reason instanceof Error ? reason.message : '调整顺序失败'),
+  });
+
+  const documents = documentsQuery.data?.items ?? [];
+  const roots = useMemo(() => sortedItems(documents.filter((item) => !item.parentId)), [documents]);
+  const childrenByRoot = useMemo(() => {
+    const map = new Map<string, DocumentItem[]>();
+    for (const item of documents) {
+      if (!item.parentId) continue;
+      const group = map.get(item.parentId) ?? [];
+      group.push(item);
+      map.set(item.parentId, group);
+    }
+    for (const [key, group] of map) map.set(key, sortedItems(group));
+    return map;
+  }, [documents]);
+
+  const rootOptions = roots.filter((item) => item.id !== editingId);
+
+  const startNew = (parentId: string | null = null) => {
     setEditingId(null);
-    setDocumentForm(EMPTY_DOCUMENT);
+    setDocumentForm({ ...EMPTY_DOCUMENT, parentId: parentId ?? '' });
     setShowPreview(false);
     setMessage(null);
     setError(null);
@@ -290,23 +298,16 @@ export function AdminDocs() {
     setError(null);
   };
 
-  const orderedDocuments = useMemo(
-    () => [...(documentsQuery.data?.items ?? [])].sort((a, b) => a.path.localeCompare(b.path, 'zh-CN')),
-    [documentsQuery.data?.items],
-  );
-
   return (
-    <div className="p-5 lg:p-7">
+    <div className="p-4 lg:p-7">
       <div className="mx-auto max-w-[1500px]">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <div className="flex items-center gap-2 text-[var(--color-primary)]"><BookOpen className="h-5 w-5" /><span className="text-sm font-semibold">Documentation CMS</span></div>
-            <h1 className="mt-2 text-3xl font-semibold tracking-[-0.035em] text-[var(--color-text-primary)]">文档中心</h1>
-            <p className="mt-2 text-sm text-[var(--color-text-secondary)]">管理项目空间、版本、目录层级、Markdown 内容和发布状态。</p>
+            <div className="flex items-center gap-2 text-sm font-semibold text-[var(--color-primary)]"><BookOpen className="h-5 w-5" />项目帮助中心</div>
+            <h1 className="mt-2 text-3xl font-semibold tracking-[-0.035em] text-[var(--color-text-primary)]">像写笔记一样维护帮助文档</h1>
+            <p className="mt-2 text-sm text-[var(--color-text-secondary)]">一个项目一个帮助中心，目录最多两级。系统自动处理网址、版本和 SEO。</p>
           </div>
-          <button type="button" onClick={() => setSpaceFormOpen((value) => !value)} className="nowen-button-primary nowen-focus inline-flex items-center gap-2 px-4 py-2.5 text-sm">
-            <FolderPlus className="h-4 w-4" /> 新建文档空间
-          </button>
+          <button type="button" onClick={() => setCreateOpen((value) => !value)} className="nowen-button-primary nowen-focus inline-flex items-center gap-2 px-4 py-2.5 text-sm"><FolderPlus className="h-4 w-4" />新建项目帮助中心</button>
         </div>
 
         {(message || error) && (
@@ -315,94 +316,80 @@ export function AdminDocs() {
           </div>
         )}
 
-        {spaceFormOpen && (
+        {createOpen && (
           <section className="mt-5 rounded-2xl border border-[var(--color-border)] bg-[var(--color-glass)] p-5">
-            <h2 className="font-semibold text-[var(--color-text-primary)]">创建文档空间</h2>
-            <div className="mt-4 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-              <label className="text-sm text-[var(--color-text-secondary)]">名称<input value={spaceForm.name} onChange={(event) => setSpaceForm((current) => ({ ...current, name: event.target.value }))} className="nowen-focus mt-1.5 h-10 w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-3 text-[var(--color-text-primary)]" placeholder="Nowen Note" /></label>
-              <label className="text-sm text-[var(--color-text-secondary)]">Slug<input value={spaceForm.slug ?? ''} onChange={(event) => setSpaceForm((current) => ({ ...current, slug: event.target.value }))} className="nowen-focus mt-1.5 h-10 w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-3 text-[var(--color-text-primary)]" placeholder="nowen-note" /></label>
-              <label className="text-sm text-[var(--color-text-secondary)]">内容来源<select value={spaceForm.sourceMode} onChange={(event) => setSpaceForm((current) => ({ ...current, sourceMode: event.target.value as 'cms' | 'github' }))} className="nowen-focus mt-1.5 h-10 w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-3 text-[var(--color-text-primary)]"><option value="cms">后台 CMS</option><option value="github">GitHub 仓库同步</option></select></label>
-              <label className="text-sm text-[var(--color-text-secondary)]">排序<input type="number" value={spaceForm.sortOrder ?? 0} onChange={(event) => setSpaceForm((current) => ({ ...current, sortOrder: Number(event.target.value) }))} className="nowen-focus mt-1.5 h-10 w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-3 text-[var(--color-text-primary)]" /></label>
-              <label className="md:col-span-2 text-sm text-[var(--color-text-secondary)]">简介<input value={spaceForm.description ?? ''} onChange={(event) => setSpaceForm((current) => ({ ...current, description: event.target.value }))} className="nowen-focus mt-1.5 h-10 w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-3 text-[var(--color-text-primary)]" placeholder="项目安装、部署和使用文档" /></label>
-              {spaceForm.sourceMode === 'github' && <><label className="text-sm text-[var(--color-text-secondary)]">GitHub 仓库<input value={spaceForm.repositoryFullName ?? ''} onChange={(event) => setSpaceForm((current) => ({ ...current, repositoryFullName: event.target.value }))} className="nowen-focus mt-1.5 h-10 w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-3 font-mono text-sm text-[var(--color-text-primary)]" placeholder="cropflre/nowen-note" /></label><label className="text-sm text-[var(--color-text-secondary)]">文档目录<input value={spaceForm.docsRoot ?? 'docs'} onChange={(event) => setSpaceForm((current) => ({ ...current, docsRoot: event.target.value }))} className="nowen-focus mt-1.5 h-10 w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-3 font-mono text-sm text-[var(--color-text-primary)]" placeholder="docs" /></label></>}
-              <label className="flex items-end gap-2 pb-2 text-sm text-[var(--color-text-secondary)]"><input type="checkbox" checked={spaceForm.isPublished ?? true} onChange={(event) => setSpaceForm((current) => ({ ...current, isPublished: event.target.checked }))} /> 创建后公开</label>
+            <div className="flex items-start justify-between gap-4"><div><h2 className="font-semibold text-[var(--color-text-primary)]">创建帮助中心</h2><p className="mt-1 text-xs text-[var(--color-text-muted)]">只填项目名称即可。填写 GitHub 仓库后会自动导入 README 和 docs 目录。</p></div></div>
+            <div className="mt-4 grid gap-4 md:grid-cols-2">
+              <label className="text-sm text-[var(--color-text-secondary)]">项目名称<input value={centerForm.name} onChange={(event) => setCenterForm((current) => ({ ...current, name: event.target.value }))} placeholder="例如：Nowen Note" className="nowen-focus mt-1.5 h-11 w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-3 text-[var(--color-text-primary)]" /></label>
+              <label className="text-sm text-[var(--color-text-secondary)]">GitHub 仓库（可不填）<input value={centerForm.repositoryFullName ?? ''} onChange={(event) => setCenterForm((current) => ({ ...current, repositoryFullName: event.target.value, sourceMode: event.target.value.trim() ? 'github' : 'cms' }))} placeholder="cropflre/nowen-note" className="nowen-focus mt-1.5 h-11 w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-3 font-mono text-sm text-[var(--color-text-primary)]" /></label>
+              <label className="text-sm text-[var(--color-text-secondary)] md:col-span-2">一句话说明<input value={centerForm.description ?? ''} onChange={(event) => setCenterForm((current) => ({ ...current, description: event.target.value }))} placeholder="安装、部署、功能使用和常见问题" className="nowen-focus mt-1.5 h-11 w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-3 text-[var(--color-text-primary)]" /></label>
+              {centerForm.repositoryFullName && <label className="text-sm text-[var(--color-text-secondary)]">仓库文档目录<input value={centerForm.docsRoot ?? 'docs'} onChange={(event) => setCenterForm((current) => ({ ...current, docsRoot: event.target.value }))} className="nowen-focus mt-1.5 h-11 w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-3 font-mono text-sm" /></label>}
+              <label className="flex items-end gap-2 pb-3 text-sm text-[var(--color-text-secondary)]"><input type="checkbox" checked={centerForm.isPublished ?? true} onChange={(event) => setCenterForm((current) => ({ ...current, isPublished: event.target.checked }))} />创建后立即开放帮助中心</label>
             </div>
-            <div className="mt-4 flex justify-end gap-2"><button type="button" onClick={() => setSpaceFormOpen(false)} className="nowen-button-secondary nowen-focus px-4 py-2 text-sm">取消</button><button type="button" onClick={() => createSpace.mutate(spaceForm)} disabled={createSpace.isPending || !spaceForm.name.trim()} className="nowen-button-primary nowen-focus inline-flex items-center gap-2 px-4 py-2 text-sm">{createSpace.isPending && <Loader2 className="h-4 w-4 animate-spin" />}创建</button></div>
+            <div className="mt-4 flex justify-end gap-2"><button type="button" onClick={() => setCreateOpen(false)} className="nowen-button-secondary nowen-focus px-4 py-2 text-sm">取消</button><button type="button" onClick={() => createCenter.mutate(centerForm)} disabled={createCenter.isPending || !centerForm.name?.trim()} className="nowen-button-primary nowen-focus inline-flex items-center gap-2 px-5 py-2 text-sm">{createCenter.isPending && <Loader2 className="h-4 w-4 animate-spin" />}创建并开始写</button></div>
           </section>
         )}
 
-        <div className="mt-6 grid min-h-[720px] gap-5 xl:grid-cols-[260px_320px_minmax(0,1fr)]">
+        <div className="mt-6 grid min-h-[720px] gap-5 xl:grid-cols-[250px_330px_minmax(0,1fr)]">
           <aside className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-glass)] p-3">
-            <div className="flex items-center justify-between px-2 py-2"><h2 className="text-sm font-semibold text-[var(--color-text-primary)]">项目空间</h2><span className="text-xs text-[var(--color-text-muted)]">{spacesQuery.data?.items.length ?? 0}</span></div>
-            <div className="mt-2 space-y-2">
-              {spacesQuery.isPending ? <p className="p-4 text-center text-sm text-[var(--color-text-muted)]">加载中…</p> : spacesQuery.data?.items.map((space) => <SpaceBadge key={space.id} space={space} selected={space.id === selectedSpaceId} onClick={() => { setSelectedSpaceId(space.id); setEditingId(null); setDocumentForm(EMPTY_DOCUMENT); }} />)}
-            </div>
+            <div className="flex items-center justify-between px-2 py-2"><h2 className="text-sm font-semibold text-[var(--color-text-primary)]">项目</h2><span className="text-xs text-[var(--color-text-muted)]">{centersQuery.data?.items.length ?? 0}</span></div>
+            <div className="mt-2 space-y-2">{centersQuery.isPending ? <p className="p-4 text-center text-sm text-[var(--color-text-muted)]">加载中…</p> : centersQuery.data?.items.map((center) => <CenterButton key={center.id} center={center} active={center.id === selectedCenterId} onClick={() => { setSelectedCenterId(center.id); setEditingId(null); setDocumentForm(EMPTY_DOCUMENT); setSettingsOpen(false); }} />)}</div>
           </aside>
 
           <aside className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-glass)] p-3">
-            {selectedSpace ? (
+            {selectedCenter ? (
               <>
                 <div className="border-b border-[var(--color-border)] px-2 pb-4 pt-2">
-                  <div className="flex items-start justify-between gap-3"><div className="min-w-0"><h2 className="truncate font-semibold text-[var(--color-text-primary)]">{selectedSpace.name}</h2><p className="mt-1 truncate text-xs text-[var(--color-text-muted)]">/docs/{selectedSpace.slug}</p></div><button type="button" onClick={() => updateSpace.mutate({ id: selectedSpace.id, payload: { isPublished: !selectedSpace.isPublished } })} className="nowen-focus rounded-lg border border-[var(--color-border)] px-2.5 py-1.5 text-xs text-[var(--color-text-secondary)]">{selectedSpace.isPublished ? '公开中' : '未公开'}</button></div>
-                  {selectedSpace.repositoryFullName && <p className="mt-3 flex items-center gap-1.5 text-xs text-[var(--color-text-muted)]"><Github className="h-3.5 w-3.5" />{selectedSpace.repositoryFullName}</p>}
-                  {selectedSpace.sourceMode === 'github' && <button type="button" onClick={() => syncSpace.mutate()} disabled={syncSpace.isPending || !selectedVersion} className="nowen-button-secondary nowen-focus mt-3 inline-flex w-full items-center justify-center gap-2 px-3 py-2 text-xs"><Github className="h-3.5 w-3.5" />{syncSpace.isPending ? '正在同步…' : `从 GitHub 同步 ${selectedVersion?.sourceRef || '默认分支'}`}</button>}
+                  <div className="flex items-start justify-between gap-3"><div className="min-w-0"><h2 className="truncate font-semibold text-[var(--color-text-primary)]">{selectedCenter.name} 帮助中心</h2><p className="mt-1 truncate text-xs text-[var(--color-text-muted)]">/docs/{selectedCenter.slug}</p></div><button type="button" onClick={() => setSettingsOpen((value) => !value)} className="nowen-focus flex h-9 w-9 items-center justify-center rounded-lg border border-[var(--color-border)]" aria-label="帮助中心设置"><Settings2 className="h-4 w-4" /></button></div>
+                  <div className="mt-3 flex gap-2"><a href={`/docs/${selectedCenter.slug}`} target="_blank" rel="noreferrer" className="nowen-button-secondary nowen-focus inline-flex flex-1 items-center justify-center gap-2 px-3 py-2 text-xs"><ExternalLink className="h-3.5 w-3.5" />查看前台</a>{selectedCenter.sourceMode === 'github' && <button type="button" onClick={() => syncCenter.mutate()} disabled={syncCenter.isPending} className="nowen-button-secondary nowen-focus inline-flex flex-1 items-center justify-center gap-2 px-3 py-2 text-xs"><Github className="h-3.5 w-3.5" />{syncCenter.isPending ? '同步中…' : '同步 GitHub'}</button>}</div>
                 </div>
 
-                <div className="mt-3 flex items-center gap-2 px-2">
-                  <select value={selectedVersionId} onChange={(event) => { setSelectedVersionId(event.target.value); setEditingId(null); setDocumentForm(EMPTY_DOCUMENT); }} className="nowen-focus h-10 min-w-0 flex-1 rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-3 text-sm">
-                    {(selectedSpace.versions ?? []).map((version) => <option key={version.id} value={version.id}>{version.label}{version.isDefault ? ' · 默认' : ''}</option>)}
-                  </select>
-                  <button type="button" onClick={() => setVersionFormOpen((value) => !value)} className="nowen-focus flex h-10 w-10 items-center justify-center rounded-lg border border-[var(--color-border)]" aria-label="新建版本"><Plus className="h-4 w-4" /></button>
-                </div>
-
-                {versionFormOpen && (
-                  <div className="mx-2 mt-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)] p-3">
-                    <input value={versionForm.version} onChange={(event) => setVersionForm((current) => ({ ...current, version: event.target.value }))} placeholder="版本标识，如 v1.3" className="nowen-focus h-9 w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-primary)] px-3 text-sm" />
-                    <input value={versionForm.label} onChange={(event) => setVersionForm((current) => ({ ...current, label: event.target.value }))} placeholder="显示名称，如 1.3 稳定版" className="nowen-focus mt-2 h-9 w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-primary)] px-3 text-sm" />
-                    {selectedSpace.sourceMode === 'github' && <input value={versionForm.sourceRef ?? ''} onChange={(event) => setVersionForm((current) => ({ ...current, sourceRef: event.target.value }))} placeholder="Git 分支或 Tag，如 v1.3.0" className="nowen-focus mt-2 h-9 w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-primary)] px-3 font-mono text-xs" />}
-                    <label className="mt-2 flex items-center gap-2 text-xs text-[var(--color-text-secondary)]"><input type="checkbox" checked={versionForm.isDefault ?? false} onChange={(event) => setVersionForm((current) => ({ ...current, isDefault: event.target.checked }))} />设为默认版本</label>
-                    <button type="button" onClick={() => createVersion.mutate({ spaceId: selectedSpace.id, payload: versionForm })} disabled={!versionForm.version.trim() || !versionForm.label.trim() || createVersion.isPending} className="nowen-button-primary nowen-focus mt-3 w-full px-3 py-2 text-sm">创建版本</button>
+                {settingsOpen && (
+                  <div className="mx-1 mt-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)] p-3">
+                    <input value={settingsForm.name ?? ''} onChange={(event) => setSettingsForm((current) => ({ ...current, name: event.target.value }))} className="nowen-focus h-9 w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-primary)] px-3 text-sm" placeholder="项目名称" />
+                    <input value={settingsForm.description ?? ''} onChange={(event) => setSettingsForm((current) => ({ ...current, description: event.target.value }))} className="nowen-focus mt-2 h-9 w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-primary)] px-3 text-sm" placeholder="帮助中心简介" />
+                    <input value={settingsForm.repositoryFullName ?? ''} onChange={(event) => setSettingsForm((current) => ({ ...current, repositoryFullName: event.target.value, sourceMode: event.target.value.trim() ? 'github' : 'cms' }))} className="nowen-focus mt-2 h-9 w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-primary)] px-3 font-mono text-xs" placeholder="GitHub 仓库（可不填）" />
+                    <label className="mt-3 flex items-center gap-2 text-xs text-[var(--color-text-secondary)]"><input type="checkbox" checked={settingsForm.isPublished ?? true} onChange={(event) => setSettingsForm((current) => ({ ...current, isPublished: event.target.checked }))} />公开帮助中心</label>
+                    <button type="button" onClick={() => updateCenter.mutate({ id: selectedCenter.id, payload: settingsForm })} className="nowen-button-primary nowen-focus mt-3 w-full px-3 py-2 text-sm">保存设置</button>
+                    <button type="button" onClick={() => { if (window.confirm(`确定删除“${selectedCenter.name} 帮助中心”吗？所有帮助文档都会被删除。`)) removeCenter.mutate(selectedCenter.id); }} className="nowen-focus mt-2 w-full rounded-lg px-3 py-2 text-xs text-red-500 hover:bg-red-500/10"><Trash2 className="mr-1 inline h-3.5 w-3.5" />删除帮助中心</button>
                   </div>
                 )}
 
-                <div className="mt-4 flex items-center justify-between px-2"><h3 className="text-sm font-semibold text-[var(--color-text-primary)]">文档目录</h3><button type="button" onClick={startNewDocument} className="nowen-focus inline-flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-xs text-[var(--color-primary)] hover:bg-[var(--color-glass-hover)]"><FilePlus2 className="h-3.5 w-3.5" />新建</button></div>
-                <div className="mt-2 max-h-[530px] space-y-1 overflow-y-auto px-1">
-                  {documentsQuery.isPending ? <p className="p-4 text-center text-xs text-[var(--color-text-muted)]">加载文档…</p> : orderedDocuments.length ? orderedDocuments.map((document) => (
-                    <button key={document.id} type="button" onClick={() => editDocument(document)} className={`nowen-focus flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-sm transition ${editingId === document.id ? 'bg-[color-mix(in_srgb,var(--color-primary)_12%,transparent)] text-[var(--color-primary)]' : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-glass-hover)] hover:text-[var(--color-text-primary)]'}`} style={{ paddingLeft: `${10 + Math.min(document.depth, 5) * 14}px` }}>
-                      <ChevronRight className="h-3.5 w-3.5 shrink-0" /><span className="min-w-0 flex-1 truncate">{document.title}</span><span className={`h-1.5 w-1.5 shrink-0 rounded-full ${document.status === 'published' ? 'bg-emerald-500' : document.status === 'archived' ? 'bg-slate-400' : 'bg-amber-500'}`} />
-                    </button>
-                  )) : <div className="p-6 text-center text-xs text-[var(--color-text-muted)]"><FilePlus2 className="mx-auto h-7 w-7" /><p className="mt-2">当前版本暂无文档</p></div>}
+                <div className="mt-4 flex items-center justify-between px-2"><div><h3 className="text-sm font-semibold text-[var(--color-text-primary)]">目录</h3><p className="mt-1 text-[11px] text-[var(--color-text-muted)]">最多一级栏目 + 二级文章</p></div><button type="button" onClick={() => startNew()} className="nowen-focus inline-flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-xs text-[var(--color-primary)] hover:bg-[var(--color-glass-hover)]"><FilePlus2 className="h-3.5 w-3.5" />新建一级</button></div>
+                <div className="mt-2 max-h-[535px] space-y-2 overflow-y-auto px-1">
+                  {documentsQuery.isPending ? <p className="p-4 text-center text-xs text-[var(--color-text-muted)]">加载目录…</p> : roots.length ? roots.map((root) => (
+                    <div key={root.id} className="rounded-xl border border-[var(--color-border-light)] bg-[var(--color-bg-secondary)] p-1.5">
+                      <div className="flex items-center gap-1"><button type="button" onClick={() => editDocument(root)} className={`nowen-focus min-w-0 flex-1 rounded-lg px-2.5 py-2 text-left text-sm font-medium ${editingId === root.id ? 'bg-[color-mix(in_srgb,var(--color-primary)_12%,transparent)] text-[var(--color-primary)]' : 'text-[var(--color-text-primary)] hover:bg-[var(--color-glass-hover)]'}`}><span className="truncate">{root.title}</span></button><button type="button" onClick={() => startNew(root.id)} className="nowen-focus flex h-8 w-8 items-center justify-center rounded-lg text-[var(--color-primary)] hover:bg-[var(--color-glass-hover)]" title="在此栏目下添加文章"><Plus className="h-3.5 w-3.5" /></button></div>
+                      {(childrenByRoot.get(root.id) ?? []).map((child) => (
+                        <div key={child.id} className="mt-0.5 flex items-center gap-1 pl-3"><span className="h-4 w-px bg-[var(--color-border)]" /><button type="button" onClick={() => editDocument(child)} className={`nowen-focus min-w-0 flex-1 rounded-lg px-2.5 py-2 text-left text-sm ${editingId === child.id ? 'bg-[color-mix(in_srgb,var(--color-primary)_10%,transparent)] text-[var(--color-primary)]' : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-glass-hover)] hover:text-[var(--color-text-primary)]'}`}><span className="truncate">{child.title}</span></button><button type="button" onClick={() => reorderDocument.mutate({ document: child, direction: -1 })} className="nowen-focus flex h-7 w-7 items-center justify-center rounded text-[var(--color-text-muted)] hover:bg-[var(--color-glass-hover)]"><ArrowUp className="h-3 w-3" /></button><button type="button" onClick={() => reorderDocument.mutate({ document: child, direction: 1 })} className="nowen-focus flex h-7 w-7 items-center justify-center rounded text-[var(--color-text-muted)] hover:bg-[var(--color-glass-hover)]"><ArrowDown className="h-3 w-3" /></button></div>
+                      ))}
+                    </div>
+                  )) : <div className="p-8 text-center text-xs text-[var(--color-text-muted)]"><FilePlus2 className="mx-auto h-8 w-8" /><p className="mt-3">还没有文档</p><button type="button" onClick={() => startNew()} className="mt-3 text-[var(--color-primary)]">创建第一篇</button></div>}
                 </div>
               </>
-            ) : <div className="flex h-full items-center justify-center p-8 text-center text-sm text-[var(--color-text-muted)]">请先创建或选择文档空间。</div>}
+            ) : <div className="flex h-full items-center justify-center p-8 text-center text-sm text-[var(--color-text-muted)]">先创建一个项目帮助中心。</div>}
           </aside>
 
           <section className="min-w-0 rounded-2xl border border-[var(--color-border)] bg-[var(--color-glass)]">
-            {selectedSpace && selectedVersion ? (
+            {selectedCenter ? (
               <div className="flex h-full min-h-[720px] flex-col">
-                <header className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--color-border)] px-5 py-4">
-                  <div><p className="text-sm font-semibold text-[var(--color-text-primary)]">{editingId ? '编辑文档' : '新建文档'}</p><p className="mt-1 text-xs text-[var(--color-text-muted)]">{selectedSpace.name} / {selectedVersion.label}</p></div>
-                  <div className="flex gap-2"><button type="button" onClick={() => setShowPreview((value) => !value)} className="nowen-button-secondary nowen-focus inline-flex items-center gap-2 px-3 py-2 text-sm"><Eye className="h-4 w-4" />{showPreview ? '返回编辑' : '预览'}</button><button type="button" onClick={() => saveDocument.mutate()} disabled={saveDocument.isPending} className="nowen-button-primary nowen-focus inline-flex items-center gap-2 px-4 py-2 text-sm">{saveDocument.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}保存</button></div>
-                </header>
+                <header className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--color-border)] px-5 py-4"><div><p className="text-sm font-semibold text-[var(--color-text-primary)]">{editingId ? '编辑帮助文档' : '新建帮助文档'}</p><p className="mt-1 text-xs text-[var(--color-text-muted)]">{documentForm.parentId ? '二级文章' : '一级栏目或页面'} · 系统自动生成网址</p></div><div className="flex gap-2"><button type="button" onClick={() => setShowPreview((value) => !value)} className="nowen-button-secondary nowen-focus inline-flex items-center gap-2 px-3 py-2 text-sm"><Eye className="h-4 w-4" />{showPreview ? '继续编辑' : '预览'}</button><button type="button" onClick={() => saveDocument.mutate()} disabled={saveDocument.isPending} className="nowen-button-primary nowen-focus inline-flex items-center gap-2 px-4 py-2 text-sm">{saveDocument.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}保存</button></div></header>
 
                 {showPreview ? (
-                  <div className="flex-1 overflow-auto px-6 py-8 lg:px-10"><div className="mx-auto max-w-3xl"><div className="mb-8 border-b border-[var(--color-border)] pb-6"><p className="text-xs text-[var(--color-primary)]">预览 · {documentForm.status}</p><h1 className="mt-3 text-3xl font-semibold text-[var(--color-text-primary)]">{documentForm.title || '未命名文档'}</h1>{documentForm.description && <p className="mt-3 text-[var(--color-text-secondary)]">{documentForm.description}</p>}</div><Markdown content={normalizeDocsMarkdown(documentForm.contentMd)} /></div></div>
+                  <div className="flex-1 overflow-auto px-6 py-8 lg:px-10"><article className="mx-auto max-w-3xl"><h1 className="text-3xl font-semibold text-[var(--color-text-primary)]">{documentForm.title || '未命名文档'}</h1>{documentForm.description && <p className="mt-3 text-[var(--color-text-secondary)]">{documentForm.description}</p>}<div className="mt-8"><Markdown content={normalizeDocsMarkdown(documentForm.contentMd)} /></div></article></div>
                 ) : (
-                  <div className="flex-1 overflow-auto p-5">
-                    <div className="grid gap-4 md:grid-cols-2">
-                      <label className="text-sm text-[var(--color-text-secondary)]">标题<input value={documentForm.title} onChange={(event) => setDocumentForm((current) => ({ ...current, title: event.target.value }))} className="nowen-focus mt-1.5 h-10 w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-3 text-[var(--color-text-primary)]" /></label>
-                      <label className="text-sm text-[var(--color-text-secondary)]">文档路径<input value={documentForm.path} onChange={(event) => setDocumentForm((current) => ({ ...current, path: event.target.value }))} className="nowen-focus mt-1.5 h-10 w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-3 font-mono text-sm text-[var(--color-text-primary)]" placeholder="deployment/docker" /></label>
-                      <label className="text-sm text-[var(--color-text-secondary)]">父级文档<select value={documentForm.parentId} onChange={(event) => setDocumentForm((current) => ({ ...current, parentId: event.target.value }))} className="nowen-focus mt-1.5 h-10 w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-3 text-[var(--color-text-primary)]"><option value="">无父级</option>{orderedDocuments.filter((item) => item.id !== editingId).map((item) => <option key={item.id} value={item.id}>{'— '.repeat(Math.min(item.depth, 4))}{item.title}</option>)}</select></label>
-                      <div className="grid grid-cols-3 gap-2"><label className="text-sm text-[var(--color-text-secondary)]">状态<select value={documentForm.status} onChange={(event) => setDocumentForm((current) => ({ ...current, status: event.target.value as DocumentFormState['status'] }))} className="nowen-focus mt-1.5 h-10 w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-2 text-sm"><option value="draft">草稿</option><option value="published">发布</option><option value="archived">归档</option></select></label><label className="text-sm text-[var(--color-text-secondary)]">可见性<select value={documentForm.visibility} onChange={(event) => setDocumentForm((current) => ({ ...current, visibility: event.target.value as DocumentFormState['visibility'] }))} className="nowen-focus mt-1.5 h-10 w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-2 text-sm"><option value="public">公开</option><option value="private">私有</option></select></label><label className="text-sm text-[var(--color-text-secondary)]">排序<input type="number" value={documentForm.sortOrder} onChange={(event) => setDocumentForm((current) => ({ ...current, sortOrder: Number(event.target.value) }))} className="nowen-focus mt-1.5 h-10 w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-2 text-sm" /></label></div>
-                      <label className="md:col-span-2 text-sm text-[var(--color-text-secondary)]">简介<input value={documentForm.description} onChange={(event) => setDocumentForm((current) => ({ ...current, description: event.target.value }))} className="nowen-focus mt-1.5 h-10 w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-3 text-[var(--color-text-primary)]" /></label>
+                  <div className="flex-1 overflow-auto p-5 lg:p-6">
+                    <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_220px]">
+                      <label className="text-sm text-[var(--color-text-secondary)]">标题<input value={documentForm.title} onChange={(event) => setDocumentForm((current) => ({ ...current, title: event.target.value }))} placeholder="例如：Docker 部署" className="nowen-focus mt-1.5 h-11 w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-3 text-lg font-medium text-[var(--color-text-primary)]" /></label>
+                      <label className="text-sm text-[var(--color-text-secondary)]">放在哪个栏目<select value={documentForm.parentId} onChange={(event) => setDocumentForm((current) => ({ ...current, parentId: event.target.value }))} className="nowen-focus mt-1.5 h-11 w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-3 text-sm"><option value="">一级栏目或页面</option>{rootOptions.map((root) => <option key={root.id} value={root.id}>{root.title}</option>)}</select></label>
+                      <label className="text-sm text-[var(--color-text-secondary)] md:col-span-2">一句话说明（可不填）<input value={documentForm.description} onChange={(event) => setDocumentForm((current) => ({ ...current, description: event.target.value }))} placeholder="告诉用户这篇文档能解决什么问题" className="nowen-focus mt-1.5 h-11 w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-3 text-sm" /></label>
                     </div>
-                    <label className="mt-4 block text-sm text-[var(--color-text-secondary)]">Markdown 内容<textarea value={documentForm.contentMd} onChange={(event) => setDocumentForm((current) => ({ ...current, contentMd: event.target.value }))} className="nowen-focus mt-1.5 min-h-[360px] w-full resize-y rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)] p-4 font-mono text-sm leading-6 text-[var(--color-text-primary)]" spellCheck={false} /></label>
-                    <details className="mt-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)] p-4"><summary className="cursor-pointer text-sm font-medium text-[var(--color-text-primary)]">SEO 与 GitHub 编辑链接</summary><div className="mt-4 grid gap-4 md:grid-cols-2"><label className="text-sm text-[var(--color-text-secondary)]">SEO 标题<input value={documentForm.seoTitle} onChange={(event) => setDocumentForm((current) => ({ ...current, seoTitle: event.target.value }))} className="nowen-focus mt-1.5 h-10 w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-primary)] px-3" /></label><label className="text-sm text-[var(--color-text-secondary)]">GitHub 编辑地址<input value={documentForm.editUrl} onChange={(event) => setDocumentForm((current) => ({ ...current, editUrl: event.target.value }))} className="nowen-focus mt-1.5 h-10 w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-primary)] px-3" /></label><label className="md:col-span-2 text-sm text-[var(--color-text-secondary)]">SEO 描述<textarea value={documentForm.seoDescription} onChange={(event) => setDocumentForm((current) => ({ ...current, seoDescription: event.target.value }))} className="nowen-focus mt-1.5 min-h-20 w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-primary)] p-3" /></label></div></details>
-                    {editingId && <div className="mt-6 flex justify-between border-t border-[var(--color-border)] pt-5"><a href={`/docs/${selectedSpace.slug}/${selectedVersion.version}/${documentForm.path}`} target="_blank" rel="noreferrer" className="nowen-button-secondary nowen-focus inline-flex items-center gap-2 px-3 py-2 text-sm"><Eye className="h-4 w-4" />查看前台</a><button type="button" onClick={() => { if (window.confirm('确认删除这篇文档？子文档将保留并移到根级。')) deleteDocument.mutate(editingId); }} className="nowen-focus inline-flex items-center gap-2 rounded-lg border border-red-500/25 px-3 py-2 text-sm text-red-500 hover:bg-red-500/10"><Trash2 className="h-4 w-4" />删除文档</button></div>}
+                    <label className="mt-5 block text-sm text-[var(--color-text-secondary)]">文档内容<textarea value={documentForm.contentMd} onChange={(event) => setDocumentForm((current) => ({ ...current, contentMd: event.target.value }))} className="nowen-focus mt-1.5 min-h-[430px] w-full resize-y rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)] p-4 font-mono text-sm leading-7 text-[var(--color-text-primary)]" /></label>
+                    <div className="mt-4 flex flex-wrap items-center justify-between gap-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)] p-4"><label className="flex items-center gap-2 text-sm text-[var(--color-text-primary)]"><input type="checkbox" checked={documentForm.status === 'published'} onChange={(event) => setDocumentForm((current) => ({ ...current, status: event.target.checked ? 'published' : 'draft' }))} />保存后立即公开</label>{editingId && <button type="button" onClick={() => { if (window.confirm('确定删除这篇文档吗？')) deleteDocument.mutate(editingId); }} className="nowen-focus inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-red-500 hover:bg-red-500/10"><Trash2 className="h-4 w-4" />删除文档</button>}</div>
                   </div>
                 )}
               </div>
-            ) : <div className="flex min-h-[720px] items-center justify-center p-8 text-center"><div><BookOpen className="mx-auto h-10 w-10 text-[var(--color-text-muted)]" /><p className="mt-4 text-sm text-[var(--color-text-secondary)]">选择文档空间和版本后开始编辑。</p></div></div>}
+            ) : <div className="flex min-h-[720px] items-center justify-center p-8 text-center text-sm text-[var(--color-text-muted)]">创建帮助中心后即可开始写文档。</div>}
           </section>
         </div>
       </div>

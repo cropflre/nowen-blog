@@ -7,7 +7,7 @@ import { useTheme } from '../../lib/theme';
 import { cn } from '../../lib/cn';
 
 const NAV = [
-  { to: '/docs', label: '文档' },
+  { to: '/docs', label: '帮助中心' },
   { to: '/projects', label: '项目' },
   { to: '/blog', label: '博客' },
   { to: '/categories', label: '分类' },
@@ -73,7 +73,7 @@ export function Header() {
             to="/docs"
             className="nowen-focus hidden items-center gap-1.5 rounded-lg border border-line px-3 py-2 text-sm text-muted transition hover:text-fg xl:inline-flex"
           >
-            <BookOpen className="h-4 w-4" /> 文档中心
+            <BookOpen className="h-4 w-4" /> 帮助中心
           </Link>
           <button
             type="button"

@@ -18,6 +18,13 @@ SET repository_url = NULL,
     stars = 0,
     forks = 0;
 --> statement-breakpoint
+INSERT OR IGNORE INTO ai_settings (
+  id, enabled, provider, api_url, api_key, model, system_prompt, updated_at
+) VALUES (
+  'default', 0, 'openai', 'https://api.openai.com/v1', NULL, 'gpt-4o-mini', NULL,
+  strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+);
+--> statement-breakpoint
 DROP INDEX IF EXISTS uq_doc_spaces_repository_full_name;
 --> statement-breakpoint
 DROP INDEX IF EXISTS uq_projects_github_full_name;

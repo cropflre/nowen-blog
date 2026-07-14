@@ -2,6 +2,7 @@ import { sql } from 'drizzle-orm';
 import { db } from './client';
 import { runMigrations } from './migrate';
 import { seedIfEmpty } from './seed';
+import { ensureNowenNoteApiDocs } from './seed-nowen-note-api';
 import { ensureSearchIndex } from '../modules/search/search.service';
 import { ensureSiteSettings } from '../modules/settings/settings.service';
 
@@ -13,6 +14,7 @@ export function initDb(): void {
   runMigrations();
   db.run(sql`SELECT 1`);
   seedIfEmpty();
+  ensureNowenNoteApiDocs();
   ensureSiteSettings();
   ensureSearchIndex();
   initialized = true;

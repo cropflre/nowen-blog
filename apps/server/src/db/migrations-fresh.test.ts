@@ -41,7 +41,7 @@ describe('fresh database bootstrap', () => {
     const migrationCount = sqlite
       .prepare('SELECT COUNT(*) AS total FROM __drizzle_migrations')
       .get() as { total: number };
-    assert.equal(migrationCount.total, 6);
+    assert.equal(migrationCount.total, 7);
 
     const user = sqlite
       .prepare('SELECT username, email FROM users LIMIT 1')
@@ -66,6 +66,9 @@ describe('fresh database bootstrap', () => {
       'document_redirects',
       'document_feedback',
       'documents_fts',
+      'ai_agent_runs',
+      'ai_agent_steps',
+      'ai_agent_changes',
     ]) {
       const row = sqlite
         .prepare("SELECT name FROM sqlite_master WHERE name = ?")

@@ -7,13 +7,12 @@ import type { SiteSettings } from '@blog/shared';
 export const siteSettings: SiteSettings = {
   siteTitle: process.env.SITE_TITLE ?? 'NOWEN Blog',
   siteDescription:
-    process.env.SITE_DESCRIPTION ?? '一个内容优先、视觉高级的个人技术博客。',
+    process.env.SITE_DESCRIPTION ?? '一个内容优先、视觉高级的项目帮助中心与技术博客。',
   slogan: process.env.SITE_SLOGAN ?? 'Write. Build. Share.',
   logoUrl: process.env.SITE_LOGO_URL ?? null,
   faviconUrl: process.env.SITE_FAVICON_URL ?? null,
   authorName: process.env.SITE_AUTHOR ?? 'NOWEN',
   social: {
-    github: process.env.SITE_GITHUB ?? 'https://github.com/cropflre',
     twitter: process.env.SITE_TWITTER ?? null,
     email: process.env.SITE_EMAIL ?? null,
     rss: true,

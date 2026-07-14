@@ -10,9 +10,6 @@ export const SPACE_SELECT = `
          s.description,
          s.icon_url AS iconUrl,
          s.default_version_id AS defaultVersionId,
-         s.repository_full_name AS repositoryFullName,
-         s.source_mode AS sourceMode,
-         s.docs_root AS docsRoot,
          s.is_published AS isPublished,
          s.sort_order AS sortOrder,
          s.created_at AS createdAt,
@@ -267,7 +264,6 @@ function revisionSnapshot(document: DocumentRow): string {
     visibility: document.visibility,
     sortOrder: document.sortOrder,
     depth: document.depth,
-    editUrl: document.editUrl,
     seoTitle: document.seoTitle,
     seoDescription: document.seoDescription,
   });

@@ -31,7 +31,6 @@ export function listHelpCenters(publicOnly = false) {
     return {
       ...toSpace(row),
       helpCenterVersionId: version?.id ?? null,
-      sourceRef: version?.sourceRef ?? null,
       defaultVersion: version ? toVersion(version) : null,
     };
   });
@@ -44,7 +43,6 @@ export function getHelpCenterById(id: string) {
   return {
     ...toSpace(space),
     helpCenterVersionId: version?.id ?? null,
-    sourceRef: version?.sourceRef ?? null,
     defaultVersion: version ? toVersion(version) : null,
   };
 }
@@ -70,10 +68,7 @@ function rootAncestor(item: DocumentRow, byId: Map<string, DocumentRow>): Docume
   return current.id === item.id ? null : current;
 }
 
-/**
- * 旧数据和 GitHub 深层目录在读取时统一压平为“栏目 + 文章”两级。
- * 数据源路径仍保留，避免破坏已有链接和同步 SHA。
- */
+/** 旧的深层数据在读取时压平为“一级栏目 + 二级文章”，保证历史内容不丢失。 */
 export function flattenHelpCenterDocuments(items: DocumentRow[]): DocumentRow[] {
   const byId = new Map(items.map((item) => [item.id, item]));
   return items.map((item) => {

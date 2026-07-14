@@ -24,7 +24,6 @@
     "ops:verify-production": "node scripts/ops/verify-production.mjs",
     "ops:verify-docker-persistence": "node scripts/ops/verify-docker-persistence.mjs",
     "ops:email-acceptance": "node scripts/ops/email-acceptance.mjs",
-    "ops:initialize-projects": "node scripts/ops/initialize-projects-remote.mjs",
     "ops:backup": "pnpm --filter @blog/server ops:backup",
     "ops:restore": "pnpm --filter @blog/server ops:restore",
     "ops:rehearse-backup": "pnpm --filter @blog/server ops:rehearse-backup"

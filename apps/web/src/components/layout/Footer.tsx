@@ -15,7 +15,7 @@ export function Footer() {
         </div>
         <div className="flex flex-wrap gap-4">
           <Link to="/projects">项目</Link>
-          {settings?.social.github && <a href={settings.social.github} target="_blank" rel="noreferrer">GitHub</a>}
+          <Link to="/docs">帮助中心</Link>
           {settings?.social.twitter && <a href={settings.social.twitter} target="_blank" rel="noreferrer">Twitter / X</a>}
           {settings?.social.email && <a href={`mailto:${settings.social.email}`}>Email</a>}
           {settings?.social.rss && <a href="/rss.xml" target="_blank" rel="noreferrer">RSS</a>}

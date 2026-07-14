@@ -1,4 +1,4 @@
-import type { DocSpace, DocumentItem, GitHubDocsSyncResult, SpaceInput } from './docsApi';
+import type { DocSpace, DocumentItem } from './docsApi';
 
 const BASE = '/api';
 const VISITOR_STORAGE_KEY = 'nowen-blog-help-center-visitor-id';
@@ -42,7 +42,14 @@ function visitorId(): string {
 
 export interface HelpCenter extends DocSpace {
   helpCenterVersionId: string | null;
-  sourceRef: string | null;
+}
+
+export interface HelpCenterInput {
+  name: string;
+  description?: string | null;
+  iconUrl?: string | null;
+  isPublished?: boolean;
+  sortOrder?: number;
 }
 
 export interface HelpCenterSearchItem {
@@ -76,6 +83,50 @@ export interface HelpDocumentInput {
   sortOrder?: number;
 }
 
+export type AgentTask = 'create_help_center' | 'write_document' | 'audit_help_center' | 'update_from_notes';
+
+export interface AgentStep {
+  id: string;
+  runId: string;
+  stepOrder: number;
+  title: string;
+  status: 'pending' | 'running' | 'completed' | 'waiting' | 'failed' | 'cancelled';
+  detail: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AgentChange {
+  id: string;
+  runId: string;
+  action: 'create' | 'update';
+  documentId: string | null;
+  parentTitle: string | null;
+  title: string;
+  description: string | null;
+  contentMd: string;
+  sortOrder: number;
+  status: 'pending' | 'applied' | 'dismissed';
+  createdAt: string;
+  appliedAt: string | null;
+}
+
+export interface AgentRun {
+  id: string;
+  helpCenterId: string;
+  task: AgentTask;
+  prompt: string;
+  status: 'planning' | 'generating' | 'reviewing' | 'completed' | 'failed' | 'cancelled';
+  summary: string | null;
+  error: string | null;
+  createdBy: string | null;
+  createdAt: string;
+  updatedAt: string;
+  completedAt: string | null;
+  steps: AgentStep[];
+  changes: AgentChange[];
+}
+
 export const helpCenterApi = {
   list: () => request<{ items: HelpCenter[] }>('/help-centers'),
   get: (slug: string) =>
@@ -101,20 +152,15 @@ export const helpCenterApi = {
     }),
 
   listAdmin: () => request<{ items: HelpCenter[] }>('/admin/help-centers'),
-  create: (payload: SpaceInput) =>
+  create: (payload: HelpCenterInput) =>
     request<HelpCenter>('/admin/help-centers', { method: 'POST', body: JSON.stringify(payload) }),
-  update: (id: string, payload: Partial<SpaceInput>) =>
+  update: (id: string, payload: Partial<HelpCenterInput>) =>
     request<HelpCenter>(`/admin/help-centers/${encodeURIComponent(id)}`, {
       method: 'PATCH',
       body: JSON.stringify(payload),
     }),
   remove: (id: string) =>
     request<{ ok: boolean }>(`/admin/help-centers/${encodeURIComponent(id)}`, { method: 'DELETE' }),
-  sync: (id: string, payload: { ref?: string; docsRoot?: string } = {}) =>
-    request<GitHubDocsSyncResult>(`/admin/help-centers/${encodeURIComponent(id)}/sync`, {
-      method: 'POST',
-      body: JSON.stringify(payload),
-    }),
   listDocuments: (id: string) =>
     request<{ items: DocumentItem[] }>(`/admin/help-centers/${encodeURIComponent(id)}/documents`),
   createDocument: (id: string, payload: HelpDocumentInput) =>
@@ -131,4 +177,29 @@ export const helpCenterApi = {
     request<{ ok: boolean }>(`/admin/help-centers/documents/${encodeURIComponent(id)}`, {
       method: 'DELETE',
     }),
+
+  listAgentRuns: (centerId: string) =>
+    request<{ items: AgentRun[] }>(`/admin/help-centers/${encodeURIComponent(centerId)}/agent-runs`),
+  getAgentRun: (centerId: string, runId: string) =>
+    request<AgentRun>(
+      `/admin/help-centers/${encodeURIComponent(centerId)}/agent-runs/${encodeURIComponent(runId)}`,
+    ),
+  createAgentRun: (
+    centerId: string,
+    payload: { task: AgentTask; prompt: string; documentId?: string | null },
+  ) =>
+    request<AgentRun>(`/admin/help-centers/${encodeURIComponent(centerId)}/agent-runs`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  applyAgentRun: (centerId: string, runId: string, changeIds?: string[]) =>
+    request<AgentRun>(
+      `/admin/help-centers/${encodeURIComponent(centerId)}/agent-runs/${encodeURIComponent(runId)}/apply`,
+      { method: 'POST', body: JSON.stringify({ changeIds }) },
+    ),
+  cancelAgentRun: (centerId: string, runId: string) =>
+    request<AgentRun>(
+      `/admin/help-centers/${encodeURIComponent(centerId)}/agent-runs/${encodeURIComponent(runId)}/cancel`,
+      { method: 'POST', body: '{}' },
+    ),
 };

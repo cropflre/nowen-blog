@@ -6,9 +6,6 @@ export interface DocSpaceRow {
   description: string | null;
   iconUrl: string | null;
   defaultVersionId: string | null;
-  repositoryFullName: string | null;
-  sourceMode: string;
-  docsRoot: string;
   isPublished: number;
   sortOrder: number;
   createdAt: string;

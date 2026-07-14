@@ -1,23 +1,14 @@
-import type { Project } from '@blog/shared';
-
 export interface ProjectInput {
   name: string;
   slug?: string;
   description?: string | null;
   coverUrl?: string | null;
-  repositoryUrl?: string | null;
   homepageUrl?: string | null;
   language?: string | null;
   topics?: string[];
   isFeatured?: boolean;
   isPublished?: boolean;
   sortOrder?: number;
-}
-
-export interface GitHubSyncResult {
-  targetType: 'repository' | 'owner';
-  items: Project[];
-  synced: number;
 }
 
 export interface NewsletterSubscriber {

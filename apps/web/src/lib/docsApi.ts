@@ -43,7 +43,6 @@ export interface DocVersion {
   spaceId: string;
   version: string;
   label: string;
-  sourceRef: string | null;
   status: 'draft' | 'published';
   isDefault: boolean;
   isDeprecated: boolean;
@@ -60,16 +59,12 @@ export interface DocSpace {
   description: string | null;
   iconUrl: string | null;
   defaultVersionId: string | null;
-  repositoryFullName: string | null;
-  sourceMode: 'cms' | 'github';
-  docsRoot: string;
   isPublished: boolean;
   sortOrder: number;
   documentCount: number;
   createdAt: string;
   updatedAt: string;
   defaultVersion?: DocVersion | null;
-  versions?: DocVersion[];
 }
 
 export interface DocumentItem {
@@ -86,10 +81,7 @@ export interface DocumentItem {
   visibility: 'public' | 'private';
   sortOrder: number;
   depth: number;
-  sourceType: 'cms' | 'github' | 'github-section';
-  sourcePath: string | null;
-  sourceSha: string | null;
-  editUrl: string | null;
+  sourceType: 'cms' | 'ai';
   seoTitle: string | null;
   seoDescription: string | null;
   publishedAt: string | null;
@@ -123,57 +115,6 @@ export interface DocSearchItem {
   updatedAt: string;
 }
 
-export interface SpaceInput {
-  name: string;
-  slug?: string;
-  description?: string | null;
-  iconUrl?: string | null;
-  projectId?: string | null;
-  repositoryFullName?: string | null;
-  sourceMode?: 'cms' | 'github';
-  docsRoot?: string;
-  isPublished?: boolean;
-  sortOrder?: number;
-}
-
-export interface VersionInput {
-  version: string;
-  label: string;
-  sourceRef?: string | null;
-  status?: 'draft' | 'published';
-  isDefault?: boolean;
-  isDeprecated?: boolean;
-  sortOrder?: number;
-}
-
-export interface GitHubDocsSyncResult {
-  repository: string;
-  ref: string;
-  scanned: number;
-  created: number;
-  updated: number;
-  unchanged: number;
-  archived: number;
-  conflicts: number;
-}
-
-export interface DocumentInput {
-  spaceId: string;
-  versionId: string;
-  parentId?: string | null;
-  title: string;
-  slug?: string;
-  path?: string;
-  description?: string | null;
-  contentMd?: string;
-  status?: 'draft' | 'published' | 'archived';
-  visibility?: 'public' | 'private';
-  sortOrder?: number;
-  editUrl?: string | null;
-  seoTitle?: string | null;
-  seoDescription?: string | null;
-}
-
 export const docsApi = {
   listSpaces: () => request<{ items: DocSpace[] }>('/docs/spaces'),
   getSpace: (spaceSlug: string) =>
@@ -198,49 +139,5 @@ export const docsApi = {
       method: 'POST',
       headers: { 'x-visitor-id': visitorId() },
       body: JSON.stringify({ helpful, comment: comment || null }),
-    }),
-
-  listAdminSpaces: () => request<{ items: DocSpace[] }>('/admin/docs/spaces'),
-  createSpace: (payload: SpaceInput) =>
-    request<DocSpace>('/admin/docs/spaces', { method: 'POST', body: JSON.stringify(payload) }),
-  updateSpace: (id: string, payload: Partial<SpaceInput>) =>
-    request<DocSpace>(`/admin/docs/spaces/${encodeURIComponent(id)}`, {
-      method: 'PATCH',
-      body: JSON.stringify(payload),
-    }),
-  deleteSpace: (id: string) =>
-    request<{ ok: boolean }>(`/admin/docs/spaces/${encodeURIComponent(id)}`, { method: 'DELETE' }),
-  syncSpace: (id: string, payload: { versionId?: string; ref?: string; docsRoot?: string } = {}) =>
-    request<GitHubDocsSyncResult>(`/admin/docs/spaces/${encodeURIComponent(id)}/sync`, {
-      method: 'POST',
-      body: JSON.stringify(payload),
-    }),
-  createVersion: (spaceId: string, payload: VersionInput) =>
-    request<DocVersion>(`/admin/docs/spaces/${encodeURIComponent(spaceId)}/versions`, {
-      method: 'POST',
-      body: JSON.stringify(payload),
-    }),
-  updateVersion: (id: string, payload: Partial<VersionInput>) =>
-    request<DocVersion>(`/admin/docs/versions/${encodeURIComponent(id)}`, {
-      method: 'PATCH',
-      body: JSON.stringify(payload),
-    }),
-  listDocuments: (spaceId: string, versionId: string) => {
-    const query = new URLSearchParams({ spaceId, versionId });
-    return request<{ items: DocumentItem[] }>(`/admin/docs/documents?${query.toString()}`);
-  },
-  createDocument: (payload: DocumentInput) =>
-    request<DocumentItem>('/admin/docs/documents', {
-      method: 'POST',
-      body: JSON.stringify(payload),
-    }),
-  updateDocument: (id: string, payload: Partial<Omit<DocumentInput, 'spaceId' | 'versionId'>>) =>
-    request<DocumentItem>(`/admin/docs/documents/${encodeURIComponent(id)}`, {
-      method: 'PATCH',
-      body: JSON.stringify(payload),
-    }),
-  deleteDocument: (id: string) =>
-    request<{ ok: boolean }>(`/admin/docs/documents/${encodeURIComponent(id)}`, {
-      method: 'DELETE',
     }),
 };

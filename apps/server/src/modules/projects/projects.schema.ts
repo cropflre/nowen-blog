@@ -26,7 +26,6 @@ export const projectCreateSchema = z.object({
   slug: z.string().trim().max(120).optional(),
   description: nullableText(500).optional().default(null),
   coverUrl: nullableUrl.optional().default(null),
-  repositoryUrl: nullableUrl.optional().default(null),
   homepageUrl: nullableUrl.optional().default(null),
   language: nullableText(60).optional().default(null),
   topics: topics.optional().default([]),
@@ -36,11 +35,6 @@ export const projectCreateSchema = z.object({
 });
 
 export const projectUpdateSchema = projectCreateSchema.partial();
-
-export const githubSyncSchema = z.object({
-  target: z.string().trim().min(1, '请输入 GitHub 用户名、owner/repo 或仓库地址').max(300),
-  maxRepos: z.coerce.number().int().min(1).max(30).optional().default(12),
-});
 
 export type ProjectCreateInput = z.infer<typeof projectCreateSchema>;
 export type ProjectUpdateInput = z.infer<typeof projectUpdateSchema>;

@@ -26,7 +26,6 @@ import { AdminTags } from './pages/admin/AdminTags';
 import { AdminAssets } from './pages/admin/AdminAssets';
 import { AdminComments } from './pages/admin/AdminComments';
 import { AdminSettings } from './pages/admin/AdminSettings';
-import { AdminProjects } from './pages/admin/AdminProjects';
 import { AdminNewsletter } from './pages/admin/AdminNewsletter';
 import { AdminAISettings } from './pages/admin/AdminAISettings';
 import { NotFound } from './pages/NotFound';
@@ -67,7 +66,6 @@ export function App() {
             <Route path="/admin/ai" element={<AdminAISettings />} />
             <Route path="/admin/categories" element={<AdminCategories />} />
             <Route path="/admin/tags" element={<AdminTags />} />
-            <Route path="/admin/projects" element={<AdminProjects />} />
             <Route path="/admin/assets" element={<AdminAssets />} />
             <Route path="/admin/comments" element={<AdminComments />} />
             <Route path="/admin/newsletter" element={<AdminNewsletter />} />

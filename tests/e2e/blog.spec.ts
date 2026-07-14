@@ -44,6 +44,11 @@ test.describe('NOWEN Blog smoke flows', () => {
   });
 
   test('creates a two-level project help center through the simplified admin', async ({ page }) => {
+    const suffix = `${Date.now().toString(36)}-${test.info().retry}`;
+    const centerName = `E2E Note ${suffix}`;
+    const sectionName = `基础功能 ${suffix}`;
+    const articleName = `Docker 部署 ${suffix}`;
+
     await page.goto('/admin/login');
     await page.getByPlaceholder('用户名').fill('NOWEN');
     await page.getByPlaceholder('密码').fill('e2e-admin-password');
@@ -53,24 +58,24 @@ test.describe('NOWEN Blog smoke flows', () => {
     await page.goto('/admin/docs');
     await expect(page.getByRole('heading', { name: '像写笔记一样维护帮助文档' })).toBeVisible();
     await page.getByRole('button', { name: '新建项目帮助中心' }).click();
-    await page.getByLabel('项目名称').fill('E2E Note');
+    await page.getByLabel('项目名称').fill(centerName);
     await page.getByLabel('一句话说明', { exact: true }).fill('E2E 项目的安装和使用帮助。');
     await page.getByRole('button', { name: '创建并开始写' }).click();
     await expect(page.getByText(/帮助中心已创建/)).toBeVisible();
 
     await page.getByRole('button', { name: '新建一级' }).click();
-    await page.getByLabel('标题').fill('基础功能');
-    await page.getByLabel('文档内容').fill('# 基础功能\n\n这里汇总基础功能说明。');
+    await page.getByLabel('标题').fill(sectionName);
+    await page.getByLabel('文档内容').fill(`# ${sectionName}\n\n这里汇总基础功能说明。`);
     await page.getByText('保存后立即公开').click();
     await page.getByRole('button', { name: '保存', exact: true }).click();
     await expect(page.getByText('文档已保存并公开。')).toBeVisible();
 
-    const category = page.getByRole('button', { name: '基础功能', exact: true });
+    const category = page.getByRole('button', { name: sectionName, exact: true }).first();
     await expect(category).toBeVisible();
     const categoryCard = category.locator('xpath=..');
     await categoryCard.getByTitle('在此栏目下添加文章').click();
-    await page.getByLabel('标题').fill('Docker 部署');
-    await page.getByLabel('文档内容').fill('# Docker 部署\n\n使用 Docker Compose 启动。');
+    await page.getByLabel('标题').fill(articleName);
+    await page.getByLabel('文档内容').fill(`# ${articleName}\n\n使用 Docker Compose 启动。`);
     await page.getByText('保存后立即公开').click();
     await page.getByRole('button', { name: '保存', exact: true }).click();
     await expect(page.getByText('文档已保存并公开。')).toBeVisible();
@@ -79,9 +84,10 @@ test.describe('NOWEN Blog smoke flows', () => {
     const publicHref = await publicLink.getAttribute('href');
     expect(publicHref).toBeTruthy();
     await page.goto(publicHref!);
-    await expect(page.getByRole('heading', { name: 'E2E Note 帮助中心' })).toBeVisible();
-    await expect(page.getByRole('link', { name: '基础功能', exact: true })).toBeVisible();
-    await expect(page.getByRole('link', { name: 'Docker 部署', exact: true })).toBeVisible();
+    await expect(page.getByRole('link', { name: `${centerName} 帮助中心`, exact: true }).first()).toBeVisible();
+    await expect(page.getByRole('heading', { name: sectionName, exact: true }).first()).toBeVisible();
+    await expect(page.getByRole('link', { name: sectionName, exact: true })).toBeVisible();
+    await expect(page.getByRole('link', { name: articleName, exact: true })).toBeVisible();
   });
 
   test('shows a GitHub account public projects without login or persistence', async ({ page }) => {

@@ -173,9 +173,7 @@ export function updateProject(id: string, input: ProjectUpdateInput): ProjectVie
       `UPDATE projects SET
         name = ?, slug = ?, description = ?, cover_url = ?, homepage_url = ?,
         language = ?, topics_json = ?, is_featured = ?, is_published = ?,
-        sort_order = ?, updated_at = ?, repository_url = NULL, source = 'manual',
-        github_full_name = NULL, github_pushed_at = NULL, synced_at = NULL,
-        stars = 0, forks = 0
+        sort_order = ?, updated_at = ?
        WHERE id = ?`,
     )
     .run(

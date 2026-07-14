@@ -111,10 +111,6 @@ function headerHtml(): string {
 function footerHtml(): string {
   const year = new Date().getFullYear();
   const social: string[] = [];
-  if (siteSettings.social.github)
-    social.push(
-      `<a href="${escapeHtml(siteSettings.social.github)}" target="_blank" rel="noreferrer">GitHub</a>`,
-    );
   if (siteSettings.social.email)
     social.push(`<a href="mailto:${escapeHtml(siteSettings.social.email)}">Email</a>`);
   if (siteSettings.social.rss)
@@ -279,10 +275,6 @@ function searchBody(): string {
 function aboutBody(): string {
   const s = siteSettings;
   const contacts: string[] = [];
-  if (s.social.github)
-    contacts.push(
-      `<li>GitHub：<a class="text-brand" href="${escapeHtml(s.social.github)}" target="_blank" rel="noreferrer">${escapeHtml(s.social.github)}</a></li>`,
-    );
   if (s.social.email)
     contacts.push(
       `<li>Email：<a class="text-brand" href="mailto:${escapeHtml(s.social.email)}">${escapeHtml(s.social.email)}</a></li>`,

@@ -84,8 +84,8 @@ const CHANGE_SELECT = `
   FROM ai_agent_changes
 `;
 
-function normalizeTitle(value: string): string {
-  return value.trim().toLocaleLowerCase('zh-CN');
+function normalizeTitle(value: string | null): string {
+  return (value ?? '').trim().toLocaleLowerCase('zh-CN');
 }
 
 function parseJsonObject(raw: string): Record<string, unknown> {

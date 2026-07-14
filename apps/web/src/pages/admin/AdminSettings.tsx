@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { CheckCircle2, Loader2, Save, Settings } from 'lucide-react';
 import type { SiteSettings } from '../../types';
@@ -18,7 +18,7 @@ function Section({
 }: {
   title: string;
   description: string;
-  children: React.ReactNode;
+  children: ReactNode;
 }) {
   return (
     <section className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-glass)] p-5 lg:p-6">

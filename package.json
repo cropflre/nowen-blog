@@ -20,7 +20,7 @@
     "test:integration": "pnpm --filter @blog/server test:integration",
     "test:e2e": "playwright test",
     "e2e:server": "node scripts/start-e2e-server.mjs",
-    "e2e:web": "pnpm --filter @blog/web dev -- --host 127.0.0.1",
+    "e2e:web": "pnpm --filter @blog/web exec vite --host 127.0.0.1",
     "ops:verify-production": "node scripts/ops/verify-production.mjs",
     "ops:verify-docker-persistence": "node scripts/ops/verify-docker-persistence.mjs",
     "ops:email-acceptance": "node scripts/ops/email-acceptance.mjs",

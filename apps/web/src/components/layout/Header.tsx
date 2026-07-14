@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react';
+import { useState, type CSSProperties, type FormEvent } from 'react';
 import { Link, NavLink, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { BookOpen, Menu, Moon, Search, Sun, X } from 'lucide-react';
@@ -104,7 +104,7 @@ export function Header() {
                 key={item.to}
                 to={item.to}
                 onClick={() => setMobileOpen(false)}
-                style={{ '--motion-item-index': index } as React.CSSProperties}
+                style={{ '--motion-item-index': index } as CSSProperties}
                 className={({ isActive }) =>
                   cn(
                     'nowen-mobile-nav-link rounded-xl px-3 py-3 text-sm text-muted',

@@ -68,6 +68,8 @@ describe('foolproof project help center', () => {
     helpCenterSlug = body.slug;
     assert.ok(body.helpCenterVersionId);
     assert.equal(body.defaultVersion.label, '帮助中心');
+    assert.equal('repositoryFullName' in body, false);
+    assert.equal('sourceMode' in body, false);
 
     const starter = sqlite
       .prepare("SELECT title, status FROM documents WHERE space_id = ? AND title = '开始使用' LIMIT 1")
@@ -161,6 +163,98 @@ describe('foolproof project help center', () => {
       .prepare('SELECT COUNT(*) AS total FROM document_revisions WHERE document_id = ?')
       .get(documentId) as { total: number };
     assert.equal(revisions.total, 1);
+  });
+
+  test('AI agent creates reviewable changes and only applies drafts', async () => {
+    sqlite
+      .prepare(
+        `UPDATE ai_settings SET enabled = 1, provider = 'ollama',
+         api_url = 'https://ai.test/v1', api_key = NULL, model = 'test-model'
+         WHERE id = 'default'`,
+      )
+      .run();
+
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = (async (input: string | URL | Request) => {
+      const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
+      if (url === 'https://ai.test/v1/chat/completions') {
+        return new Response(
+          JSON.stringify({
+            choices: [
+              {
+                message: {
+                  content: JSON.stringify({
+                    summary: '补充安装栏目和新手安装文章。',
+                    documents: [
+                      {
+                        title: '安装与部署',
+                        parentTitle: null,
+                        description: '选择适合自己的安装方式。',
+                        contentMd: '# 安装与部署\n\n请选择适合自己的安装方式。',
+                      },
+                      {
+                        title: '新手安装',
+                        parentTitle: '安装与部署',
+                        description: '第一次安装时按顺序完成这些步骤。',
+                        contentMd: '# 新手安装\n\n1. 准备设备。\n2. 按页面提示完成安装。\n\n> 具体按钮名称需要管理员确认。',
+                      },
+                    ],
+                  }),
+                },
+              },
+            ],
+          }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } },
+        );
+      }
+      return originalFetch(input);
+    }) as typeof fetch;
+
+    try {
+      const create = await app.request(`/api/admin/help-centers/${helpCenterId}/agent-runs`, {
+        method: 'POST',
+        headers: { cookie, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          task: 'audit_help_center',
+          prompt: '检查并补齐面向新手的安装文档。',
+        }),
+      });
+      assert.equal(create.status, 201);
+      const run = await create.json();
+      assert.equal(run.status, 'reviewing');
+      assert.equal(run.changes.length, 2);
+      assert.ok(run.changes.every((change: { status: string }) => change.status === 'pending'));
+
+      const beforeApply = sqlite
+        .prepare("SELECT COUNT(*) AS total FROM documents WHERE space_id = ? AND source_type = 'ai'")
+        .get(helpCenterId) as { total: number };
+      assert.equal(beforeApply.total, 0);
+
+      const apply = await app.request(`/api/admin/help-centers/${helpCenterId}/agent-runs/${run.id}/apply`, {
+        method: 'POST',
+        headers: { cookie, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ changeIds: run.changes.map((change: { id: string }) => change.id) }),
+      });
+      assert.equal(apply.status, 200);
+      const appliedRun = await apply.json();
+      assert.equal(appliedRun.status, 'completed');
+
+      const generated = sqlite
+        .prepare(
+          `SELECT title, status, depth, source_type AS sourceType
+           FROM documents WHERE space_id = ? AND source_type = 'ai' ORDER BY depth ASC`,
+        )
+        .all(helpCenterId) as Array<{ title: string; status: string; depth: number; sourceType: string }>;
+      assert.deepEqual(generated.map((item) => item.title), ['安装与部署', '新手安装']);
+      assert.ok(generated.every((item) => item.status === 'draft'));
+      assert.deepEqual(generated.map((item) => item.depth), [0, 1]);
+
+      const publicTree = await app.request(`/api/help-centers/${helpCenterSlug}/tree`);
+      const publicTreeBody = await publicTree.json();
+      assert.equal(publicTreeBody.items.some((item: { title: string }) => item.title === '新手安装'), false);
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
   });
 
   test('public readers can submit helpfulness feedback', async () => {

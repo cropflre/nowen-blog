@@ -14,36 +14,24 @@ export function About() {
 
       <div className="mt-10 space-y-6 text-fg/90">
         <section>
-          <h2 className="mb-2 text-lg font-semibold">我是谁</h2>
-          <p className="text-muted">
-            一名关注前端工程化、Node.js 与开源的全栈工程师，喜欢把想法写成代码和文章。
-          </p>
+          <h2 className="mb-2 text-lg font-semibold">我们在做什么</h2>
+          <p className="text-muted">持续打磨知识管理、数字阅读和内容处理工具，并为每个项目维护简单易懂的官方帮助中心。</p>
         </section>
         <section>
-          <h2 className="mb-2 text-lg font-semibold">我关注什么</h2>
-          <p className="text-muted">React 生态、类型安全、开发者体验，以及内容创作本身。</p>
+          <h2 className="mb-2 text-lg font-semibold">帮助中心原则</h2>
+          <p className="text-muted">一个项目一个帮助中心，目录最多两级。项目和文档全部手动可控，AI 只生成待审核草稿。</p>
         </section>
-        <section>
-          <h2 className="mb-2 text-lg font-semibold">联系方式</h2>
-          <ul className="space-y-1 text-muted">
-            {settings?.social.github && (
-              <li>
-                GitHub：
-                <a className="text-brand" href={settings.social.github} target="_blank" rel="noreferrer">
-                  {settings.social.github}
-                </a>
-              </li>
-            )}
-            {settings?.social.email && (
-              <li>
-                Email：
-                <a className="text-brand" href={`mailto:${settings.social.email}`}>
-                  {settings.social.email}
-                </a>
-              </li>
-            )}
-          </ul>
-        </section>
+        {settings?.social.email && (
+          <section>
+            <h2 className="mb-2 text-lg font-semibold">联系方式</h2>
+            <p className="text-muted">
+              Email：
+              <a className="text-brand" href={`mailto:${settings.social.email}`}>
+                {settings.social.email}
+              </a>
+            </p>
+          </section>
+        )}
       </div>
     </div>
   );

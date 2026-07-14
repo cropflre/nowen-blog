@@ -21,13 +21,13 @@ export function Login() {
   });
 
   return (
-    <div className="relative isolate flex min-h-screen items-center justify-center overflow-hidden bg-[var(--color-bg-primary)] px-4 py-16 text-[var(--color-text-primary)]">
+    <div className="nowen-page-motion relative isolate flex min-h-screen items-center justify-center overflow-hidden bg-[var(--color-bg-primary)] px-4 py-16 text-[var(--color-text-primary)]">
       <div className="nowen-atmosphere" aria-hidden="true" />
       <div className="absolute right-4 top-4 z-20 sm:right-6 sm:top-6">
         <ThemeToggle showLabel />
       </div>
 
-      <section className="nowen-surface relative z-10 w-full max-w-sm p-6 sm:p-8" aria-labelledby="admin-login-title">
+      <section className="nowen-surface relative z-10 w-full max-w-sm p-6 sm:p-8" aria-labelledby="admin-login-title" data-motion data-motion-variant="scale" data-interactive="true">
         <p className="nowen-eyebrow">NOWEN ADMIN</p>
         <h1 id="admin-login-title" className="mt-3 text-2xl font-semibold tracking-tight">后台登录</h1>
         <p className="mt-2 text-sm text-[var(--color-text-secondary)]">登录以管理你的博客</p>

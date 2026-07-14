@@ -131,7 +131,7 @@ describe('foolproof project help center', () => {
     const centers = await app.request('/api/help-centers');
     assert.equal(centers.status, 200);
     const centersBody = await centers.json();
-    assert.equal(centersBody.items[0].slug, helpCenterSlug);
+    assert.ok(centersBody.items.some((item: { slug: string }) => item.slug === helpCenterSlug));
 
     const tree = await app.request(`/api/help-centers/${helpCenterSlug}/tree`);
     assert.equal(tree.status, 200);

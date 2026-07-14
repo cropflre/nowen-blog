@@ -13,6 +13,7 @@ let sqlite: ClientModule['sqlite'];
 let initDb: () => void;
 let runMigrations: () => void;
 let ensureNowenNoteApiDocs: () => void;
+let ensureNowenNoteHelpDocs: () => void;
 
 function createLegacyDatabase(path: string): void {
   const legacy = new Database(path);
@@ -79,11 +80,13 @@ describe('Drizzle migration system', () => {
     const initModule = await import('./init');
     const migrateModule = await import('./migrate');
     const clientModule = await import('./client');
-    const nowenNoteSeedModule = await import('./seed-nowen-note-api');
+    const nowenNoteApiSeedModule = await import('./seed-nowen-note-api');
+    const nowenNoteHelpSeedModule = await import('./seed-nowen-note-help');
     initDb = initModule.initDb;
     runMigrations = migrateModule.runMigrations;
     sqlite = clientModule.sqlite;
-    ensureNowenNoteApiDocs = nowenNoteSeedModule.ensureNowenNoteApiDocs;
+    ensureNowenNoteApiDocs = nowenNoteApiSeedModule.ensureNowenNoteApiDocs;
+    ensureNowenNoteHelpDocs = nowenNoteHelpSeedModule.ensureNowenNoteHelpDocs;
   });
 
   after(() => {
@@ -139,13 +142,20 @@ describe('Drizzle migration system', () => {
       .prepare("SELECT id FROM doc_spaces WHERE slug = 'nowen-note-api'")
       .get() as { id: string } | undefined;
     assert.ok(apiSpace?.id);
+
+    const helpSpace = sqlite
+      .prepare("SELECT id FROM doc_spaces WHERE slug = 'nowen-note-help'")
+      .get() as { id: string } | undefined;
+    assert.ok(helpSpace?.id);
   });
 
-  test('is idempotent when migrations and API documentation bootstrap run again', () => {
+  test('is idempotent when migrations and documentation bootstraps run again', () => {
     runMigrations();
     runMigrations();
     ensureNowenNoteApiDocs();
     ensureNowenNoteApiDocs();
+    ensureNowenNoteHelpDocs();
+    ensureNowenNoteHelpDocs();
 
     const migrationCount = sqlite
       .prepare('SELECT COUNT(*) AS total FROM __drizzle_migrations')
@@ -164,6 +174,19 @@ describe('Drizzle migration system', () => {
       )
       .get() as { total: number };
     assert.equal(apiDocumentCount.total, 19);
+
+    const helpSpaceCount = sqlite
+      .prepare("SELECT COUNT(*) AS total FROM doc_spaces WHERE slug = 'nowen-note-help'")
+      .get() as { total: number };
+    assert.equal(helpSpaceCount.total, 1);
+
+    const helpDocumentCount = sqlite
+      .prepare(
+        `SELECT COUNT(*) AS total FROM documents
+         WHERE space_id = (SELECT id FROM doc_spaces WHERE slug = 'nowen-note-help')`,
+      )
+      .get() as { total: number };
+    assert.equal(helpDocumentCount.total, 28);
 
     const legacyPost = sqlite
       .prepare('SELECT title, visibility FROM posts WHERE id = ?')

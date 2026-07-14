@@ -1,0 +1,470 @@
+:root {
+  --motion-ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --motion-ease-spring: cubic-bezier(0.16, 1, 0.3, 1);
+  --motion-fast: 180ms;
+  --motion-base: 360ms;
+  --motion-slow: 680ms;
+}
+
+.nowen-route-progress {
+  position: fixed;
+  z-index: 1000;
+  top: 0;
+  right: 0;
+  left: 0;
+  height: 2px;
+  pointer-events: none;
+  transform-origin: left center;
+  background: linear-gradient(90deg, var(--color-primary), var(--color-accent), var(--color-primary-light));
+  box-shadow: 0 0 16px color-mix(in srgb, var(--color-primary) 60%, transparent);
+  animation: nowen-route-progress 720ms var(--motion-ease-out) both;
+}
+
+.motion-enabled .nowen-page-motion {
+  min-width: 0;
+  animation: nowen-page-enter 520ms var(--motion-ease-out) both;
+}
+
+.motion-enabled [data-motion-ready="true"] {
+  opacity: 0;
+  filter: blur(7px);
+  transform: translate3d(0, 24px, 0) scale(0.985);
+  transition:
+    opacity var(--motion-slow) var(--motion-ease-out),
+    transform var(--motion-slow) var(--motion-ease-out),
+    filter 560ms var(--motion-ease-out);
+  transition-delay: var(--motion-delay, 0ms);
+  will-change: opacity, transform, filter;
+}
+
+.motion-enabled [data-motion-ready="true"][data-motion-variant="left"] {
+  transform: translate3d(-26px, 8px, 0) scale(0.99);
+}
+
+.motion-enabled [data-motion-ready="true"][data-motion-variant="right"] {
+  transform: translate3d(26px, 8px, 0) scale(0.99);
+}
+
+.motion-enabled [data-motion-ready="true"][data-motion-variant="scale"] {
+  transform: translate3d(0, 12px, 0) scale(0.94);
+}
+
+.motion-enabled [data-motion-ready="true"][data-motion-variant="soft"] {
+  transform: translate3d(0, 14px, 0);
+  filter: blur(3px);
+}
+
+.motion-enabled [data-motion-ready="true"][data-motion-visible="true"] {
+  opacity: 1;
+  filter: none;
+  transform: translate3d(0, 0, 0) scale(1);
+  will-change: auto;
+}
+
+.motion-enabled .nowen-header {
+  isolation: isolate;
+  transition:
+    background-color 320ms ease,
+    border-color 320ms ease,
+    box-shadow 320ms ease;
+  animation: nowen-header-enter 520ms var(--motion-ease-out) both;
+}
+
+.motion-enabled .nowen-header::after {
+  position: absolute;
+  right: 0;
+  bottom: -1px;
+  left: 0;
+  height: 1px;
+  content: "";
+  pointer-events: none;
+  transform: scaleX(0.32);
+  transform-origin: center;
+  opacity: 0.55;
+  background: linear-gradient(90deg, transparent, var(--color-primary), var(--color-accent), transparent);
+  transition: transform 700ms var(--motion-ease-out), opacity 320ms ease;
+}
+
+.motion-enabled .nowen-header:hover::after {
+  transform: scaleX(1);
+  opacity: 0.9;
+}
+
+.motion-enabled .nowen-brand-link,
+.motion-enabled .nowen-nav-link,
+.motion-enabled .nowen-mobile-nav-link,
+.motion-enabled .nowen-admin-nav-link {
+  position: relative;
+  transition:
+    color var(--motion-fast) ease,
+    background-color var(--motion-fast) ease,
+    border-color var(--motion-fast) ease,
+    transform var(--motion-fast) var(--motion-ease-out);
+}
+
+.motion-enabled .nowen-brand-link:hover {
+  transform: translateY(-1px);
+}
+
+.motion-enabled .nowen-brand-mark {
+  transition: transform 420ms var(--motion-ease-spring), box-shadow 320ms ease;
+}
+
+.motion-enabled .nowen-brand-link:hover .nowen-brand-mark {
+  transform: rotate(-5deg) scale(1.08);
+  box-shadow: 0 10px 24px color-mix(in srgb, var(--color-primary) 28%, transparent);
+}
+
+.motion-enabled .nowen-nav-link::after {
+  position: absolute;
+  right: 0.65rem;
+  bottom: 0.26rem;
+  left: 0.65rem;
+  height: 2px;
+  border-radius: 9999px;
+  content: "";
+  transform: scaleX(0);
+  transform-origin: center;
+  background: linear-gradient(90deg, var(--color-primary), var(--color-accent));
+  transition: transform 300ms var(--motion-ease-out);
+}
+
+.motion-enabled .nowen-nav-link:hover {
+  transform: translateY(-1px);
+}
+
+.motion-enabled .nowen-nav-link:hover::after,
+.motion-enabled .nowen-nav-link.is-active::after {
+  transform: scaleX(1);
+}
+
+.motion-enabled .nowen-theme-button,
+.motion-enabled .nowen-menu-button {
+  transition:
+    color var(--motion-fast) ease,
+    border-color var(--motion-fast) ease,
+    background-color var(--motion-fast) ease,
+    transform 280ms var(--motion-ease-spring);
+}
+
+.motion-enabled .nowen-theme-button:hover,
+.motion-enabled .nowen-menu-button:hover {
+  transform: translateY(-2px) rotate(4deg);
+  color: var(--color-text-primary);
+  border-color: color-mix(in srgb, var(--color-primary) 42%, var(--color-border));
+  background: var(--color-glass-hover);
+}
+
+.motion-enabled .nowen-theme-button:active,
+.motion-enabled .nowen-menu-button:active {
+  transform: scale(0.9) rotate(0deg);
+}
+
+.motion-enabled .nowen-mobile-menu {
+  transform-origin: top center;
+  animation: nowen-mobile-menu-enter 360ms var(--motion-ease-out) both;
+}
+
+.motion-enabled .nowen-mobile-nav-link {
+  opacity: 0;
+  animation: nowen-mobile-item-enter 420ms var(--motion-ease-out) forwards;
+  animation-delay: calc(var(--motion-item-index, 0) * 45ms + 70ms);
+}
+
+.motion-enabled .nowen-mobile-nav-link:hover,
+.motion-enabled .nowen-mobile-nav-link.is-active {
+  transform: translateX(4px);
+}
+
+.motion-enabled .nowen-header-search input,
+.motion-enabled input,
+.motion-enabled textarea,
+.motion-enabled select {
+  transition:
+    border-color var(--motion-fast) ease,
+    background-color var(--motion-fast) ease,
+    box-shadow 260ms ease,
+    transform var(--motion-fast) var(--motion-ease-out);
+}
+
+.motion-enabled .nowen-header-search:focus-within {
+  transform: translateY(-1px);
+}
+
+.motion-enabled input:focus,
+.motion-enabled textarea:focus,
+.motion-enabled select:focus {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 14%, transparent);
+}
+
+.motion-enabled .nowen-card,
+.motion-enabled .nowen-surface {
+  transform-style: preserve-3d;
+  backface-visibility: hidden;
+}
+
+.motion-enabled .nowen-card::after,
+.motion-enabled .nowen-surface[data-interactive="true"]::after {
+  position: absolute;
+  z-index: 0;
+  top: -35%;
+  bottom: -35%;
+  left: -48%;
+  width: 32%;
+  content: "";
+  pointer-events: none;
+  transform: translate3d(-180%, 0, 0) rotate(14deg);
+  opacity: 0;
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, white 34%, transparent), transparent);
+  transition: transform 820ms var(--motion-ease-out), opacity 240ms ease;
+}
+
+.motion-enabled .nowen-card:hover::after,
+.motion-enabled .nowen-surface[data-interactive="true"]:hover::after {
+  transform: translate3d(520%, 0, 0) rotate(14deg);
+  opacity: 0.42;
+}
+
+.motion-enabled .nowen-card img {
+  transition: transform 720ms var(--motion-ease-out), filter 420ms ease;
+}
+
+.motion-enabled .nowen-card:hover img {
+  transform: scale(1.045);
+  filter: saturate(1.06) contrast(1.02);
+}
+
+.motion-enabled .nowen-card:hover svg,
+.motion-enabled .nowen-button-primary:hover svg,
+.motion-enabled .nowen-button-secondary:hover svg,
+.motion-enabled .nowen-icon-button:hover svg,
+.motion-enabled .nowen-admin-nav-link:hover svg {
+  transform: translate3d(1px, -1px, 0) scale(1.06);
+}
+
+.motion-enabled svg {
+  transition: transform 280ms var(--motion-ease-spring), color var(--motion-fast) ease;
+}
+
+.motion-enabled .nowen-button-primary,
+.motion-enabled .nowen-button-secondary,
+.motion-enabled .nowen-icon-button {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  box-shadow: 0 0 0 transparent;
+}
+
+.motion-enabled .nowen-button-primary:hover {
+  box-shadow: 0 18px 42px color-mix(in srgb, var(--color-primary) 30%, transparent);
+}
+
+.nowen-ripple-host {
+  position: relative !important;
+  isolation: isolate;
+  overflow: hidden !important;
+}
+
+.nowen-ripple {
+  position: absolute;
+  z-index: 0;
+  border-radius: 9999px;
+  pointer-events: none;
+  transform: scale(0);
+  opacity: 0.34;
+  background: currentColor;
+  animation: nowen-ripple 620ms ease-out forwards;
+}
+
+.motion-enabled .nowen-admin-sidebar {
+  animation: nowen-sidebar-enter 560ms var(--motion-ease-out) both;
+}
+
+.motion-enabled .nowen-admin-header {
+  animation: nowen-admin-header-enter 520ms var(--motion-ease-out) both;
+}
+
+.motion-enabled .nowen-admin-nav-link {
+  overflow: hidden;
+}
+
+.motion-enabled .nowen-admin-nav-link::before {
+  position: absolute;
+  top: 0.42rem;
+  bottom: 0.42rem;
+  left: 0;
+  width: 3px;
+  border-radius: 9999px;
+  content: "";
+  transform: scaleY(0);
+  background: linear-gradient(180deg, var(--color-primary), var(--color-accent));
+  transition: transform 280ms var(--motion-ease-out);
+}
+
+.motion-enabled .nowen-admin-nav-link:hover {
+  transform: translateX(3px);
+  color: var(--color-text-primary);
+  border-color: color-mix(in srgb, var(--color-primary) 18%, transparent);
+  background: color-mix(in srgb, var(--color-primary) 7%, var(--color-glass));
+}
+
+.motion-enabled .nowen-admin-nav-link.is-active {
+  color: var(--color-text-primary);
+  border-color: color-mix(in srgb, var(--color-primary) 24%, transparent);
+  background: color-mix(in srgb, var(--color-primary) 11%, var(--color-glass));
+  box-shadow: inset 0 0 20px color-mix(in srgb, var(--color-primary) 5%, transparent);
+}
+
+.motion-enabled .nowen-admin-nav-link.is-active::before {
+  transform: scaleY(1);
+}
+
+.motion-enabled .nowen-admin-nav-ai:hover,
+.motion-enabled .nowen-admin-nav-ai.is-active {
+  background: linear-gradient(90deg, color-mix(in srgb, #8b5cf6 13%, transparent), color-mix(in srgb, #06b6d4 7%, transparent));
+}
+
+.motion-enabled table tbody tr {
+  transition: background-color var(--motion-fast) ease, transform var(--motion-fast) var(--motion-ease-out);
+}
+
+.motion-enabled table tbody tr:hover {
+  transform: translateX(2px);
+}
+
+.motion-enabled details > summary {
+  transition: color var(--motion-fast) ease, transform var(--motion-fast) var(--motion-ease-out);
+}
+
+.motion-enabled details > summary:hover {
+  transform: translateX(2px);
+}
+
+.motion-enabled details[open] > :not(summary) {
+  animation: nowen-details-enter 320ms var(--motion-ease-out) both;
+}
+
+.motion-enabled .prose a {
+  text-decoration-color: color-mix(in srgb, var(--color-primary) 40%, transparent);
+  text-underline-offset: 0.2em;
+  transition: color var(--motion-fast) ease, text-decoration-color var(--motion-fast) ease;
+}
+
+.motion-enabled .prose a:hover {
+  color: var(--color-primary);
+  text-decoration-color: currentColor;
+}
+
+.motion-enabled .prose img {
+  transition: transform 520ms var(--motion-ease-out), box-shadow 420ms ease;
+}
+
+.motion-enabled .prose img:hover {
+  transform: translateY(-2px) scale(1.008);
+  box-shadow: var(--color-shadow-hover);
+}
+
+.motion-enabled [role="dialog"] {
+  transform-origin: center;
+}
+
+.motion-enabled [data-state="open"] {
+  animation: nowen-popover-enter 260ms var(--motion-ease-out) both;
+}
+
+.motion-enabled .animate-pulse {
+  animation-duration: 1.8s;
+}
+
+@media (hover: hover) and (pointer: fine) and (min-width: 768px) {
+  .motion-enabled .nowen-card[data-motion-pointer="true"]:hover,
+  .motion-enabled .nowen-surface[data-interactive="true"][data-motion-pointer="true"]:hover,
+  .motion-enabled [data-motion-tilt="true"][data-motion-pointer="true"]:hover {
+    transform:
+      perspective(1000px)
+      translate3d(0, -7px, 0)
+      rotateX(var(--motion-tilt-x, 0deg))
+      rotateY(var(--motion-tilt-y, 0deg));
+  }
+}
+
+@media (max-width: 767px) {
+  .motion-enabled [data-motion-ready="true"] {
+    filter: none;
+    transform: translate3d(0, 14px, 0);
+    transition-duration: 480ms;
+  }
+
+  .motion-enabled [data-motion-ready="true"][data-motion-visible="true"] {
+    transform: translate3d(0, 0, 0);
+  }
+
+  .motion-enabled .nowen-card::after,
+  .motion-enabled .nowen-surface[data-interactive="true"]::after {
+    display: none;
+  }
+}
+
+@keyframes nowen-route-progress {
+  0% { transform: scaleX(0); opacity: 0; }
+  12% { opacity: 1; }
+  58% { transform: scaleX(0.72); opacity: 1; }
+  100% { transform: scaleX(1); opacity: 0; }
+}
+
+@keyframes nowen-page-enter {
+  from { opacity: 0; transform: translate3d(0, 10px, 0) scale(0.997); }
+  to { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
+}
+
+@keyframes nowen-header-enter {
+  from { opacity: 0; transform: translate3d(0, -14px, 0); }
+  to { opacity: 1; transform: translate3d(0, 0, 0); }
+}
+
+@keyframes nowen-mobile-menu-enter {
+  from { opacity: 0; transform: translate3d(0, -10px, 0) scaleY(0.96); }
+  to { opacity: 1; transform: translate3d(0, 0, 0) scaleY(1); }
+}
+
+@keyframes nowen-mobile-item-enter {
+  from { opacity: 0; transform: translate3d(-10px, 0, 0); }
+  to { opacity: 1; transform: translate3d(0, 0, 0); }
+}
+
+@keyframes nowen-ripple {
+  to { transform: scale(1); opacity: 0; }
+}
+
+@keyframes nowen-sidebar-enter {
+  from { opacity: 0; transform: translate3d(-18px, 0, 0); }
+  to { opacity: 1; transform: translate3d(0, 0, 0); }
+}
+
+@keyframes nowen-admin-header-enter {
+  from { opacity: 0; transform: translate3d(0, -10px, 0); }
+  to { opacity: 1; transform: translate3d(0, 0, 0); }
+}
+
+@keyframes nowen-details-enter {
+  from { opacity: 0; transform: translate3d(0, -5px, 0); }
+  to { opacity: 1; transform: translate3d(0, 0, 0); }
+}
+
+@keyframes nowen-popover-enter {
+  from { opacity: 0; transform: translate3d(0, -5px, 0) scale(0.97); }
+  to { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nowen-route-progress {
+    display: none;
+  }
+
+  .motion-enabled [data-motion-ready="true"],
+  .motion-enabled [data-motion-ready="true"][data-motion-visible="true"] {
+    opacity: 1 !important;
+    filter: none !important;
+    transform: none !important;
+  }
+}

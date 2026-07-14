@@ -98,6 +98,7 @@ test.describe('NOWEN Blog smoke flows', () => {
     await page.getByPlaceholder('用户名').fill('NOWEN');
     await page.getByPlaceholder('密码').fill('e2e-admin-password');
     await page.getByRole('button', { name: '登录' }).click();
+    await expect(page).toHaveURL(/\/admin$/);
     await page.goto('/admin/docs');
 
     await expect(page.getByRole('heading', { name: 'AI 文档 Agent' })).toBeVisible();

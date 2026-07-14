@@ -8,19 +8,28 @@ import {
   Settings,
   Sparkles,
   LayoutDashboard,
+  type LucideIcon,
 } from 'lucide-react';
 import { api } from '../../lib/api';
 import { ThemeToggle } from '../ui/ThemeToggle';
 import { MotionOutlet } from '../motion/MotionOutlet';
 
-const adminNav = [
+interface AdminNavItem {
+  to: string;
+  label: string;
+  icon: LucideIcon;
+  end?: boolean;
+  accent?: 'primary' | 'ai';
+}
+
+const adminNav: AdminNavItem[] = [
   { to: '/admin', label: '首页', icon: LayoutDashboard, end: true },
   { to: '/admin/docs', label: '帮助中心', icon: BookOpen, accent: 'primary' },
   { to: '/admin/posts', label: '博客文章', icon: FileText },
   { to: '/admin/assets', label: '图片与文件', icon: Image },
   { to: '/admin/ai', label: 'AI 模型', icon: Sparkles, accent: 'ai' },
   { to: '/admin/settings', label: '系统设置', icon: Settings },
-] as const;
+];
 
 export function AdminLayout() {
   const navigate = useNavigate();
@@ -48,7 +57,7 @@ export function AdminLayout() {
               <NavLink
                 key={item.to}
                 to={item.to}
-                end={'end' in item ? item.end : false}
+                end={item.end}
                 className={({ isActive }) =>
                   [
                     'nowen-admin-nav-link flex items-center gap-2 rounded-lg border border-transparent px-3 py-2 text-muted',

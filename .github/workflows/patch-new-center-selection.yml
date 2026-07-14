@@ -1,0 +1,46 @@
+name: Apply focused admin selection fix
+
+on:
+  push:
+    branches:
+      - feat/nowen-note-api-docs
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/nowen-note-api-docs
+      - name: Select newly created help center after refetch
+        shell: python
+        run: |
+          from pathlib import Path
+
+          path = Path('apps/web/src/pages/admin/AdminDocs.tsx')
+          source = path.read_text()
+          old = """      const center = await helpCenterApi.create(centerForm);
+                setSelectedCenterId(center.id);
+                setCreateOpen(false);
+                setCenterForm({ name: '', description: '', isPublished: true });
+                await invalidateCenters();
+          """
+          new = """      const center = await helpCenterApi.create(centerForm);
+                setCreateOpen(false);
+                setCenterForm({ name: '', description: '', isPublished: true });
+                await invalidateCenters();
+                setSelectedCenterId(center.id);
+          """
+          if old not in source:
+              raise SystemExit('target block not found')
+          path.write_text(source.replace(old, new, 1))
+      - name: Commit patch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add apps/web/src/pages/admin/AdminDocs.tsx
+          git commit -m "fix(admin): select newly created help center"
+          git push origin HEAD:feat/nowen-note-api-docs

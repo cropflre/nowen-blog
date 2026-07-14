@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { ArrowRight, BookOpen, Github, HelpCircle, Search } from 'lucide-react';
+import { ArrowRight, BookOpen, HelpCircle, Search } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { helpCenterApi } from '../../lib/helpCenterApi';
 import { Seo } from '../../components/seo/Seo';
@@ -19,7 +19,7 @@ export function DocsHome() {
     const items = centers.data?.items ?? [];
     if (!term) return items;
     return items.filter((item) =>
-      [item.name, item.description, item.repositoryFullName]
+      [item.name, item.description]
         .filter(Boolean)
         .some((value) => String(value).toLowerCase().includes(term)),
     );
@@ -119,7 +119,7 @@ export function DocsHome() {
                   {center.description || '查看安装、部署、功能使用和常见问题。'}
                 </p>
                 <div className="mt-auto flex items-center justify-between pt-5 text-xs text-[var(--color-text-muted)]">
-                  {center.repositoryFullName ? <span className="flex items-center gap-1.5"><Github className="h-3.5 w-3.5" />{center.repositoryFullName}</span> : <span>官方帮助文档</span>}
+                  <span>手动维护 · 官方帮助</span>
                   <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" />
                 </div>
               </Link>

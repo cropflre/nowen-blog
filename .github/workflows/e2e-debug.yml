@@ -1,0 +1,40 @@
+name: E2E Server Debug
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  e2e-server-debug:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.34.4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Capture Playwright web-server diagnostics
+        shell: bash
+        run: |
+          set +e
+          DEBUG=pw:webserver pnpm test:e2e > e2e-debug.log 2>&1
+          status=$?
+          echo "$status" > e2e-debug-status.txt
+          exit 0
+      - name: Upload E2E diagnostics
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-server-debug
+          path: |
+            e2e-debug.log
+            e2e-debug-status.txt
+          if-no-files-found: error
+          retention-days: 1

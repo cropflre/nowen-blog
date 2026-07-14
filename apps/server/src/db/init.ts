@@ -3,6 +3,7 @@ import { db } from './client';
 import { runMigrations } from './migrate';
 import { seedIfEmpty } from './seed';
 import { ensureNowenNoteApiDocs } from './seed-nowen-note-api';
+import { ensureNowenNoteHelpDocs } from './seed-nowen-note-help';
 import { ensureSearchIndex } from '../modules/search/search.service';
 import { ensureSiteSettings } from '../modules/settings/settings.service';
 
@@ -15,6 +16,7 @@ export function initDb(): void {
   db.run(sql`SELECT 1`);
   seedIfEmpty();
   ensureNowenNoteApiDocs();
+  ensureNowenNoteHelpDocs();
   ensureSiteSettings();
   ensureSearchIndex();
   initialized = true;

@@ -85,5 +85,42 @@ describe('fresh database bootstrap', () => {
       .prepare("SELECT site_title AS siteTitle FROM site_settings WHERE id = 'site'")
       .get() as { siteTitle: string };
     assert.equal(settings.siteTitle, 'NOWEN Blog');
+
+    const apiSpace = sqlite
+      .prepare(
+        `SELECT id, name, default_version_id AS defaultVersionId, is_published AS isPublished
+         FROM doc_spaces WHERE slug = 'nowen-note-api'`,
+      )
+      .get() as { id: string; name: string; defaultVersionId: string; isPublished: number };
+    assert.equal(apiSpace.name, 'Nowen Note API 文档');
+    assert.equal(apiSpace.isPublished, 1);
+    assert.ok(apiSpace.defaultVersionId);
+
+    const apiDocumentStats = sqlite
+      .prepare(
+        `SELECT COUNT(*) AS total, MAX(depth) AS maxDepth,
+                SUM(CASE WHEN status = 'published' THEN 1 ELSE 0 END) AS published
+         FROM documents WHERE space_id = ?`,
+      )
+      .get(apiSpace.id) as { total: number; maxDepth: number; published: number };
+    assert.equal(apiDocumentStats.total, 19);
+    assert.equal(apiDocumentStats.maxDepth, 1);
+    assert.equal(apiDocumentStats.published, 19);
+
+    const apiIndexedCount = sqlite
+      .prepare(
+        `SELECT COUNT(*) AS total
+         FROM documents_fts f
+         JOIN documents d ON d.rowid = f.rowid
+         WHERE d.space_id = ?`,
+      )
+      .get(apiSpace.id) as { total: number };
+    assert.equal(apiIndexedCount.total, 19);
+
+    const notesDoc = sqlite
+      .prepare("SELECT title, path FROM documents WHERE id = 'doc_nn_api_notes'")
+      .get() as { title: string; path: string };
+    assert.equal(notesDoc.title, '笔记 API');
+    assert.equal(notesDoc.path, 'core/notes');
   });
 });

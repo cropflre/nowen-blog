@@ -240,10 +240,10 @@ export function AdminDocs() {
     setMessage(null);
     try {
       const center = await helpCenterApi.create(centerForm);
-      setSelectedCenterId(center.id);
       setCreateOpen(false);
       setCenterForm({ name: '', description: '', isPublished: true });
       await invalidateCenters();
+      setSelectedCenterId(center.id);
       if (withAi) {
         const run = await helpCenterApi.createAgentRun(center.id, {
           task: 'create_help_center',

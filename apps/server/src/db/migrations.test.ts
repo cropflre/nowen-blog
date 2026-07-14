@@ -12,6 +12,7 @@ let testDb = '';
 let sqlite: ClientModule['sqlite'];
 let initDb: () => void;
 let runMigrations: () => void;
+let ensureNowenNoteApiDocs: () => void;
 
 function createLegacyDatabase(path: string): void {
   const legacy = new Database(path);
@@ -78,9 +79,11 @@ describe('Drizzle migration system', () => {
     const initModule = await import('./init');
     const migrateModule = await import('./migrate');
     const clientModule = await import('./client');
+    const nowenNoteSeedModule = await import('./seed-nowen-note-api');
     initDb = initModule.initDb;
     runMigrations = migrateModule.runMigrations;
     sqlite = clientModule.sqlite;
+    ensureNowenNoteApiDocs = nowenNoteSeedModule.ensureNowenNoteApiDocs;
   });
 
   after(() => {
@@ -131,16 +134,36 @@ describe('Drizzle migration system', () => {
       .prepare('SELECT COUNT(*) AS total FROM __drizzle_migrations')
       .get() as { total: number };
     assert.equal(migrationCount.total, 7);
+
+    const apiSpace = sqlite
+      .prepare("SELECT id FROM doc_spaces WHERE slug = 'nowen-note-api'")
+      .get() as { id: string } | undefined;
+    assert.ok(apiSpace?.id);
   });
 
-  test('is idempotent when migrations are run again', () => {
+  test('is idempotent when migrations and API documentation bootstrap run again', () => {
     runMigrations();
     runMigrations();
+    ensureNowenNoteApiDocs();
+    ensureNowenNoteApiDocs();
 
     const migrationCount = sqlite
       .prepare('SELECT COUNT(*) AS total FROM __drizzle_migrations')
       .get() as { total: number };
     assert.equal(migrationCount.total, 7);
+
+    const apiSpaceCount = sqlite
+      .prepare("SELECT COUNT(*) AS total FROM doc_spaces WHERE slug = 'nowen-note-api'")
+      .get() as { total: number };
+    assert.equal(apiSpaceCount.total, 1);
+
+    const apiDocumentCount = sqlite
+      .prepare(
+        `SELECT COUNT(*) AS total FROM documents
+         WHERE space_id = (SELECT id FROM doc_spaces WHERE slug = 'nowen-note-api')`,
+      )
+      .get() as { total: number };
+    assert.equal(apiDocumentCount.total, 19);
 
     const legacyPost = sqlite
       .prepare('SELECT title, visibility FROM posts WHERE id = ?')

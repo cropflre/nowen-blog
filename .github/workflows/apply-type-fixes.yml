@@ -1,0 +1,71 @@
+name: Apply Type Fixes
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+      - name: Apply exact source fixes
+        shell: python
+        run: |
+          from pathlib import Path
+
+          path = Path('apps/server/src/modules/docs/help-center-agent.service.ts')
+          text = path.read_text()
+          text = text.replace(
+              'function normalizeTitle(value: string): string {\n  return value.trim().toLocaleLowerCase(\'zh-CN\');\n}',
+              'function normalizeTitle(value: string | null): string {\n  return (value ?? \'\').trim().toLocaleLowerCase(\'zh-CN\');\n}',
+          )
+          path.write_text(text)
+
+          path = Path('apps/web/src/pages/admin/AdminSettings.tsx')
+          text = path.read_text()
+          text = text.replace(
+              "import { useEffect, useState } from 'react';",
+              "import { useEffect, useState, type ReactNode } from 'react';",
+          ).replace('children: React.ReactNode;', 'children: ReactNode;')
+          path.write_text(text)
+
+          path = Path('apps/server/src/scripts/prerender.ts')
+          text = path.read_text()
+          text = text.replace(
+              "  if (siteSettings.social.github)\n    social.push(\n      `<a href=\"${escapeHtml(siteSettings.social.github)}\" target=\"_blank\" rel=\"noreferrer\">GitHub</a>`,\n    );\n",
+              '',
+          )
+          text = text.replace(
+              "  if (s.social.github)\n    contacts.push(\n      `<li>GitHub：<a class=\"text-brand\" href=\"${escapeHtml(s.social.github)}\" target=\"_blank\" rel=\"noreferrer\">${escapeHtml(s.social.github)}</a></li>`,\n    );\n",
+              '',
+          )
+          path.write_text(text)
+
+          path = Path('apps/server/src/modules/projects/projects.service.ts')
+          text = path.read_text()
+          text = text.replace(
+              ", updated_at = ?, repository_url = NULL, source = 'manual',\n        github_full_name = NULL, github_pushed_at = NULL, synced_at = NULL,\n        stars = 0, forks = 0",
+              ', updated_at = ?',
+          )
+          path.write_text(text)
+      - name: Commit fixes
+        shell: bash
+        run: |
+          if git diff --quiet; then
+            exit 0
+          fi
+          git config user.name "NOWEN CI"
+          git config user.email "actions@users.noreply.github.com"
+          git add apps/server/src/modules/docs/help-center-agent.service.ts \
+                  apps/web/src/pages/admin/AdminSettings.tsx \
+                  apps/server/src/scripts/prerender.ts \
+                  apps/server/src/modules/projects/projects.service.ts
+          git commit -m "fix: resolve manual AI help center type issues"
+          git push origin HEAD:${{ github.head_ref }}

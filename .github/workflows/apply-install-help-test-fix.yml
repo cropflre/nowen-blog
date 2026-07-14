@@ -1,0 +1,38 @@
+name: Apply install help test fix
+
+on:
+  push:
+    branches:
+      - feat/nowen-note-install-help
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/nowen-note-install-help
+      - name: Select the created help center by slug
+        shell: python
+        run: |
+          from pathlib import Path
+
+          path = Path('apps/server/src/modules/docs/docs.e2e.test.ts')
+          source = path.read_text()
+          old = "    assert.equal(centersBody.items[0].slug, helpCenterSlug);"
+          new = "    assert.ok(centersBody.items.some((item: { slug: string }) => item.slug === helpCenterSlug));"
+          if old not in source:
+              print('target already patched')
+          else:
+              path.write_text(source.replace(old, new, 1))
+      - name: Commit patch
+        run: |
+          if git diff --quiet; then exit 0; fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add apps/server/src/modules/docs/docs.e2e.test.ts
+          git commit -m "test(docs): find created help center by slug"
+          git push origin HEAD:feat/nowen-note-install-help

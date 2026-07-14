@@ -1,189 +1,129 @@
-import { mkdirSync, writeFileSync, unlinkSync, existsSync } from 'node:fs';
-import { resolve, extname, sep } from 'node:path';
 import { createHash } from 'node:crypto';
-import { eq, desc, count } from 'drizzle-orm';
+import { existsSync, mkdirSync, unlinkSync, writeFileSync } from 'node:fs';
+import { basename, extname, resolve, sep } from 'node:path';
+import { count, desc, eq } from 'drizzle-orm';
 import { db, sqlite } from '../../db/client';
 import { assets } from '../../db/schema';
-import { randomId, nowIso } from '../../lib/format';
 import { env } from '../../config/env';
+import { nowIso, randomId } from '../../lib/format';
 
-export class UploadError extends Error {}
+export type AssetRow = typeof assets.$inferSelect;
 
-export interface AssetReference {
+export type AssetReference = {
   type: 'post_cover' | 'post_content' | 'site_setting' | 'version' | 'autosave';
   id: string;
   title: string;
   field: string;
-}
+};
 
 export class AssetInUseError extends Error {
   constructor(public readonly references: AssetReference[]) {
-    super(`图片仍被 ${references.length} 处内容引用，请先移除引用或确认强制删除`);
+    super('媒体文件正在被使用');
+    this.name = 'AssetInUseError';
   }
 }
 
-const ALLOWED_MIME = ['image/png', 'image/jpeg', 'image/webp', 'image/gif'] as const;
-type AllowedMime = (typeof ALLOWED_MIME)[number];
-
-const EXT_BY_MIME: Record<AllowedMime, string> = {
-  'image/png': '.png',
+const MIME_EXTENSION: Record<string, string> = {
   'image/jpeg': '.jpg',
-  'image/webp': '.webp',
+  'image/png': '.png',
   'image/gif': '.gif',
+  'image/webp': '.webp',
+  'image/svg+xml': '.svg',
+  'image/avif': '.avif',
 };
 
-const MIME_BY_EXT: Record<string, string> = {
-  '.png': 'image/png',
-  '.jpg': 'image/jpeg',
-  '.jpeg': 'image/jpeg',
-  '.webp': 'image/webp',
-  '.gif': 'image/gif',
-};
+const ALLOWED_MIME_TYPES = new Set(Object.keys(MIME_EXTENSION));
 
-function detectMagic(buf: Buffer): AllowedMime | null {
-  if (buf.length >= 8 && buf.toString('hex', 0, 8) === '89504e470d0a1a0a') return 'image/png';
-  if (buf.length >= 3 && buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff) return 'image/jpeg';
-  if (
-    buf.length >= 6 &&
-    (buf.toString('ascii', 0, 6) === 'GIF89a' || buf.toString('ascii', 0, 6) === 'GIF87a')
-  ) return 'image/gif';
-  if (
-    buf.length >= 12 &&
-    buf.toString('ascii', 0, 4) === 'RIFF' &&
-    buf.toString('ascii', 8, 12) === 'WEBP'
-  ) return 'image/webp';
-  return null;
+function normalizeFileName(value: string): string {
+  const parsed = basename(value || 'image');
+  return parsed.replace(/[^\p{L}\p{N}._-]+/gu, '-').replace(/^-+|-+$/g, '') || 'image';
 }
 
-function readUInt24LE(buf: Buffer, offset: number): number {
-  return buf[offset]! | (buf[offset + 1]! << 8) | (buf[offset + 2]! << 16);
-}
-
-function detectDimensions(buf: Buffer, mime: AllowedMime): { width: number; height: number } | null {
-  try {
-    if (mime === 'image/png' && buf.length >= 24) {
-      return { width: buf.readUInt32BE(16), height: buf.readUInt32BE(20) };
-    }
-    if (mime === 'image/gif' && buf.length >= 10) {
-      return { width: buf.readUInt16LE(6), height: buf.readUInt16LE(8) };
-    }
-    if (mime === 'image/jpeg') {
-      const sof = new Set([0xc0, 0xc1, 0xc2, 0xc3, 0xc5, 0xc6, 0xc7, 0xc9, 0xca, 0xcb, 0xcd, 0xce, 0xcf]);
-      let offset = 2;
-      while (offset + 9 < buf.length) {
-        if (buf[offset] !== 0xff) {
-          offset += 1;
-          continue;
-        }
-        const marker = buf[offset + 1]!;
-        if (sof.has(marker)) {
-          return { width: buf.readUInt16BE(offset + 7), height: buf.readUInt16BE(offset + 5) };
-        }
-        if (marker === 0xd8 || marker === 0xd9) {
-          offset += 2;
-          continue;
-        }
-        const length = buf.readUInt16BE(offset + 2);
-        if (length < 2) break;
-        offset += 2 + length;
-      }
-    }
-    if (mime === 'image/webp' && buf.length >= 30) {
-      const chunk = buf.toString('ascii', 12, 16);
-      if (chunk === 'VP8X') {
-        return { width: readUInt24LE(buf, 24) + 1, height: readUInt24LE(buf, 27) + 1 };
-      }
-      if (chunk === 'VP8L' && buf[20] === 0x2f) {
-        const b1 = buf[21]!;
-        const b2 = buf[22]!;
-        const b3 = buf[23]!;
-        const b4 = buf[24]!;
-        return {
-          width: 1 + (((b2 & 0x3f) << 8) | b1),
-          height: 1 + (((b4 & 0x0f) << 10) | (b3 << 2) | ((b2 & 0xc0) >> 6)),
-        };
-      }
-      if (chunk === 'VP8 ' && buf.toString('hex', 23, 26) === '9d012a') {
-        return { width: buf.readUInt16LE(26) & 0x3fff, height: buf.readUInt16LE(28) & 0x3fff };
-      }
-    }
-  } catch {
-    return null;
-  }
-  return null;
-}
-
-function uploadsRoot(): string {
-  return resolve(process.cwd(), env.uploadDir);
+function storageRoot(): string {
+  const root = resolve(env.uploadDir);
+  mkdirSync(root, { recursive: true });
+  return root;
 }
 
 function safeStoragePath(storageKey: string): string {
-  if (/[\/\\]|\.\./.test(storageKey)) throw new UploadError('非法文件名');
-  const root = uploadsRoot();
+  const root = storageRoot();
   const full = resolve(root, storageKey);
-  if (full !== root && !full.startsWith(root + sep)) throw new UploadError('路径越界');
+  if (full !== root && !full.startsWith(root + sep)) throw new Error('媒体存储路径越界');
   return full;
 }
 
-type AssetRow = Awaited<ReturnType<typeof db.query.assets.findFirst>>;
-
-export async function uploadAsset(file: File): Promise<AssetRow> {
-  const buf = Buffer.from(await file.arrayBuffer());
-  if (buf.length === 0) throw new UploadError('空文件');
-  if (buf.length > env.maxUploadSize) throw new UploadError('文件过大');
-
-  const magic = detectMagic(buf);
-  if (!magic) throw new UploadError('不支持的文件类型（仅允许 PNG/JPEG/WebP/GIF）');
-  if (/svg|html|xml|javascript|script/i.test(file.type)) throw new UploadError('拒绝危险文件类型');
-
-  const declaredExt = extname(file.name ?? '').toLowerCase();
-  if (declaredExt && MIME_BY_EXT[declaredExt] && MIME_BY_EXT[declaredExt] !== magic) {
-    throw new UploadError('扩展名与文件内容不符');
-  }
-
-  const ext = EXT_BY_MIME[magic];
-  const contentHash = createHash('sha256').update(buf).digest('hex');
-  const existing = await db.query.assets.findFirst({ where: eq(assets.contentHash, contentHash) });
-  if (existing && existsSync(safeStoragePath(existing.storageKey))) return existing as AssetRow;
-
-  const storageKey = randomId('u_') + ext;
-  const url = `/uploads/${storageKey}`;
-  const full = safeStoragePath(storageKey);
-  mkdirSync(uploadsRoot(), { recursive: true });
-  writeFileSync(full, buf);
-
-  const dimensions = detectDimensions(buf, magic);
-  const now = nowIso();
-  const id = randomId('a_');
-  db.insert(assets)
-    .values({
-      id,
-      filename: file.name || storageKey,
-      storageKey,
-      url,
-      mimeType: magic,
-      size: buf.length,
-      width: dimensions?.width ?? null,
-      height: dimensions?.height ?? null,
-      alt: null,
-      contentHash,
-      createdAt: now,
-      updatedAt: now,
-    })
-    .run();
-
-  return (await db.query.assets.findFirst({ where: eq(assets.id, id) })) as AssetRow;
+function extensionFor(filename: string, mimeType: string): string {
+  const extension = extname(filename).toLowerCase();
+  if (extension && extension.length <= 10) return extension;
+  return MIME_EXTENSION[mimeType] ?? '';
 }
 
-export async function listAssets(page: number, pageSize: number) {
-  const offset = (page - 1) * pageSize;
+export async function createAsset(input: {
+  buffer: Uint8Array;
+  filename: string;
+  mimeType: string;
+  alt?: string | null;
+  uploadedBy: string;
+}): Promise<AssetRow> {
+  if (!ALLOWED_MIME_TYPES.has(input.mimeType)) throw new Error('仅支持常见图片格式');
+  if (input.buffer.byteLength <= 0) throw new Error('文件内容为空');
+  if (input.buffer.byteLength > env.maxUploadSize) throw new Error('图片超过上传大小限制');
+
+  const filename = normalizeFileName(input.filename);
+  const extension = extensionFor(filename, input.mimeType);
+  const digest = createHash('sha256').update(input.buffer).digest('hex');
+  const existing = await db.query.assets.findFirst({ where: eq(assets.hash, digest) });
+  if (existing) return existing;
+
+  const id = randomId('ast_');
+  const now = nowIso();
+  const storageKey = `${id}${extension}`;
+  const url = `/uploads/${storageKey}`;
+  writeFileSync(safeStoragePath(storageKey), input.buffer);
+  try {
+    await db
+      .insert(assets)
+      .values({
+        id,
+        url,
+        filename,
+        mimeType: input.mimeType,
+        size: input.buffer.byteLength,
+        alt: input.alt ?? null,
+        hash: digest,
+        storageKey,
+        uploadedBy: input.uploadedBy,
+        createdAt: now,
+        updatedAt: now,
+      })
+      .run();
+  } catch (error) {
+    try {
+      unlinkSync(safeStoragePath(storageKey));
+    } catch {
+      // Ignore cleanup failures and keep the original database error.
+    }
+    throw error;
+  }
+  return (await getAssetById(id))!;
+}
+
+export async function listAssets(page = 1, pageSize = 24): Promise<{
+  items: AssetRow[];
+  total: number;
+  page: number;
+  pageSize: number;
+}> {
+  const safePage = Math.max(1, Math.trunc(page));
+  const safeSize = Math.max(1, Math.min(100, Math.trunc(pageSize)));
+  const offset = (safePage - 1) * safeSize;
   const rows = await db.query.assets.findMany({
     orderBy: [desc(assets.createdAt)],
-    limit: pageSize,
+    limit: safeSize,
     offset,
   });
   const [{ total }] = await db.select({ total: count() }).from(assets);
-  return { items: rows, total, page, pageSize };
+  return { items: rows, total, page: safePage, pageSize: safeSize };
 }
 
 export async function getAssetById(id: string): Promise<AssetRow | null> {
@@ -281,8 +221,10 @@ export async function deleteAsset(id: string, force = false): Promise<boolean> {
   if (!result) return false;
   if (!force && result.references.length > 0) throw new AssetInUseError(result.references);
 
+  const asset = result.asset;
+  if (!asset) return false;
   await db.delete(assets).where(eq(assets.id, id)).run();
-  const full = safeStoragePath(result.asset.storageKey);
+  const full = safeStoragePath(asset.storageKey);
   if (existsSync(full)) {
     try {
       unlinkSync(full);

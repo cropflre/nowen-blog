@@ -1,6 +1,9 @@
 name: Diagnose install help tests
 
 on:
+  pull_request:
+    branches:
+      - main
   push:
     branches:
       - feat/nowen-note-install-help

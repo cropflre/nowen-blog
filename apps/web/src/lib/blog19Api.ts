@@ -1,6 +1,5 @@
 import type { Project } from '@blog/shared';
 import type {
-  GitHubSyncResult,
   NewsletterAdminResult,
   NewsletterCampaign,
   NewsletterSubscriber,
@@ -40,13 +39,6 @@ export const projectsApi = {
   update: (id: string, payload: Partial<ProjectInput>) =>
     request<Project>(`/admin/projects/${id}`, { method: 'PATCH', body: JSON.stringify(payload) }),
   remove: (id: string) => request<{ ok: true }>(`/admin/projects/${id}`, { method: 'DELETE' }),
-  syncTarget: (target: string, maxRepos = 12) =>
-    request<GitHubSyncResult>('/admin/projects/sync', {
-      method: 'POST',
-      body: JSON.stringify({ target, maxRepos }),
-    }),
-  syncProject: (id: string) =>
-    request<Project>(`/admin/projects/${id}/sync`, { method: 'POST' }),
 };
 
 export const newsletterApi = {

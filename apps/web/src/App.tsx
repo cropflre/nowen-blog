@@ -3,6 +3,7 @@ import { Layout } from './components/layout/Layout';
 import { AdminLayout } from './components/layout/AdminLayout';
 import { AdminRoute } from './components/auth/AdminRoute';
 import { LoginRoute } from './components/auth/LoginRoute';
+import { MotionRuntime } from './components/motion/MotionRuntime';
 import { Home } from './pages/Home';
 import { Posts } from './pages/Posts';
 import { PostDetail } from './pages/PostDetail';
@@ -33,6 +34,7 @@ import { NotFound } from './pages/NotFound';
 export function App() {
   return (
     <BrowserRouter>
+      <MotionRuntime />
       <Routes>
         <Route element={<Layout />}>
           <Route path="/" element={<Home />} />

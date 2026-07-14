@@ -29,13 +29,13 @@ export function Header() {
   };
 
   return (
-    <header className="sticky top-0 z-50 border-b border-line bg-bg/88 backdrop-blur-xl">
+    <header className="nowen-header sticky top-0 z-50 border-b border-line bg-bg/88 backdrop-blur-xl">
       <div className="mx-auto flex h-16 max-w-[1320px] items-center gap-3 px-4 sm:px-6">
-        <Link to="/" className="flex min-w-0 items-center gap-2.5 font-semibold" onClick={() => setMobileOpen(false)}>
+        <Link to="/" className="nowen-brand-link flex min-w-0 items-center gap-2.5 font-semibold" onClick={() => setMobileOpen(false)}>
           {settings?.logoUrl ? (
-            <img src={settings.logoUrl} alt="" className="h-8 w-8 shrink-0 rounded-lg object-contain" />
+            <img src={settings.logoUrl} alt="" className="nowen-brand-mark h-8 w-8 shrink-0 rounded-lg object-contain" />
           ) : (
-            <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-brand to-brand-2 text-white">
+            <span className="nowen-brand-mark inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-brand to-brand-2 text-white">
               {(settings?.siteTitle ?? 'NOWEN').slice(0, 1).toUpperCase()}
             </span>
           )}
@@ -49,8 +49,8 @@ export function Header() {
               to={item.to}
               className={({ isActive }) =>
                 cn(
-                  'rounded-lg px-3 py-2 text-sm text-muted transition hover:bg-surface hover:text-fg',
-                  isActive && 'bg-surface text-fg',
+                  'nowen-nav-link rounded-lg px-3 py-2 text-sm text-muted',
+                  isActive && 'is-active bg-surface text-fg',
                 )
               }
             >
@@ -60,18 +60,18 @@ export function Header() {
         </nav>
 
         <form onSubmit={onSubmit} className="ml-auto hidden items-center gap-2 sm:flex">
-          <div className="relative hidden lg:block">
+          <div className="nowen-header-search relative hidden lg:block">
             <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
             <input
               value={q}
               onChange={(event) => setQ(event.target.value)}
               placeholder="搜索博客"
-              className="w-44 rounded-lg border border-line bg-surface py-2 pl-8 pr-3 text-sm outline-none transition focus:border-brand xl:w-56"
+              className="w-44 rounded-lg border border-line bg-surface py-2 pl-8 pr-3 text-sm outline-none xl:w-56"
             />
           </div>
           <Link
             to="/docs"
-            className="nowen-focus hidden items-center gap-1.5 rounded-lg border border-line px-3 py-2 text-sm text-muted transition hover:text-fg xl:inline-flex"
+            className="nowen-icon-button nowen-focus hidden items-center gap-1.5 px-3 py-2 text-sm xl:inline-flex"
           >
             <BookOpen className="h-4 w-4" /> 帮助中心
           </Link>
@@ -79,7 +79,7 @@ export function Header() {
             type="button"
             onClick={toggle}
             aria-label="切换主题"
-            className="rounded-lg border border-line p-2 text-muted transition hover:text-fg"
+            className="nowen-theme-button nowen-focus rounded-lg border border-line p-2 text-muted"
           >
             {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
           </button>
@@ -89,24 +89,26 @@ export function Header() {
           type="button"
           onClick={() => setMobileOpen((value) => !value)}
           aria-label={mobileOpen ? '关闭导航' : '打开导航'}
-          className="nowen-focus ml-auto inline-flex h-10 w-10 items-center justify-center rounded-lg border border-line text-muted sm:ml-0 md:hidden"
+          aria-expanded={mobileOpen}
+          className="nowen-menu-button nowen-focus ml-auto inline-flex h-10 w-10 items-center justify-center rounded-lg border border-line text-muted sm:ml-0 md:hidden"
         >
           {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
         </button>
       </div>
 
       {mobileOpen && (
-        <div className="border-t border-line bg-bg/96 px-4 py-4 backdrop-blur-xl md:hidden">
+        <div className="nowen-mobile-menu border-t border-line bg-bg/96 px-4 py-4 backdrop-blur-xl md:hidden">
           <nav className="mx-auto grid max-w-[1320px] gap-1" aria-label="移动端主导航">
-            {NAV.map((item) => (
+            {NAV.map((item, index) => (
               <NavLink
                 key={item.to}
                 to={item.to}
                 onClick={() => setMobileOpen(false)}
+                style={{ '--motion-item-index': index } as React.CSSProperties}
                 className={({ isActive }) =>
                   cn(
-                    'rounded-xl px-3 py-3 text-sm text-muted transition hover:bg-surface hover:text-fg',
-                    isActive && 'bg-surface text-fg',
+                    'nowen-mobile-nav-link rounded-xl px-3 py-3 text-sm text-muted',
+                    isActive && 'is-active bg-surface text-fg',
                   )
                 }
               >
@@ -124,7 +126,7 @@ export function Header() {
                 className="h-11 w-full rounded-xl border border-line bg-surface pl-9 pr-3 text-sm outline-none focus:border-brand"
               />
             </div>
-            <button type="button" onClick={toggle} className="nowen-focus flex h-11 w-11 items-center justify-center rounded-xl border border-line text-muted" aria-label="切换主题">
+            <button type="button" onClick={toggle} className="nowen-theme-button nowen-focus flex h-11 w-11 items-center justify-center rounded-xl border border-line text-muted" aria-label="切换主题">
               {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
             </button>
           </form>

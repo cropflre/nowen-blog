@@ -7,6 +7,11 @@ import './index.css';
 import './motion.css';
 import 'highlight.js/styles/github-dark.css';
 
+document.documentElement.classList.toggle(
+  'motion-enabled',
+  !window.matchMedia('(prefers-reduced-motion: reduce)').matches,
+);
+
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <QueryClientProvider client={queryClient}>

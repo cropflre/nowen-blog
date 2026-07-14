@@ -41,7 +41,7 @@ describe('fresh database bootstrap', () => {
     const migrationCount = sqlite
       .prepare('SELECT COUNT(*) AS total FROM __drizzle_migrations')
       .get() as { total: number };
-    assert.equal(migrationCount.total, 5);
+    assert.equal(migrationCount.total, 6);
 
     const user = sqlite
       .prepare('SELECT username, email FROM users LIMIT 1')
@@ -72,6 +72,11 @@ describe('fresh database bootstrap', () => {
         .get(table) as { name: string } | undefined;
       assert.equal(row?.name, table);
     }
+
+    const projectIndex = sqlite
+      .prepare("SELECT name FROM sqlite_master WHERE type = 'index' AND name = 'uq_doc_spaces_project_id'")
+      .get() as { name: string } | undefined;
+    assert.equal(projectIndex?.name, 'uq_doc_spaces_project_id');
 
     const settings = sqlite
       .prepare("SELECT site_title AS siteTitle FROM site_settings WHERE id = 'site'")

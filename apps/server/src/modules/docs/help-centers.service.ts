@@ -77,7 +77,9 @@ function rootAncestor(item: DocumentRow, byId: Map<string, DocumentRow>): Docume
 export function flattenHelpCenterDocuments(items: DocumentRow[]): DocumentRow[] {
   const byId = new Map(items.map((item) => [item.id, item]));
   return items.map((item) => {
-    if (!item.parentId || item.depth <= MAX_HELP_CENTER_DEPTH) return { ...item, depth: Math.min(item.depth, 1) };
+    if (!item.parentId || item.depth <= MAX_HELP_CENTER_DEPTH) {
+      return { ...item, depth: Math.min(item.depth, MAX_HELP_CENTER_DEPTH) };
+    }
     const root = rootAncestor(item, byId);
     return {
       ...item,
@@ -96,7 +98,8 @@ export function orderedHelpCenterDocuments(spaceId: string, versionId: string, p
 }
 
 export function getPublicHelpCenterPage(spaceId: string, versionId: string, path: string): DocumentRow | null {
-  return getPublicPage(spaceId, versionId, path.replace(/^latest\/?/, ''));
+  const normalizedPath = path === 'latest' ? '' : path.replace(/^latest\//, '');
+  return getPublicPage(spaceId, versionId, normalizedPath);
 }
 
 export function validateHelpCenterParent(

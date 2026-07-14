@@ -14,6 +14,7 @@ let initDb: () => void;
 let runMigrations: () => void;
 let ensureNowenNoteApiDocs: () => void;
 let ensureNowenNoteHelpDocs: () => void;
+let ensureNowenNoteFeatureDocs: () => void;
 
 function createLegacyDatabase(path: string): void {
   const legacy = new Database(path);
@@ -82,11 +83,13 @@ describe('Drizzle migration system', () => {
     const clientModule = await import('./client');
     const nowenNoteApiSeedModule = await import('./seed-nowen-note-api');
     const nowenNoteHelpSeedModule = await import('./seed-nowen-note-help');
+    const nowenNoteFeatureSeedModule = await import('./seed-nowen-note-features');
     initDb = initModule.initDb;
     runMigrations = migrateModule.runMigrations;
     sqlite = clientModule.sqlite;
     ensureNowenNoteApiDocs = nowenNoteApiSeedModule.ensureNowenNoteApiDocs;
     ensureNowenNoteHelpDocs = nowenNoteHelpSeedModule.ensureNowenNoteHelpDocs;
+    ensureNowenNoteFeatureDocs = nowenNoteFeatureSeedModule.ensureNowenNoteFeatureDocs;
   });
 
   after(() => {
@@ -147,6 +150,11 @@ describe('Drizzle migration system', () => {
       .prepare("SELECT id FROM doc_spaces WHERE slug = 'nowen-note-help'")
       .get() as { id: string } | undefined;
     assert.ok(helpSpace?.id);
+
+    const featureSpace = sqlite
+      .prepare("SELECT id FROM doc_spaces WHERE slug = 'nowen-note-features'")
+      .get() as { id: string } | undefined;
+    assert.ok(featureSpace?.id);
   });
 
   test('is idempotent when migrations and documentation bootstraps run again', () => {
@@ -156,6 +164,8 @@ describe('Drizzle migration system', () => {
     ensureNowenNoteApiDocs();
     ensureNowenNoteHelpDocs();
     ensureNowenNoteHelpDocs();
+    ensureNowenNoteFeatureDocs();
+    ensureNowenNoteFeatureDocs();
 
     const migrationCount = sqlite
       .prepare('SELECT COUNT(*) AS total FROM __drizzle_migrations')
@@ -187,6 +197,19 @@ describe('Drizzle migration system', () => {
       )
       .get() as { total: number };
     assert.equal(helpDocumentCount.total, 28);
+
+    const featureSpaceCount = sqlite
+      .prepare("SELECT COUNT(*) AS total FROM doc_spaces WHERE slug = 'nowen-note-features'")
+      .get() as { total: number };
+    assert.equal(featureSpaceCount.total, 1);
+
+    const featureDocumentCount = sqlite
+      .prepare(
+        `SELECT COUNT(*) AS total FROM documents
+         WHERE space_id = (SELECT id FROM doc_spaces WHERE slug = 'nowen-note-features')`,
+      )
+      .get() as { total: number };
+    assert.equal(featureDocumentCount.total, 37);
 
     const legacyPost = sqlite
       .prepare('SELECT title, visibility FROM posts WHERE id = ?')

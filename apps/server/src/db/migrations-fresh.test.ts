@@ -159,5 +159,42 @@ describe('fresh database bootstrap', () => {
       .get() as { title: string; path: string };
     assert.equal(brokenImagesDoc.title, '图片刷新后裂图或变成 127.0.0.1');
     assert.equal(brokenImagesDoc.path, 'troubleshooting/images-after-refresh');
+
+    const featureSpace = sqlite
+      .prepare(
+        `SELECT id, name, default_version_id AS defaultVersionId, is_published AS isPublished
+         FROM doc_spaces WHERE slug = 'nowen-note-features'`,
+      )
+      .get() as { id: string; name: string; defaultVersionId: string; isPublished: number };
+    assert.equal(featureSpace.name, 'Nowen Note 功能介绍');
+    assert.equal(featureSpace.isPublished, 1);
+    assert.ok(featureSpace.defaultVersionId);
+
+    const featureDocumentStats = sqlite
+      .prepare(
+        `SELECT COUNT(*) AS total, MAX(depth) AS maxDepth,
+                SUM(CASE WHEN status = 'published' THEN 1 ELSE 0 END) AS published
+         FROM documents WHERE space_id = ?`,
+      )
+      .get(featureSpace.id) as { total: number; maxDepth: number; published: number };
+    assert.equal(featureDocumentStats.total, 37);
+    assert.equal(featureDocumentStats.maxDepth, 1);
+    assert.equal(featureDocumentStats.published, 37);
+
+    const featureIndexedCount = sqlite
+      .prepare(
+        `SELECT COUNT(*) AS total
+         FROM documents_fts f
+         JOIN documents d ON d.rowid = f.rowid
+         WHERE d.space_id = ?`,
+      )
+      .get(featureSpace.id) as { total: number };
+    assert.equal(featureIndexedCount.total, 37);
+
+    const editorDoc = sqlite
+      .prepare("SELECT title, path FROM documents WHERE id = 'doc_nn_feat_richtext'")
+      .get() as { title: string; path: string };
+    assert.equal(editorDoc.title, '富文本编辑器');
+    assert.equal(editorDoc.path, 'editing/rich-text-editor');
   });
 });

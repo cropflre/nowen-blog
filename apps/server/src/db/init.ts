@@ -4,6 +4,7 @@ import { runMigrations } from './migrate';
 import { seedIfEmpty } from './seed';
 import { ensureNowenNoteApiDocs } from './seed-nowen-note-api';
 import { ensureNowenNoteHelpDocs } from './seed-nowen-note-help';
+import { ensureNowenNoteFeatureDocs } from './seed-nowen-note-features';
 import { ensureSearchIndex } from '../modules/search/search.service';
 import { ensureSiteSettings } from '../modules/settings/settings.service';
 
@@ -17,6 +18,7 @@ export function initDb(): void {
   seedIfEmpty();
   ensureNowenNoteApiDocs();
   ensureNowenNoteHelpDocs();
+  ensureNowenNoteFeatureDocs();
   ensureSiteSettings();
   ensureSearchIndex();
   initialized = true;

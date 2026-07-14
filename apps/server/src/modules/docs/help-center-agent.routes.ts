@@ -17,6 +17,10 @@ function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : 'AI Agent 操作失败';
 }
 
+function logAgentError(action: string, error: unknown): void {
+  console.error(`[help-center-agent] ${action} failed:`, error);
+}
+
 adminHelpCenterAgentRoutes.get('/:centerId/agent-runs', (c) => {
   const limit = Number(c.req.query('limit') ?? 20);
   return c.json({ items: listAgentRuns(c.req.param('centerId'), limit) });
@@ -31,6 +35,7 @@ adminHelpCenterAgentRoutes.post('/:centerId/agent-runs', async (c) => {
       201,
     );
   } catch (error) {
+    logAgentError('create run', error);
     const message = errorMessage(error);
     const status = /尚未启用|API|模型|Key|连接/.test(message) ? 400 : /正在生成/.test(message) ? 429 : 400;
     return c.json({ error: message }, status);
@@ -56,6 +61,7 @@ adminHelpCenterAgentRoutes.post('/:centerId/agent-runs/:runId/apply', async (c) 
       ),
     );
   } catch (error) {
+    logAgentError('apply run', error);
     return c.json({ error: errorMessage(error) }, 400);
   }
 });
@@ -64,6 +70,7 @@ adminHelpCenterAgentRoutes.post('/:centerId/agent-runs/:runId/cancel', (c) => {
   try {
     return c.json(cancelAgentRun(c.req.param('centerId'), c.req.param('runId')));
   } catch (error) {
+    logAgentError('cancel run', error);
     return c.json({ error: errorMessage(error) }, 400);
   }
 });

@@ -1,0 +1,39 @@
+name: Test Debug
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  test-debug:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.34.4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Capture test output
+        shell: bash
+        run: |
+          set +e
+          pnpm test > test.log 2>&1
+          status=$?
+          echo "$status" > test-status.txt
+          exit 0
+      - uses: actions/upload-artifact@v4
+        with:
+          name: test-debug
+          path: |
+            test.log
+            test-status.txt
+          if-no-files-found: error
+          retention-days: 1

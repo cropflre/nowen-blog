@@ -1,4 +1,4 @@
-name: Typecheck Debug
+name: Validation Debug
 
 on:
   pull_request:
@@ -38,3 +38,67 @@ jobs:
             typecheck-status.txt
           if-no-files-found: error
           retention-days: 1
+
+  docker-backup-debug:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      BASE_URL: http://127.0.0.1:8080
+      HTTP_PORT: 8080
+      SESSION_SECRET: debug-docker-session-secret-at-least-32-characters
+      ADMIN_USERNAME: NOWEN
+      ADMIN_EMAIL: debug-docker@example.com
+      ADMIN_PASSWORD: debug-docker-admin-password
+      COMPOSE_PROJECT_NAME: nowen-blog-debug-${{ github.run_id }}
+      DATA_VOLUME_NAME: nowen-blog-debug-data-${{ github.run_id }}
+      BACKUP_HOST_DIR: ./.tmp/debug-backups
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare backup directory
+        run: |
+          mkdir -p .tmp/debug-backups
+          chmod 0777 .tmp/debug-backups
+      - name: Build and start stack
+        run: |
+          docker compose build
+          docker compose up -d
+          for attempt in {1..60}; do
+            if node scripts/ops/verify-production.mjs --base-url "$BASE_URL" --allow-http; then
+              exit 0
+            fi
+            sleep 2
+          done
+          exit 1
+      - name: Capture backup diagnostics
+        shell: bash
+        run: |
+          set +e
+          {
+            echo '=== host backup directory ==='
+            pwd
+            ls -ald .tmp .tmp/debug-backups
+            echo '=== container identity and mounts ==='
+            docker compose exec -T api sh -lc 'id; pwd; echo BACKUP_DIR=$BACKUP_DIR; ls -ald /app /app/data /app/backups; mount | grep /app/backups || true'
+            echo '=== backup command ==='
+            docker compose exec -T api pnpm --filter @blog/server ops:backup
+            status=$?
+            echo "backup_status=$status"
+            echo '=== container backup files ==='
+            docker compose exec -T api find /app/backups -maxdepth 4 -type f -o -type d
+            echo '=== host backup files ==='
+            find .tmp/debug-backups -maxdepth 4 -print
+          } > docker-backup.log 2>&1
+          echo "$status" > docker-backup-status.txt
+          exit 0
+      - name: Upload Docker backup diagnostics
+        uses: actions/upload-artifact@v4
+        with:
+          name: docker-backup-debug
+          path: |
+            docker-backup.log
+            docker-backup-status.txt
+          if-no-files-found: error
+          retention-days: 1
+      - name: Stop stack
+        if: always()
+        run: docker compose down --volumes --remove-orphans

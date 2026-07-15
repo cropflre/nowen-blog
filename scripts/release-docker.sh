@@ -51,6 +51,17 @@ PACKAGE_CHANGED=0
 RELEASE_COMMITTED=0
 ORIGINAL_ARGC=$#
 QUICK_MODE=0
+STATE_FILE="$ROOT_DIR/.tmp/release-docker-state.json"
+PHASE="preflight"
+ORIGINAL_HEAD=""
+RELEASE_SHA=""
+LOCAL_RELEASE_CREATED=0
+PUBLISH_STARTED=0
+RELEASE_SUCCEEDED=0
+DOCKER_PUBLISHED=0
+GIT_COMMIT_PUBLISHED=0
+GIT_TAG_PUBLISHED=0
+GITHUB_RELEASE_PUBLISHED=0
 
 if [ -t 1 ] && command -v tput >/dev/null 2>&1 && [ "$(tput colors 2>/dev/null || echo 0)" -ge 8 ]; then
   C_RED="$(tput setaf 1)"
@@ -167,17 +178,92 @@ require_command() {
   command -v "$1" >/dev/null 2>&1 || die "缺少命令: $1"
 }
 
+write_release_state() {
+  [ "$DRY_RUN" = "0" ] || return 0
+  mkdir -p "$(dirname "$STATE_FILE")"
+  STATE_FILE="$STATE_FILE" \
+  STATE_VERSION="$VERSION" \
+  STATE_IMAGE="$IMAGE" \
+  STATE_ARCH="$ARCH" \
+  STATE_LATEST="$DO_LATEST" \
+  STATE_RELEASE_SHA="$RELEASE_SHA" \
+  STATE_ORIGINAL_HEAD="$ORIGINAL_HEAD" \
+  STATE_DOCKER="$DOCKER_PUBLISHED" \
+  STATE_GIT_COMMIT="$GIT_COMMIT_PUBLISHED" \
+  STATE_GIT_TAG="$GIT_TAG_PUBLISHED" \
+  STATE_GITHUB_RELEASE="$GITHUB_RELEASE_PUBLISHED" \
+    node --input-type=module <<'NODE'
+import { writeFileSync } from 'node:fs';
+
+const bool = (value) => value === '1';
+const state = {
+  schemaVersion: 1,
+  version: process.env.STATE_VERSION,
+  image: process.env.STATE_IMAGE,
+  arch: process.env.STATE_ARCH,
+  latest: bool(process.env.STATE_LATEST),
+  releaseSha: process.env.STATE_RELEASE_SHA,
+  originalHead: process.env.STATE_ORIGINAL_HEAD,
+  completed: {
+    docker: bool(process.env.STATE_DOCKER),
+    gitCommit: bool(process.env.STATE_GIT_COMMIT),
+    gitTag: bool(process.env.STATE_GIT_TAG),
+    githubRelease: bool(process.env.STATE_GITHUB_RELEASE),
+  },
+};
+writeFileSync(process.env.STATE_FILE, `${JSON.stringify(state, null, 2)}\n`, 'utf8');
+NODE
+}
+
+remove_release_state() {
+  if [ -f "$STATE_FILE" ]; then
+    rm -f "$STATE_FILE"
+  fi
+}
+
+print_resume_hint() {
+  [ -n "$VERSION" ] || return 0
+  warn "远端发布尚未全部完成，请运行："
+  warn "  pnpm release:docker -- --resume -v $VERSION"
+}
+
+rollback_local_release() {
+  local current_head=""
+  if [ "$LOCAL_RELEASE_CREATED" = "1" ] && [ -n "$ORIGINAL_HEAD" ] && [ -n "$RELEASE_SHA" ]; then
+    current_head="$(git rev-parse HEAD 2>/dev/null || true)"
+    if [ "$current_head" = "$RELEASE_SHA" ]; then
+      git reset --mixed "$ORIGINAL_HEAD" >/dev/null
+    else
+      warn "当前 HEAD 已变化，未自动撤销 release commit"
+      return 1
+    fi
+  fi
+  if [ "$PACKAGE_CHANGED" = "1" ] && [ -n "$PACKAGE_BACKUP" ] && [ -f "$PACKAGE_BACKUP" ]; then
+    cp "$PACKAGE_BACKUP" package.json
+  fi
+  PACKAGE_CHANGED=0
+  LOCAL_RELEASE_CREATED=0
+  remove_release_state
+  warn "发布失败，本地版本和 release commit 已恢复"
+}
+
 cleanup() {
   local status=$?
-  if [ "$status" -ne 0 ] && [ "$PACKAGE_CHANGED" = "1" ] && [ "$RELEASE_COMMITTED" = "0" ] && [ -n "$PACKAGE_BACKUP" ] && [ -f "$PACKAGE_BACKUP" ]; then
-    cp "$PACKAGE_BACKUP" package.json
-    warn "发布失败，已恢复 package.json"
+  trap - EXIT INT TERM
+  if [ "$status" -ne 0 ] && [ "$RELEASE_SUCCEEDED" = "0" ]; then
+    if [ "$PUBLISH_STARTED" = "0" ]; then
+      rollback_local_release || true
+    else
+      print_resume_hint
+    fi
   fi
   if [ -n "$PACKAGE_BACKUP" ] && [ -f "$PACKAGE_BACKUP" ]; then
     rm -f "$PACKAGE_BACKUP"
   fi
 }
 trap cleanup EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
 
 normalize_version() {
   local value="$1"
@@ -457,6 +543,8 @@ if [ "$ASSUME_YES" = "0" ] && [ "$DRY_RUN" = "0" ]; then
   fi
 fi
 
+PHASE="prepare"
+ORIGINAL_HEAD="$(git rev-parse HEAD)"
 PACKAGE_BACKUP="$(mktemp)"
 cp package.json "$PACKAGE_BACKUP"
 set_package_version "$VERSION"
@@ -476,6 +564,7 @@ if [ "$DRY_RUN" = "0" ]; then
   git add package.json
   if ! git diff --cached --quiet; then
     git commit -m "chore(release): v$VERSION"
+    LOCAL_RELEASE_CREATED=1
   else
     info "没有需要提交的版本文件变化"
   fi
@@ -487,20 +576,29 @@ fi
 
 RELEASE_SHA="$(git rev-parse HEAD)"
 BUILD_DATE="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+write_release_state
 
 ensure_builder
 
+PHASE="build"
 step "预构建单体镜像（不推送）"
 info "先验证前端、API、Nginx 和运行时能够在同一镜像完整构建"
 run_bake build
 
+PHASE="publish"
+PUBLISH_STARTED=1
+write_release_state
 if [ "$DO_GIT_PUSH" = "1" ]; then
   step "推送发布提交"
   run git push origin "HEAD:$DEFAULT_BRANCH"
+  GIT_COMMIT_PUBLISHED=1
+  write_release_state
 fi
 
 step "推送 Docker 镜像"
 run_bake push
+DOCKER_PUBLISHED=1
+write_release_state
 
 if [ "$DRY_RUN" = "0" ]; then
   docker buildx imagetools inspect "${IMAGE}:v${VERSION}" >/dev/null
@@ -512,6 +610,8 @@ if [ "$DO_GIT_TAG" = "1" ]; then
   run git tag -a "v$VERSION" -m "Release v$VERSION"
   if [ "$DO_GIT_PUSH" = "1" ]; then
     run git push origin "v$VERSION"
+    GIT_TAG_PUBLISHED=1
+    write_release_state
   fi
 fi
 
@@ -522,8 +622,12 @@ if [ "$DO_GIT_PUSH" = "0" ] || [ "$DO_GIT_TAG" = "0" ]; then
 else
   step "创建 GitHub Release"
   create_github_release
+  GITHUB_RELEASE_PUBLISHED=1
+  write_release_state
 fi
 
+RELEASE_SUCCEEDED=1
+remove_release_state
 step "发布完成"
 echo "${C_GREEN}Docker:${C_RESET} ${IMAGE}:v${VERSION}"
 [ "$DO_LATEST" = "1" ] && echo "${C_GREEN}latest:${C_RESET} 已同步更新"

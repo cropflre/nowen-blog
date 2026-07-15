@@ -184,6 +184,13 @@ require_command() {
   command -v "$1" >/dev/null 2>&1 || die "缺少命令: $1"
 }
 
+is_official_repository_url() {
+  case "$1" in
+    git@github.com:cropflre/nowen-blog.git|https://github.com/cropflre/nowen-blog|https://github.com/cropflre/nowen-blog.git|ssh://git@github.com/cropflre/nowen-blog.git) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
 write_release_state() {
   [ "$DRY_RUN" = "0" ] || return 0
   mkdir -p "$(dirname "$STATE_FILE")"
@@ -895,10 +902,11 @@ fi
 CURRENT_BRANCH="$(git branch --show-current)"
 [ "$CURRENT_BRANCH" = "$DEFAULT_BRANCH" ] || die "请切换到 $DEFAULT_BRANCH 分支后发布，当前为 ${CURRENT_BRANCH:-detached}"
 ORIGIN_URL="$(git remote get-url origin 2>/dev/null || true)"
-case "$ORIGIN_URL" in
-  git@github.com:cropflre/nowen-blog.git|https://github.com/cropflre/nowen-blog|https://github.com/cropflre/nowen-blog.git|ssh://git@github.com/cropflre/nowen-blog.git) ;;
-  *) die "origin 不是官方仓库 cropflre/nowen-blog：${ORIGIN_URL:-未配置}" ;;
-esac
+is_official_repository_url "$ORIGIN_URL" \
+  || die "origin 不是官方仓库 cropflre/nowen-blog：${ORIGIN_URL:-未配置}"
+ORIGIN_PUSH_URL="$(git remote get-url --push origin 2>/dev/null || true)"
+is_official_repository_url "$ORIGIN_PUSH_URL" \
+  || die "origin push URL 不是官方仓库 cropflre/nowen-blog：${ORIGIN_PUSH_URL:-未配置}"
 
 if [ -n "$(git status --porcelain)" ]; then
   die "工作区或暂存区不干净，请先提交或清理改动"
@@ -1040,14 +1048,15 @@ ok "Docker 镜像已发布"
 
 if [ "$DO_GIT_PUSH" = "1" ]; then
   step "推送发布提交"
-  run git push origin "HEAD:$DEFAULT_BRANCH"
+  require_release_head
+  run git push origin "$RELEASE_SHA:$DEFAULT_BRANCH"
   GIT_COMMIT_PUBLISHED=1
   write_release_state
 fi
 
 if [ "$DO_GIT_TAG" = "1" ]; then
   step "创建 Git Tag"
-  run git tag -a "v$VERSION" -m "Release v$VERSION"
+  run git tag -a "v$VERSION" "$RELEASE_SHA" -m "Release v$VERSION"
   if [ "$DO_GIT_PUSH" = "1" ]; then
     run git push origin "v$VERSION"
     GIT_TAG_PUBLISHED=1

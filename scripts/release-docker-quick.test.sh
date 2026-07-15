@@ -21,7 +21,13 @@ cat >"$FAKE_BIN/git" <<'EOF'
 printf 'git %s\n' "$*" >>"$CALL_LOG"
 case "${1:-} ${2:-}" in
   "branch --show-current") echo main ;;
-  "remote get-url") echo 'https://github.com/cropflre/nowen-blog.git' ;;
+  "remote get-url")
+    if [[ "$*" == *'--push'* ]]; then
+      echo "${FAKE_PUSH_URL:-https://github.com/cropflre/nowen-blog.git}"
+    else
+      echo 'https://github.com/cropflre/nowen-blog.git'
+    fi
+    ;;
   "status --porcelain") ;;
   "tag -l") ;;
   "ls-remote "*)
@@ -90,6 +96,9 @@ if [ "${1:-} ${2:-}" = "buildx bake" ]; then
     exit 16
   fi
   [[ "$*" != *"--push"* ]] || printf '%s' "${IMAGE_TAGS:-}" >"$DOCKER_PUSHED_TAGS_FILE"
+  if [[ "$*" == *"--push"* ]] && [ "${FAKE_HEAD_CHANGE_ON_DOCKER_PUSH:-0}" = "1" ]; then
+    echo external-head >"$HEAD_FILE"
+  fi
 fi
 exit 0
 EOF
@@ -138,6 +147,7 @@ chmod +x "$FAKE_BIN/git" "$FAKE_BIN/docker" "$FAKE_BIN/gh" "$FAKE_BIN/curl" "$FA
 prepare_case() {
   unset FAKE_DOCKER_FAIL FAKE_DOCKER_TAG_EXISTS FAKE_DOCKER_LATEST_EXISTS FAKE_DOCKER_HTTP_CODE
   unset FAKE_DOCKER_V_REVISION FAKE_DOCKER_LATEST_REVISION
+  unset FAKE_HEAD_CHANGE_ON_DOCKER_PUSH FAKE_PUSH_URL
   unset FAKE_REMOTE_COMMIT FAKE_REMOTE_TAG_TARGET FAKE_GH_RELEASE_EXISTS FAKE_GH_AUTH_FAIL
   unset FAKE_GIT_COMMIT_FAIL FAKE_GIT_RESET_FAIL FAKE_GIT_PUSH_DRY_RUN_FAIL FAKE_PULL_CHANGES FAKE_RELEASE_COMMIT_VALID
   rm -f "$DOCKER_PUSHED_TAGS_FILE"
@@ -158,6 +168,7 @@ run_quick_release() {
   cd "$TEST_ROOT"
   export PATH="$FAKE_BIN:$PATH" CALL_LOG HEAD_FILE DOCKER_PUSHED_TAGS_FILE TEST_ROOT
   export FAKE_GH_AUTH_FAIL FAKE_GIT_COMMIT_FAIL FAKE_GIT_RESET_FAIL FAKE_GIT_PUSH_DRY_RUN_FAIL FAKE_PULL_CHANGES
+  export FAKE_HEAD_CHANGE_ON_DOCKER_PUSH FAKE_PUSH_URL
   export FAKE_RELEASE_COMMIT_VALID
   export FAKE_DOCKER_HTTP_CODE
   export DOCKER_CONFIG="$DOCKER_CONFIG_PATH"
@@ -182,8 +193,32 @@ printf '%s' "$output" | grep -Fq '架构:          multi (linux/amd64,linux/arm6
 printf '%s' "$output" | grep -Fq 'GitHub Release: on'
 
 docker_push_line="$(grep -n 'docker buildx bake .*--push' "$CALL_LOG" | head -n 1 | cut -d: -f1)"
-git_push_line="$(grep -n 'git push origin HEAD:main' "$CALL_LOG" | head -n 1 | cut -d: -f1)"
+git_push_line="$(grep -n 'git push origin release-head:main' "$CALL_LOG" | head -n 1 | cut -d: -f1)"
 [ "$docker_push_line" -lt "$git_push_line" ]
+
+prepare_case
+set +e
+head_changed_output="$(FAKE_HEAD_CHANGE_ON_DOCKER_PUSH=1 run_quick_release)"
+head_changed_status=$?
+set -e
+[ "$head_changed_status" -ne 0 ]
+printf '%s' "$head_changed_output" | grep -Fq '当前 HEAD'
+if grep -Fq 'git push origin release-head:main' "$CALL_LOG" || grep -Fq 'git tag -a v1.0.5' "$CALL_LOG"; then
+  echo 'Docker 推送后 HEAD 改变时不得继续推送 Git 或创建 Tag。' >&2
+  exit 1
+fi
+
+prepare_case
+set +e
+push_url_output="$(FAKE_PUSH_URL=https://github.com/example/fork.git run_quick_release)"
+push_url_status=$?
+set -e
+[ "$push_url_status" -ne 0 ]
+printf '%s' "$push_url_output" | grep -Fq 'push URL'
+if grep -Fq 'git pull --ff-only' "$CALL_LOG" || grep -Fq 'docker buildx bake' "$CALL_LOG"; then
+  echo 'origin push URL 不匹配时必须在本地写操作前终止。' >&2
+  exit 1
+fi
 
 prepare_case
 set +e

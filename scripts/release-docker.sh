@@ -149,7 +149,7 @@ API_IMAGE="${IMAGE_PREFIX}-api"
 WEB_IMAGE="${IMAGE_PREFIX}-web"
 
 print_command() {
-  printf '  ${C_CYAN}$${C_RESET}'
+  printf "  ${C_CYAN}\$${C_RESET}"
   printf ' %q' "$@"
   printf '\n'
 }
@@ -191,8 +191,13 @@ package_version() {
   node -e "const p=require('./package.json'); process.stdout.write(String(p.version || '0.0.0'))"
 }
 
+is_docker_hub_repository() {
+  [[ "$1" =~ ^[A-Za-z0-9._-]+/[A-Za-z0-9._-]+$ ]]
+}
+
 dockerhub_versions() {
   local repository="$1"
+  is_docker_hub_repository "$repository" || return 0
   command -v curl >/dev/null 2>&1 || return 0
   curl -fsS --max-time 8 "https://hub.docker.com/v2/repositories/${repository}/tags?page_size=100" 2>/dev/null \
     | node -e "let body='';process.stdin.on('data',c=>body+=c).on('end',()=>{try{for(const row of JSON.parse(body).results||[]){const name=String(row.name||'').replace(/^v/,'');if(/^\\d+\\.\\d+\\.\\d+$/.test(name))console.log(name)}}catch{}})" \
@@ -209,7 +214,7 @@ latest_stable_version() {
       | awk -F/ '{print $NF}' | sed 's/\^{}$//' | sed 's/^v//' || true
     dockerhub_versions "$API_IMAGE"
     dockerhub_versions "$WEB_IMAGE"
-  } | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' | sort -Vu | tail -n 1
+  } | node -e "let body='';process.stdin.on('data',c=>body+=c).on('end',()=>{const versions=[...new Set(body.split(/\\s+/).filter(v=>/^\\d+\\.\\d+\\.\\d+$/.test(v)))];versions.sort((a,b)=>{const aa=a.split('.').map(Number),bb=b.split('.').map(Number);for(let i=0;i<3;i++){if(aa[i]!==bb[i])return aa[i]-bb[i]}return 0});if(versions.length)process.stdout.write(versions.at(-1))})"
 }
 
 suggest_next_version() {
@@ -229,6 +234,7 @@ remote_tag_exists() {
 
 docker_tag_exists() {
   local repository="$1" tag="$2" code
+  is_docker_hub_repository "$repository" || return 1
   command -v curl >/dev/null 2>&1 || return 1
   code="$(curl -sS --max-time 8 -o /dev/null -w '%{http_code}' \
     "https://hub.docker.com/v2/repositories/${repository}/tags/${tag}" 2>/dev/null || true)"
@@ -247,12 +253,28 @@ set_package_version() {
   fi
   VERSION_TO_WRITE="$target" node --input-type=module <<'NODE'
 import { readFileSync, writeFileSync } from 'node:fs';
-const path = new URL('../package.json', import.meta.url);
+const path = 'package.json';
 const pkg = JSON.parse(readFileSync(path, 'utf8'));
 pkg.version = process.env.VERSION_TO_WRITE;
 writeFileSync(path, `${JSON.stringify(pkg, null, 2)}\n`);
 NODE
   PACKAGE_CHANGED=1
+}
+
+validate_compose_files() {
+  local validation_secret validation_password
+  validation_secret="${SESSION_SECRET:-release-validation-session-secret-at-least-32-characters}"
+  validation_password="${ADMIN_PASSWORD:-release-validation-admin-password}"
+  run env \
+    SESSION_SECRET="$validation_secret" \
+    ADMIN_PASSWORD="$validation_password" \
+    NOWEN_BLOG_VERSION="latest" \
+    docker compose config --quiet
+  run env \
+    SESSION_SECRET="$validation_secret" \
+    ADMIN_PASSWORD="$validation_password" \
+    NOWEN_BLOG_VERSION="latest" \
+    docker compose -f docker-compose.release.yml config --quiet
 }
 
 ensure_builder() {
@@ -350,6 +372,7 @@ docker info >/dev/null 2>&1 || die "Docker daemon 未运行"
 docker buildx version >/dev/null 2>&1 || die "当前 Docker 不支持 buildx"
 [ -f package.json ] || die "请在 nowen-blog 仓库中运行脚本"
 [ -f docker-bake.hcl ] || die "缺少 docker-bake.hcl"
+[ -f docker-compose.release.yml ] || die "缺少 docker-compose.release.yml"
 
 CURRENT_BRANCH="$(git branch --show-current)"
 [ "$CURRENT_BRANCH" = "$DEFAULT_BRANCH" ] || die "请切换到 $DEFAULT_BRANCH 分支后发布，当前为 ${CURRENT_BRANCH:-detached}"
@@ -415,7 +438,7 @@ if [ "$SKIP_CHECKS" = "0" ]; then
   run pnpm install --frozen-lockfile
   run pnpm typecheck
   run pnpm test
-  run docker compose config --quiet
+  validate_compose_files
 else
   warn "已跳过质量检查"
 fi
@@ -465,7 +488,9 @@ if [ "$DO_GIT_TAG" = "1" ]; then
   fi
 fi
 
-if [ "$DO_GIT_PUSH" = "0" ] && [ "$GITHUB_RELEASE_MODE" != "off" ]; then
+if [ "$DO_GIT_TAG" = "0" ] && [ "$GITHUB_RELEASE_MODE" != "off" ]; then
+  warn "未创建 Git Tag，自动跳过 GitHub Release"
+elif [ "$DO_GIT_PUSH" = "0" ] && [ "$GITHUB_RELEASE_MODE" != "off" ]; then
   warn "未推送 Git Tag，自动跳过 GitHub Release"
 else
   step "创建 GitHub Release"

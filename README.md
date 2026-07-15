@@ -20,6 +20,7 @@ packages/shared     通用类型
 packages/config     共享 TypeScript 配置
 apps/server/drizzle 数据库迁移
 scripts/ops         生产验收和备份工具
+scripts/release-docker.sh  Docker 一键发版
 tests/e2e           Playwright 浏览器测试
 data/               SQLite 数据库和上传文件
 ```
@@ -180,7 +181,9 @@ pnpm exec playwright install chromium
 - 后台手动创建完整流程；
 - 生产构建、静态预渲染、备份和恢复。
 
-## Docker Compose 部署
+## Docker Compose 本地构建部署
+
+适合开发者或需要修改源码的部署：
 
 ```bash
 cp .env.example .env
@@ -201,11 +204,108 @@ pnpm ops:verify-production -- --base-url http://127.0.0.1:8080 --allow-http
 - SPA 路由回退；
 - 宿主机备份目录。
 
+## Docker 已发布镜像部署
+
+适合 NAS、服务器和不希望本机编译源码的用户。发布版由两张同版本镜像组成：
+
+```text
+cropflre/nowen-blog-api:vX.Y.Z
+cropflre/nowen-blog-web:vX.Y.Z
+```
+
+首次部署：
+
+```bash
+cp .env.example .env
+# 必须修改 SESSION_SECRET、ADMIN_PASSWORD 和 BASE_URL
+
+docker compose -f docker-compose.release.yml pull
+docker compose -f docker-compose.release.yml up -d
+docker compose -f docker-compose.release.yml ps
+```
+
+`.env` 默认使用 `latest`。生产环境建议固定版本：
+
+```env
+NOWEN_BLOG_VERSION=v0.2.0
+```
+
+升级固定版本：
+
+```bash
+# 修改 .env 中的 NOWEN_BLOG_VERSION
+docker compose -f docker-compose.release.yml pull
+docker compose -f docker-compose.release.yml up -d
+```
+
+数据保存在具名卷 `nowen-blog-data` 中，更新镜像不会删除数据。不要执行带 `--volumes` 的 down 命令，除非明确需要删除全部数据。
+
+## Docker 一键发版
+
+发版机需要：
+
+- Git、Node.js 20+、pnpm；
+- Docker 与 Buildx；
+- 已执行 `docker login`；
+- 能向 `cropflre/nowen-blog` 推送代码和 Tag；
+- 可选：已登录的 `gh` CLI，用于自动创建 GitHub Release。
+
+最简单的发布方式：
+
+```bash
+git checkout main
+git pull
+pnpm release:docker
+```
+
+脚本会自动：
+
+1. 检查 main 分支和干净工作区；
+2. 参考 package.json、本地/远端 Git Tag 和 Docker Hub Tag 建议下一版本；
+3. 更新 package.json；
+4. 执行冻结依赖安装、类型检查、测试和 Compose 校验；
+5. 先完整构建 API 与 Web 两张镜像；
+6. 两张都成功后推送 `vX.Y.Z` 和 `latest`；
+7. 推送 release commit 和 Git Tag；
+8. 在 gh 可用时创建 GitHub Release。
+
+常用命令：
+
+```bash
+# 交互式发布 amd64
+pnpm release:docker
+
+# 指定版本并跳过确认
+pnpm release:docker -- -v 0.2.0 -y
+
+# 同时发布 amd64 + arm64
+pnpm release:docker -- -v 0.2.0 --arch multi -y
+
+# 预发布版本默认不会覆盖 latest
+pnpm release:docker -- -v 0.2.0-rc.1
+
+# 只查看执行计划
+pnpm release:docker -- -v 0.2.0 --dry-run
+```
+
+完整参数：
+
+```bash
+pnpm release:docker -- --help
+```
+
 ### 备份和恢复演练
 
 ```bash
 docker compose exec -T api pnpm --filter @blog/server ops:backup
 docker compose exec -T api pnpm --filter @blog/server ops:rehearse-backup
+```
+
+使用已发布镜像时，把 Compose 文件替换为：
+
+```bash
+docker compose -f docker-compose.release.yml exec -T api pnpm --filter @blog/server ops:backup
+docker compose -f docker-compose.release.yml exec -T api pnpm --filter @blog/server ops:rehearse-backup
 ```
 
 ## 主要入口

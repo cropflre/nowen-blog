@@ -15,7 +15,7 @@
     "prerender": "pnpm --filter @blog/server prerender",
     "db:migrate": "pnpm --filter @blog/server db:migrate",
     "db:bootstrap": "pnpm --filter @blog/server db:bootstrap",
-    "test": "bash scripts/release-docker-entry.test.sh && bash scripts/release-docker-validation.test.sh && pnpm --filter @blog/server test",
+    "test": "bash scripts/release-docker-entry.test.sh && bash scripts/release-docker-validation.test.sh && bash scripts/release-docker-quick.test.sh && pnpm --filter @blog/server test",
     "test:unit": "pnpm --filter @blog/server test:unit",
     "test:integration": "pnpm --filter @blog/server test:integration",
     "test:e2e": "playwright test",

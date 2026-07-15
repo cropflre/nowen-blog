@@ -87,6 +87,7 @@ usage() {
 用法: scripts/release-docker.sh [选项]
 
 发布选项:
+      （无参数）           启动快速向导：自动版本、multi 架构、latest、Git Tag 和 GitHub Release
   -v, --version VERSION     指定版本，例如 1.0.5 或 v1.0.5
   -y, --yes                 跳过交互确认；未指定版本时采用自动建议版本
       --arch ARCH           amd64（默认）/ arm64 / multi
@@ -109,12 +110,13 @@ usage() {
   -h, --help                显示帮助
 
 示例:
-  pnpm release:docker
+  pnpm release:docker                              # 快速发布 amd64 + arm64，只确认一次
   pnpm release:docker -- -v 1.0.5 -y
   pnpm release:docker -- -v 1.0.5 --arch multi -y
   pnpm release:docker -- -v 1.0.5-rc.1
   pnpm release:docker -- -v 1.0.5 --no-github-release
   pnpm release:docker -- -v 1.0.5 --dry-run
+  pnpm release:docker -- --resume -v 1.0.5
 
 发布后的部署方式:
   NOWEN_BLOG_VERSION=v1.0.5 docker compose -f docker-compose.release.yml pull

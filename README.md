@@ -276,7 +276,7 @@ docker compose -f docker-compose.release.yml up -d
 - Docker 与 Buildx；
 - 已执行 `docker login`；
 - 能向 `cropflre/nowen-blog` 推送代码和 Tag；
-- 可选：已登录的 `gh` CLI，用于自动创建 GitHub Release。
+- 已安装并登录 `gh` CLI，用于创建 GitHub Release。
 
 最简单的发布方式：
 
@@ -286,25 +286,29 @@ git pull
 pnpm release:docker
 ```
 
+无参数运行会进入快速向导。脚本自动建议版本，默认构建并发布 `amd64 + arm64` 多架构镜像，同步 `vX.Y.Z` 与 `latest`，推送 release commit 和 Git Tag，并创建 GitHub Release。全部检查结束后只需确认一次。
+
 脚本会自动：
 
-1. 检查 main 分支和干净工作区；
-2. 在修改版本前执行 GitHub 推送权限预检；
+1. 检查 main 分支、干净工作区、Docker Hub 登录、GitHub CLI 登录和推送权限；
+2. 在修改版本前完成所有只读预检；
 3. 参考 package.json、本地/远端 Git Tag 和 `cropflre/nowen-blog` Docker Hub Tag 建议下一版本；
 4. 更新 package.json；
 5. 执行冻结依赖安装、类型检查、测试和 Compose 校验；
-6. 预构建包含前端、API、Nginx 的单体镜像；
-7. 构建成功后推送 `vX.Y.Z` 和 `latest`；
-8. 推送 release commit 和 Git Tag；
-9. 在 gh 可用时创建 GitHub Release。
+6. 预构建包含前端、API、Nginx 的多架构单体镜像；
+7. 构建成功后依次推送 Docker 镜像、release commit、Git Tag 和 GitHub Release；
+8. 发布前失败时自动恢复 package.json 和本地 release commit；
+9. 发布中断时保留非敏感状态，并输出一条续传命令。
+
+Compose 校验使用的临时占位密钥只存在于校验子进程，不会写入 `.env`、镜像或日志。服务器实际部署仍必须配置强随机 `SESSION_SECRET` 和 `ADMIN_PASSWORD`。
 
 常用命令：
 
 ```bash
-# 交互式发布 amd64
+# 推荐：快速发布 amd64 + arm64，只确认一次
 pnpm release:docker
 
-# 指定版本并跳过确认
+# 高级模式：指定版本和架构并跳过确认
 pnpm release:docker -- -v 1.0.5 -y
 
 # 同时发布 amd64 + arm64
@@ -315,7 +319,12 @@ pnpm release:docker -- -v 1.0.5-rc.1
 
 # 只查看执行计划
 pnpm release:docker -- -v 1.0.5 --dry-run
+
+# 发布中断后自动检测远端状态，只补齐缺失产物
+pnpm release:docker -- --resume -v 1.0.5
 ```
+
+`--resume` 会检查 Docker Tag、远端 release commit、Git Tag 和 GitHub Release。已经正确存在的产物会跳过；同名 Tag 指向其他 commit 时会停止，不会覆盖。
 
 完整参数：
 

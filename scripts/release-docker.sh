@@ -263,7 +263,9 @@ cleanup() {
   trap - EXIT INT TERM
   if [ "$status" -ne 0 ] && [ "$RELEASE_SUCCEEDED" = "0" ]; then
     if [ "$PUBLISH_STARTED" = "0" ]; then
-      rollback_local_release || true
+      if [ "$PACKAGE_CHANGED" = "1" ] || [ "$LOCAL_RELEASE_CREATED" = "1" ]; then
+        rollback_local_release || true
+      fi
     else
       print_resume_hint
     fi
@@ -528,6 +530,24 @@ github_release_exists() {
     && gh release view "v$VERSION" --repo "$GITHUB_REPO_SLUG" >/dev/null 2>&1
 }
 
+docker_hub_login_available() {
+  local config_file="${DOCKER_CONFIG:-$HOME/.docker}/config.json"
+  [ -f "$config_file" ] || return 1
+  DOCKER_CONFIG_FILE="$config_file" node --input-type=module <<'NODE'
+import { readFileSync } from 'node:fs';
+
+try {
+  const config = JSON.parse(readFileSync(process.env.DOCKER_CONFIG_FILE, 'utf8'));
+  const dockerHub = /(^|\.)docker\.io$|index\.docker\.io|registry-1\.docker\.io/;
+  const auths = Object.keys(config.auths || {}).some((key) => dockerHub.test(key.replace(/^https?:\/\//, '').replace(/\/.*$/, '')));
+  const helpers = Object.keys(config.credHelpers || {}).some((key) => dockerHub.test(key));
+  process.exit(auths || helpers || Boolean(config.credsStore) ? 0 : 1);
+} catch {
+  process.exit(1);
+}
+NODE
+}
+
 resume_release() {
   local tag_target local_target
   [ -n "$RELEASE_SHA" ] || die "无法确定 release commit，请使用原发布工作区续传"
@@ -618,6 +638,18 @@ if [ "$DRY_RUN" = "0" ]; then
   docker info >/dev/null 2>&1 || die "Docker daemon 未运行"
 fi
 docker buildx version >/dev/null 2>&1 || die "当前 Docker 不支持 buildx"
+if [ "$QUICK_MODE" = "1" ] && is_docker_hub_repository "$IMAGE"; then
+  docker_hub_login_available \
+    || die "未检测到 Docker Hub 登录凭据，请先执行 docker login"
+  ok "Docker Hub 登录凭据可用"
+fi
+[ "$GITHUB_RELEASE_MODE" != "on" ] || command -v gh >/dev/null 2>&1 \
+  || die "快速发布需要 GitHub CLI，请安装 gh 后运行 gh auth login"
+if [ "$GITHUB_RELEASE_MODE" = "on" ]; then
+  gh auth status >/dev/null 2>&1 \
+    || die "GitHub CLI 尚未登录，请先执行 gh auth login"
+  ok "GitHub CLI 已登录"
+fi
 [ -f package.json ] || die "请在 nowen-blog 仓库中运行脚本"
 [ -f docker-bake.hcl ] || die "缺少 docker-bake.hcl"
 

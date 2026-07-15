@@ -186,7 +186,7 @@ require_command() {
 
 is_official_repository_url() {
   case "$1" in
-    git@github.com:cropflre/nowen-blog.git|https://github.com/cropflre/nowen-blog|https://github.com/cropflre/nowen-blog.git|ssh://git@github.com/cropflre/nowen-blog.git) return 0 ;;
+    git@github.com:cropflre/nowen-blog.git|https://github.com/cropflre/nowen-blog|https://github.com/cropflre/nowen-blog.git|ssh://git@github.com/cropflre/nowen-blog.git|ssh://git@ssh.github.com:443/cropflre/nowen-blog.git) return 0 ;;
     *) return 1 ;;
   esac
 }

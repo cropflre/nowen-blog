@@ -158,6 +158,17 @@ prepare_case() {
   : >"$CALL_LOG"
   printf 'original-head' >"$HEAD_FILE"
   cp "$ROOT_DIR/package.json" "$TEST_ROOT/package.json"
+  PACKAGE_FILE="$TEST_ROOT/package.json" node --input-type=module <<'NODE'
+import { readFileSync, writeFileSync } from 'node:fs';
+
+const pkg = JSON.parse(readFileSync(process.env.PACKAGE_FILE, 'utf8'));
+pkg.version = '1.0.4';
+writeFileSync(
+  process.env.PACKAGE_FILE,
+  `${JSON.stringify(pkg, null, 2)}\n`,
+  'utf8',
+);
+NODE
   cp "$ROOT_DIR/docker-bake.hcl" "$TEST_ROOT/docker-bake.hcl"
   cp "$ROOT_DIR/docker-compose.yml" "$TEST_ROOT/docker-compose.yml"
   cp "$ROOT_DIR/docker-compose.release.yml" "$TEST_ROOT/docker-compose.release.yml"

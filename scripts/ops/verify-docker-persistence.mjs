@@ -29,10 +29,13 @@ function dockerCompose(...command) {
   if (result.status !== 0) throw new Error(`docker compose ${command.join(' ')} 执行失败`);
 }
 
-async function waitForApi() {
+async function waitForApplication() {
   await waitFor(async () => {
-    const response = await fetch(`${baseUrl}/api/site-settings`, { signal: AbortSignal.timeout(5_000) });
-    return response.ok;
+    const [apiResponse, webResponse] = await Promise.all([
+      fetch(`${baseUrl}/api/site-settings`, { signal: AbortSignal.timeout(5_000) }),
+      fetch(`${baseUrl}/healthz`, { signal: AbortSignal.timeout(5_000) }),
+    ]);
+    return apiResponse.ok && webResponse.ok;
   });
 }
 
@@ -59,12 +62,12 @@ try {
   projectId = created.body?.id;
   if (!projectId) throw new Error('临时项目创建成功但缺少 id');
 
-  dockerCompose('restart', 'api');
-  await waitForApi();
+  dockerCompose('restart', 'blog');
+  await waitForApplication();
 
   const publicProjects = await requestJson(`${baseUrl}/api/projects?limit=100`);
   const persisted = publicProjects.body?.items?.some((item) => item.id === projectId && item.slug === slug);
-  if (!persisted) throw new Error('API 容器重启后临时项目不存在，持久化卷验收失败');
+  if (!persisted) throw new Error('单体容器重启后临时项目不存在，持久化卷验收失败');
 
   await requestJson(
     `${baseUrl}/api/admin/projects/${encodeURIComponent(projectId)}`,
@@ -73,13 +76,17 @@ try {
   );
   projectId = undefined;
 
-  dockerCompose('restart', 'web');
-  await waitFor(async () => {
-    const response = await fetch(`${baseUrl}/healthz`, { signal: AbortSignal.timeout(5_000) });
-    return response.ok;
-  });
-
-  console.log(JSON.stringify({ ok: true, baseUrl, verified: ['api restart persistence', 'web restart health'] }, null, 2));
+  console.log(
+    JSON.stringify(
+      {
+        ok: true,
+        baseUrl,
+        verified: ['single container restart persistence', 'nginx health', 'api health'],
+      },
+      null,
+      2,
+    ),
+  );
 } finally {
   if (projectId && cookie) {
     try {

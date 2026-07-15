@@ -324,7 +324,7 @@ pnpm release:docker -- -v 1.0.5 --dry-run
 pnpm release:docker -- --resume -v 1.0.5
 ```
 
-`--resume` 会检查 Docker Tag、远端 release commit、Git Tag 和 GitHub Release。已经正确存在的产物会跳过；同名 Tag 指向其他 commit 时会停止，不会覆盖。
+`--resume` 会检查 Docker Tag、镜像 OCI revision、远端 release commit、Git Tag 和 GitHub Release。已经正确存在的产物会跳过；`latest` 缺失或仍指向旧提交时只补推 `latest`，不会覆盖正确的 `vX.Y.Z`；不可变版本 Tag 的 revision 或 Git Tag 指向其他 commit 时会停止，不会覆盖。发布状态使用原子写入，并保留 draft、prerelease 和 Release notes 等续传语义。
 
 完整参数：
 

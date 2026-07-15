@@ -63,6 +63,7 @@ DOCKER_PUBLISHED=0
 GIT_COMMIT_PUBLISHED=0
 GIT_TAG_PUBLISHED=0
 GITHUB_RELEASE_PUBLISHED=0
+PRESERVE_PACKAGE_BACKUP=0
 
 if [ -t 1 ] && command -v tput >/dev/null 2>&1 && [ "$(tput colors 2>/dev/null || echo 0)" -ge 8 ]; then
   C_RED="$(tput setaf 1)"
@@ -196,12 +197,15 @@ write_release_state() {
   STATE_GIT_PUSH="$DO_GIT_PUSH" \
   STATE_GIT_TAG_ENABLED="$DO_GIT_TAG" \
   STATE_GITHUB_MODE="$GITHUB_RELEASE_MODE" \
+  STATE_RELEASE_DRAFT="$RELEASE_DRAFT" \
+  STATE_RELEASE_PRERELEASE="$RELEASE_PRERELEASE" \
+  STATE_RELEASE_NOTES="$RELEASE_NOTES" \
   STATE_DOCKER="$DOCKER_PUBLISHED" \
   STATE_GIT_COMMIT="$GIT_COMMIT_PUBLISHED" \
   STATE_GIT_TAG="$GIT_TAG_PUBLISHED" \
   STATE_GITHUB_RELEASE="$GITHUB_RELEASE_PUBLISHED" \
     node --input-type=module <<'NODE'
-import { writeFileSync } from 'node:fs';
+import { renameSync, rmSync, writeFileSync } from 'node:fs';
 
 const bool = (value) => value === '1';
 const state = {
@@ -217,6 +221,12 @@ const state = {
     gitTag: bool(process.env.STATE_GIT_TAG_ENABLED),
     githubRelease: process.env.STATE_GITHUB_MODE !== 'off',
   },
+  github: {
+    mode: process.env.STATE_GITHUB_MODE,
+    draft: bool(process.env.STATE_RELEASE_DRAFT),
+    prerelease: bool(process.env.STATE_RELEASE_PRERELEASE),
+    notes: process.env.STATE_RELEASE_NOTES || '',
+  },
   completed: {
     docker: bool(process.env.STATE_DOCKER),
     gitCommit: bool(process.env.STATE_GIT_COMMIT),
@@ -224,7 +234,13 @@ const state = {
     githubRelease: bool(process.env.STATE_GITHUB_RELEASE),
   },
 };
-writeFileSync(process.env.STATE_FILE, `${JSON.stringify(state, null, 2)}\n`, 'utf8');
+const temporaryFile = `${process.env.STATE_FILE}.${process.pid}.tmp`;
+try {
+  writeFileSync(temporaryFile, `${JSON.stringify(state, null, 2)}\n`, { encoding: 'utf8', mode: 0o600 });
+  renameSync(temporaryFile, process.env.STATE_FILE);
+} finally {
+  rmSync(temporaryFile, { force: true });
+}
 NODE
 }
 
@@ -245,14 +261,33 @@ rollback_local_release() {
   if [ "$LOCAL_RELEASE_CREATED" = "1" ] && [ -n "$ORIGINAL_HEAD" ] && [ -n "$RELEASE_SHA" ]; then
     current_head="$(git rev-parse HEAD 2>/dev/null || true)"
     if [ "$current_head" = "$RELEASE_SHA" ]; then
-      git reset --mixed "$ORIGINAL_HEAD" >/dev/null
+      if ! git reset --mixed "$ORIGINAL_HEAD" >/dev/null; then
+        PRESERVE_PACKAGE_BACKUP=1
+        warn "自动恢复失败：无法撤销 release commit，已保留状态和 package.json 备份"
+        warn "请手动运行：git reset --mixed $ORIGINAL_HEAD"
+        return 1
+      fi
     else
+      PRESERVE_PACKAGE_BACKUP=1
       warn "当前 HEAD 已变化，未自动撤销 release commit"
+      warn "请确认提交历史后手动恢复；发布状态和 package.json 备份已保留"
+      return 1
+    fi
+  elif [ "$PACKAGE_CHANGED" = "1" ]; then
+    if ! git reset -- package.json >/dev/null; then
+      PRESERVE_PACKAGE_BACKUP=1
+      warn "自动恢复失败：无法取消暂存 package.json，已保留状态和备份"
+      warn "请手动运行：git reset -- package.json"
       return 1
     fi
   fi
   if [ "$PACKAGE_CHANGED" = "1" ] && [ -n "$PACKAGE_BACKUP" ] && [ -f "$PACKAGE_BACKUP" ]; then
-    cp "$PACKAGE_BACKUP" package.json
+    if ! cp "$PACKAGE_BACKUP" package.json; then
+      PRESERVE_PACKAGE_BACKUP=1
+      warn "自动恢复失败：无法恢复 package.json，已保留状态和备份"
+      warn "请手动运行：cp $PACKAGE_BACKUP package.json"
+      return 1
+    fi
   fi
   PACKAGE_CHANGED=0
   LOCAL_RELEASE_CREATED=0
@@ -272,7 +307,7 @@ cleanup() {
       print_resume_hint
     fi
   fi
-  if [ -n "$PACKAGE_BACKUP" ] && [ -f "$PACKAGE_BACKUP" ]; then
+  if [ "$PRESERVE_PACKAGE_BACKUP" = "0" ] && [ -n "$PACKAGE_BACKUP" ] && [ -f "$PACKAGE_BACKUP" ]; then
     rm -f "$PACKAGE_BACKUP"
   fi
 }
@@ -340,7 +375,47 @@ docker_tag_exists() {
   command -v curl >/dev/null 2>&1 || return 1
   code="$(curl -sS --max-time 8 -o /dev/null -w '%{http_code}' \
     "https://hub.docker.com/v2/repositories/${repository}/tags/${tag}" 2>/dev/null || true)"
-  [ "$code" = "200" ]
+  case "$code" in
+    200) return 0 ;;
+    404) return 1 ;;
+    ""|000) die "无法确认 Docker Hub Tag ${repository}:${tag} 的状态：网络请求失败" ;;
+    *) die "无法确认 Docker Hub Tag ${repository}:${tag} 的状态：HTTP $code" ;;
+  esac
+}
+
+docker_tag_matches_release() {
+  local tag="$1" reference raw digests target labels revisions revision
+  reference="${IMAGE}:${tag}"
+  if ! raw="$(docker buildx imagetools inspect "$reference" --raw 2>/dev/null)"; then
+    die "无法读取 Docker 镜像清单：$reference"
+  fi
+  digests="$(printf '%s' "$raw" | node -e "let b='';process.stdin.on('data',c=>b+=c).on('end',()=>{try{for(const m of JSON.parse(b).manifests||[]){const attestation=m.annotations?.['vnd.docker.reference.type']==='attestation-manifest'||m.platform?.os==='unknown';if(m.digest&&!attestation)console.log(m.digest)}}catch{process.exit(1)}})" 2>/dev/null)" \
+    || die "Docker 镜像清单格式无效：$reference"
+
+  if [ -z "$digests" ]; then
+    digests="__single_manifest__"
+  fi
+  revisions=""
+  while IFS= read -r target; do
+    [ -n "$target" ] || continue
+    if [ "$target" = "__single_manifest__" ]; then
+      target="$reference"
+    else
+      target="${IMAGE}@${target}"
+    fi
+    if ! labels="$(docker buildx imagetools inspect "$target" --format '{{json .Image.Config.Labels}}' 2>/dev/null)"; then
+      die "无法读取 Docker 镜像标签：$target"
+    fi
+    revision="$(printf '%s' "$labels" | node -e "let b='';process.stdin.on('data',c=>b+=c).on('end',()=>{try{process.stdout.write(String(JSON.parse(b)?.['org.opencontainers.image.revision']||''))}catch{process.exit(1)}})" 2>/dev/null)" \
+      || die "Docker 镜像标签格式无效：$target"
+    [ -n "$revision" ] || return 1
+    revisions="${revisions}${revision}"$'\n'
+  done <<<"$digests"
+
+  while IFS= read -r revision; do
+    [ -z "$revision" ] || [ "$revision" = "$RELEASE_SHA" ] || return 1
+  done <<<"$revisions"
+  return 0
 }
 
 set_package_version() {
@@ -409,10 +484,16 @@ ensure_builder() {
 
 run_bake() {
   local mode="$1"
-  local image_tags="${IMAGE}:v${VERSION}"
-  if [ "$DO_LATEST" = "1" ]; then
-    image_tags="${image_tags},${IMAGE}:latest"
-  fi
+  local tag_scope="${2:-all}" image_tags
+  case "$tag_scope" in
+    all)
+      image_tags="${IMAGE}:v${VERSION}"
+      [ "$DO_LATEST" = "1" ] && image_tags="${image_tags},${IMAGE}:latest"
+      ;;
+    version) image_tags="${IMAGE}:v${VERSION}" ;;
+    latest) image_tags="${IMAGE}:latest" ;;
+    *) die "未知 Docker Tag 发布范围: $tag_scope" ;;
+  esac
 
   local args=(docker buildx bake -f docker-bake.hcl release --builder "$BUILDX_BUILDER")
   if [ "$mode" = "push" ]; then
@@ -482,9 +563,78 @@ else if (value !== undefined && value !== null) process.stdout.write(String(valu
 NODE
 }
 
+validate_release_state_file() {
+  local error
+  if ! error="$(STATE_FILE="$STATE_FILE" node --input-type=module <<'NODE'
+import { readFileSync } from 'node:fs';
+
+try {
+  const state = JSON.parse(readFileSync(process.env.STATE_FILE, 'utf8'));
+  const requiredString = (key) => typeof state[key] === 'string' && state[key].length > 0;
+  if (state.schemaVersion !== 1) throw new Error('状态文件格式版本不受支持');
+  if (!requiredString('version') || !/^\d+\.\d+\.\d+(?:-[0-9A-Za-z][0-9A-Za-z.-]*)?$/.test(state.version)) {
+    throw new Error('状态文件中的版本号无效');
+  }
+  if (!requiredString('image') || !/^[A-Za-z0-9._/-]+$/.test(state.image)) throw new Error('状态文件中的镜像名无效');
+  if (!['amd64', 'arm64', 'multi'].includes(state.arch)) throw new Error('状态文件中的架构无效');
+  if (typeof state.latest !== 'boolean') throw new Error('状态文件中的 latest 标记无效');
+  if (!requiredString('releaseSha') || !/^[A-Za-z0-9._-]+$/.test(state.releaseSha)) throw new Error('状态文件中的 release SHA 无效');
+  if (!requiredString('originalHead') || !/^[A-Za-z0-9._-]+$/.test(state.originalHead)) throw new Error('状态文件中的原始 SHA 无效');
+  const booleanFields = (value, keys) => value && keys.every((key) => typeof value[key] === 'boolean');
+  if (!booleanFields(state.completed, ['docker', 'gitCommit', 'gitTag', 'githubRelease'])) throw new Error('状态文件中的完成标记无效');
+  if (state.enabled !== undefined && !booleanFields(state.enabled, ['gitPush', 'gitTag', 'githubRelease'])) throw new Error('状态文件中的启用标记无效');
+  if (state.github?.mode !== undefined && !['auto', 'on', 'off'].includes(state.github.mode)) throw new Error('状态文件中的 GitHub Release 模式无效');
+  if (state.github?.draft !== undefined && typeof state.github.draft !== 'boolean') throw new Error('状态文件中的 draft 标记无效');
+  if (state.github?.prerelease !== undefined && typeof state.github.prerelease !== 'boolean') throw new Error('状态文件中的 prerelease 标记无效');
+  if (state.github?.notes !== undefined && typeof state.github.notes !== 'string') throw new Error('状态文件中的 Release notes 无效');
+} catch (caught) {
+  process.stdout.write(caught instanceof Error ? caught.message : '状态文件无效');
+  process.exit(1);
+}
+NODE
+)"; then
+    die "无法读取发布状态：$error"
+  fi
+}
+
+validate_inferred_release_commit() {
+  local current_version subject changed_files
+  current_version="$(package_version)"
+  [ "$current_version" = "$VERSION" ] \
+    || die "无法安全推断 release commit：package.json 版本为 $current_version，目标为 $VERSION"
+
+  subject="$(git log -1 --format=%s "$RELEASE_SHA" 2>/dev/null || true)"
+  [ "$subject" = "chore(release): v$VERSION" ] \
+    || die "无法安全推断 release commit：当前提交标题不是 chore(release): v$VERSION"
+
+  changed_files="$(git diff-tree --no-commit-id --name-only -r "$RELEASE_SHA" 2>/dev/null || true)"
+  [ "$changed_files" = "package.json" ] \
+    || die "无法安全推断 release commit：当前提交不只包含 package.json 版本变更"
+
+  RELEASE_SHA="$RELEASE_SHA" RELEASE_VERSION="$VERSION" node --input-type=module <<'NODE' \
+    || die "无法安全推断 release commit：package.json 除 version 外还包含其他变更"
+import { execFileSync } from 'node:child_process';
+
+const sha = process.env.RELEASE_SHA;
+const parseAt = (revision) => JSON.parse(execFileSync('git', ['show', `${revision}:package.json`], { encoding: 'utf8' }));
+
+try {
+  const previous = parseAt(`${sha}^`);
+  const current = parseAt(sha);
+  if (current.version !== process.env.RELEASE_VERSION) process.exit(1);
+  delete previous.version;
+  delete current.version;
+  process.exit(JSON.stringify(previous) === JSON.stringify(current) ? 0 : 1);
+} catch {
+  process.exit(1);
+}
+NODE
+}
+
 load_release_state() {
   local requested_version="$VERSION" state_version value
   if [ -f "$STATE_FILE" ]; then
+    validate_release_state_file
     state_version="$(read_release_state_field version)"
     if [ -n "$requested_version" ] && [ "$(normalize_version "$requested_version")" != "$state_version" ]; then
       die "续传版本与状态文件不一致：请求 $requested_version，状态为 $state_version"
@@ -497,12 +647,24 @@ load_release_state() {
     ORIGINAL_HEAD="$(read_release_state_field originalHead)"
     value="$(read_release_state_field enabled.gitPush)"; [ -n "$value" ] && DO_GIT_PUSH="$value"
     value="$(read_release_state_field enabled.gitTag)"; [ -n "$value" ] && DO_GIT_TAG="$value"
-    value="$(read_release_state_field enabled.githubRelease)"
-    if [ "$value" = "1" ]; then GITHUB_RELEASE_MODE="on"; elif [ "$value" = "0" ]; then GITHUB_RELEASE_MODE="off"; fi
+    value="$(read_release_state_field github.mode)"
+    if [ -n "$value" ]; then
+      GITHUB_RELEASE_MODE="$value"
+    else
+      value="$(read_release_state_field enabled.githubRelease)"
+      if [ "$value" = "1" ]; then GITHUB_RELEASE_MODE="on"; elif [ "$value" = "0" ]; then GITHUB_RELEASE_MODE="off"; fi
+    fi
+    value="$(read_release_state_field github.draft)"; [ -n "$value" ] && RELEASE_DRAFT="$value"
+    value="$(read_release_state_field github.prerelease)"; [ -n "$value" ] && RELEASE_PRERELEASE="$value"
+    RELEASE_NOTES="$(read_release_state_field github.notes)"
+    RELEASE_NOTES_FILE=""
   else
-    VERSION="${VERSION:-$(package_version)}"
+    VERSION="$(normalize_version "${VERSION:-$(package_version)}")"
+    validate_version "$VERSION" \
+      || die "无法安全推断 release commit：版本号格式错误 $VERSION"
     RELEASE_SHA="$(git rev-parse HEAD)"
     ORIGINAL_HEAD="$(git rev-parse HEAD^ 2>/dev/null || true)"
+    validate_inferred_release_commit
     [ "$GITHUB_RELEASE_MODE" = "auto" ] && GITHUB_RELEASE_MODE="on"
   fi
 
@@ -536,14 +698,45 @@ docker_hub_login_available() {
   local config_file="${DOCKER_CONFIG:-$HOME/.docker}/config.json"
   [ -f "$config_file" ] || return 1
   DOCKER_CONFIG_FILE="$config_file" node --input-type=module <<'NODE'
+import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 
 try {
   const config = JSON.parse(readFileSync(process.env.DOCKER_CONFIG_FILE, 'utf8'));
   const dockerHub = /(^|\.)docker\.io$|index\.docker\.io|registry-1\.docker\.io/;
-  const auths = Object.keys(config.auths || {}).some((key) => dockerHub.test(key.replace(/^https?:\/\//, '').replace(/\/.*$/, '')));
-  const helpers = Object.keys(config.credHelpers || {}).some((key) => dockerHub.test(key));
-  process.exit(auths || helpers || Boolean(config.credsStore) ? 0 : 1);
+  const normalize = (key) => key.replace(/^https?:\/\//, '').replace(/\/.*$/, '');
+  const servers = [...new Set([
+    'https://index.docker.io/v1/',
+    'index.docker.io',
+    'registry-1.docker.io',
+    ...Object.keys(config.auths || {}),
+    ...Object.keys(config.credHelpers || {}),
+  ].filter((key) => dockerHub.test(normalize(key))))];
+
+  for (const server of servers) {
+    const encoded = config.auths?.[server]?.auth;
+    if (typeof encoded === 'string') {
+      const decoded = Buffer.from(encoded, 'base64').toString('utf8');
+      const separator = decoded.indexOf(':');
+      if (separator > 0 && decoded.slice(separator + 1).length > 0) process.exit(0);
+    }
+
+    const helper = config.credHelpers?.[server] || config.credsStore;
+    if (!helper) continue;
+    for (const executable of [`docker-credential-${helper}`, `docker-credential-${helper}.exe`]) {
+      try {
+        const value = JSON.parse(execFileSync(executable, ['get'], {
+          input: `${server}\n`,
+          encoding: 'utf8',
+          stdio: ['pipe', 'pipe', 'ignore'],
+        }));
+        if (value?.Username && value?.Secret) process.exit(0);
+      } catch {
+        // 尝试下一个凭据助手名称。
+      }
+    }
+  }
+  process.exit(1);
 } catch {
   process.exit(1);
 }
@@ -559,8 +752,15 @@ require_github_auth() {
   ok "GitHub CLI 已登录"
 }
 
+require_release_head() {
+  local current_head
+  current_head="$(git rev-parse HEAD)"
+  [ "$current_head" = "$RELEASE_SHA" ] \
+    || die "当前 HEAD 为 $current_head，与待续传的 release commit $RELEASE_SHA 不一致，请切回原发布提交后重试"
+}
+
 resume_release() {
-  local tag_target local_target current_head
+  local tag_target local_target version_exists=0 latest_matches=1 tag_scope="all"
   [ -n "$RELEASE_SHA" ] || die "无法确定 release commit，请使用原发布工作区续传"
   PHASE="publish"
   PUBLISH_STARTED=1
@@ -569,13 +769,41 @@ resume_release() {
 
   step "检查并续传 Docker 镜像"
   if docker_tag_exists "$IMAGE" "v$VERSION"; then
+    version_exists=1
+    docker_tag_matches_release "v$VERSION" \
+      || die "Docker 版本镜像 revision 冲突：${IMAGE}:v${VERSION} 不属于 release commit $RELEASE_SHA"
+  fi
+  if [ "$DO_LATEST" = "1" ]; then
+    if docker_tag_exists "$IMAGE" latest && docker_tag_matches_release latest; then
+      latest_matches=1
+    else
+      latest_matches=0
+    fi
+  fi
+
+  if [ "$version_exists" = "1" ] && [ "$latest_matches" = "1" ]; then
     DOCKER_PUBLISHED=1
-    ok "Docker ${IMAGE}:v${VERSION} 已存在，跳过"
+    ok "Docker ${IMAGE}:v${VERSION}$([ "$DO_LATEST" = "1" ] && printf ' 与 latest') 已存在，跳过"
   else
+    require_release_head
+    if [ "$DRY_RUN" = "0" ] && is_docker_hub_repository "$IMAGE"; then
+      docker_hub_login_available \
+        || die "未检测到 Docker Hub 登录凭据，请先执行 docker login"
+    fi
+    if [ "$version_exists" = "1" ]; then
+      tag_scope="latest"
+    elif [ "$latest_matches" = "1" ]; then
+      tag_scope="version"
+    fi
     ensure_builder
-    run_bake push
+    run_bake push "$tag_scope"
     if [ "$DRY_RUN" = "0" ]; then
-      docker buildx imagetools inspect "${IMAGE}:v${VERSION}" >/dev/null
+      docker_tag_matches_release "v$VERSION" \
+        || die "推送后校验失败：${IMAGE}:v${VERSION} 的 revision 与 $RELEASE_SHA 不一致"
+      if [ "$DO_LATEST" = "1" ]; then
+        docker_tag_matches_release latest \
+          || die "推送后校验失败：${IMAGE}:latest 的 revision 与 $RELEASE_SHA 不一致"
+      fi
     fi
     DOCKER_PUBLISHED=1
   fi
@@ -587,9 +815,7 @@ resume_release() {
       GIT_COMMIT_PUBLISHED=1
       ok "origin/$DEFAULT_BRANCH 已包含 $RELEASE_SHA，跳过"
     else
-      current_head="$(git rev-parse HEAD)"
-      [ "$current_head" = "$RELEASE_SHA" ] \
-        || die "当前 HEAD 为 $current_head，与待续传的 release commit $RELEASE_SHA 不一致，请切回原发布提交后重试"
+      require_release_head
       run git push origin "$RELEASE_SHA:$DEFAULT_BRANCH"
       GIT_COMMIT_PUBLISHED=1
     fi
@@ -652,25 +878,32 @@ if [ "$DRY_RUN" = "0" ]; then
   docker info >/dev/null 2>&1 || die "Docker daemon 未运行"
 fi
 docker buildx version >/dev/null 2>&1 || die "当前 Docker 不支持 buildx"
-if [ "$QUICK_MODE" = "1" ] && is_docker_hub_repository "$IMAGE"; then
+if [ "$DRY_RUN" = "0" ] && [ "$RESUME_MODE" = "0" ] && is_docker_hub_repository "$IMAGE"; then
   docker_hub_login_available \
     || die "未检测到 Docker Hub 登录凭据，请先执行 docker login"
-  ok "Docker Hub 登录凭据可用"
+  ok "已检测到结构有效的 Docker Hub 登录凭据"
 fi
 require_github_auth
 [ -f package.json ] || die "请在 nowen-blog 仓库中运行脚本"
 [ -f docker-bake.hcl ] || die "缺少 docker-bake.hcl"
+if [ -n "$RELEASE_NOTES_FILE" ]; then
+  [ -f "$RELEASE_NOTES_FILE" ] || die "Release notes 文件不存在: $RELEASE_NOTES_FILE"
+  RELEASE_NOTES="$(<"$RELEASE_NOTES_FILE")"
+  RELEASE_NOTES_FILE=""
+fi
 
 CURRENT_BRANCH="$(git branch --show-current)"
 [ "$CURRENT_BRANCH" = "$DEFAULT_BRANCH" ] || die "请切换到 $DEFAULT_BRANCH 分支后发布，当前为 ${CURRENT_BRANCH:-detached}"
+ORIGIN_URL="$(git remote get-url origin 2>/dev/null || true)"
+case "$ORIGIN_URL" in
+  git@github.com:cropflre/nowen-blog.git|https://github.com/cropflre/nowen-blog|https://github.com/cropflre/nowen-blog.git|ssh://git@github.com/cropflre/nowen-blog.git) ;;
+  *) die "origin 不是官方仓库 cropflre/nowen-blog：${ORIGIN_URL:-未配置}" ;;
+esac
 
 if [ -n "$(git status --porcelain)" ]; then
   die "工作区或暂存区不干净，请先提交或清理改动"
 fi
 
-if [ "$DO_PULL" = "1" ]; then
-  run git pull --ff-only origin "$DEFAULT_BRANCH"
-fi
 run git fetch --tags origin
 
 if [ "$DO_GIT_PUSH" = "1" ]; then
@@ -742,6 +975,10 @@ if [ "$ASSUME_YES" = "0" ] && [ "$DRY_RUN" = "0" ]; then
 fi
 
 PHASE="prepare"
+if [ "$DO_PULL" = "1" ]; then
+  step "同步发布分支"
+  run git pull --ff-only origin "$DEFAULT_BRANCH"
+fi
 ORIGINAL_HEAD="$(git rev-parse HEAD)"
 PACKAGE_BACKUP="$(mktemp)"
 cp package.json "$PACKAGE_BACKUP"
@@ -792,7 +1029,12 @@ DOCKER_PUBLISHED=1
 write_release_state
 
 if [ "$DRY_RUN" = "0" ]; then
-  docker buildx imagetools inspect "${IMAGE}:v${VERSION}" >/dev/null
+  docker_tag_matches_release "v$VERSION" \
+    || die "推送后校验失败：${IMAGE}:v${VERSION} 的 revision 与 $RELEASE_SHA 不一致"
+  if [ "$DO_LATEST" = "1" ]; then
+    docker_tag_matches_release latest \
+      || die "推送后校验失败：${IMAGE}:latest 的 revision 与 $RELEASE_SHA 不一致"
+  fi
 fi
 ok "Docker 镜像已发布"
 

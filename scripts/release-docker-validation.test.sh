@@ -20,6 +20,7 @@ cat >"$FAKE_BIN/git" <<'EOF'
 #!/usr/bin/env bash
 case "${1:-} ${2:-}" in
   "branch --show-current") echo main ;;
+  "remote get-url") echo 'https://github.com/cropflre/nowen-blog.git' ;;
   "status --porcelain") ;;
   "tag -l") ;;
   "ls-remote "*) exit 2 ;;

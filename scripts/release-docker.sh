@@ -51,6 +51,7 @@ PACKAGE_CHANGED=0
 RELEASE_COMMITTED=0
 ORIGINAL_ARGC=$#
 QUICK_MODE=0
+RESUME_MODE=0
 STATE_FILE="$ROOT_DIR/.tmp/release-docker-state.json"
 PHASE="preflight"
 ORIGINAL_HEAD=""
@@ -104,6 +105,7 @@ usage() {
       --skip-checks         跳过 pnpm 类型检查和测试（不推荐）
       --no-qemu             arm64/multi 时不自动安装 QEMU binfmt
       --dry-run             只打印计划和命令，不真实执行
+      --resume              检查远端状态并续传未完成的发布
   -h, --help                显示帮助
 
 示例:
@@ -140,6 +142,7 @@ while [ $# -gt 0 ]; do
     --skip-checks) SKIP_CHECKS=1; shift ;;
     --no-qemu) SETUP_QEMU=0; shift ;;
     --dry-run) DRY_RUN=1; shift ;;
+    --resume) RESUME_MODE=1; DO_PULL=0; shift ;;
     -h|--help) usage; exit 0 ;;
     *) die "未知参数: $1（使用 --help 查看帮助）" ;;
   esac
@@ -188,6 +191,9 @@ write_release_state() {
   STATE_LATEST="$DO_LATEST" \
   STATE_RELEASE_SHA="$RELEASE_SHA" \
   STATE_ORIGINAL_HEAD="$ORIGINAL_HEAD" \
+  STATE_GIT_PUSH="$DO_GIT_PUSH" \
+  STATE_GIT_TAG_ENABLED="$DO_GIT_TAG" \
+  STATE_GITHUB_MODE="$GITHUB_RELEASE_MODE" \
   STATE_DOCKER="$DOCKER_PUBLISHED" \
   STATE_GIT_COMMIT="$GIT_COMMIT_PUBLISHED" \
   STATE_GIT_TAG="$GIT_TAG_PUBLISHED" \
@@ -204,6 +210,11 @@ const state = {
   latest: bool(process.env.STATE_LATEST),
   releaseSha: process.env.STATE_RELEASE_SHA,
   originalHead: process.env.STATE_ORIGINAL_HEAD,
+  enabled: {
+    gitPush: bool(process.env.STATE_GIT_PUSH),
+    gitTag: bool(process.env.STATE_GIT_TAG_ENABLED),
+    githubRelease: process.env.STATE_GITHUB_MODE !== 'off',
+  },
   completed: {
     docker: bool(process.env.STATE_DOCKER),
     gitCommit: bool(process.env.STATE_GIT_COMMIT),
@@ -454,6 +465,143 @@ create_github_release() {
   run "${args[@]}"
 }
 
+read_release_state_field() {
+  local field="$1"
+  STATE_FILE="$STATE_FILE" node --input-type=module - "$field" <<'NODE'
+import { readFileSync } from 'node:fs';
+
+const state = JSON.parse(readFileSync(process.env.STATE_FILE, 'utf8'));
+const field = process.argv[2];
+const value = field.split('.').reduce((current, key) => current?.[key], state);
+if (typeof value === 'boolean') process.stdout.write(value ? '1' : '0');
+else if (value !== undefined && value !== null) process.stdout.write(String(value));
+NODE
+}
+
+load_release_state() {
+  local requested_version="$VERSION" state_version value
+  if [ -f "$STATE_FILE" ]; then
+    state_version="$(read_release_state_field version)"
+    if [ -n "$requested_version" ] && [ "$(normalize_version "$requested_version")" != "$state_version" ]; then
+      die "续传版本与状态文件不一致：请求 $requested_version，状态为 $state_version"
+    fi
+    VERSION="$state_version"
+    IMAGE="$(read_release_state_field image)"
+    ARCH="$(read_release_state_field arch)"
+    DO_LATEST="$(read_release_state_field latest)"
+    RELEASE_SHA="$(read_release_state_field releaseSha)"
+    ORIGINAL_HEAD="$(read_release_state_field originalHead)"
+    value="$(read_release_state_field enabled.gitPush)"; [ -n "$value" ] && DO_GIT_PUSH="$value"
+    value="$(read_release_state_field enabled.gitTag)"; [ -n "$value" ] && DO_GIT_TAG="$value"
+    value="$(read_release_state_field enabled.githubRelease)"
+    if [ "$value" = "1" ]; then GITHUB_RELEASE_MODE="on"; elif [ "$value" = "0" ]; then GITHUB_RELEASE_MODE="off"; fi
+  else
+    VERSION="${VERSION:-$(package_version)}"
+    RELEASE_SHA="$(git rev-parse HEAD)"
+    ORIGINAL_HEAD="$(git rev-parse HEAD^ 2>/dev/null || true)"
+    [ "$GITHUB_RELEASE_MODE" = "auto" ] && GITHUB_RELEASE_MODE="on"
+  fi
+
+  case "$ARCH" in
+    amd64) PLATFORMS="linux/amd64" ;;
+    arm64) PLATFORMS="linux/arm64" ;;
+    multi) PLATFORMS="linux/amd64,linux/arm64" ;;
+    *) die "状态文件中的架构无效: $ARCH" ;;
+  esac
+}
+
+remote_commit_contains_release() {
+  git merge-base --is-ancestor "$RELEASE_SHA" "origin/$DEFAULT_BRANCH" >/dev/null 2>&1
+}
+
+remote_tag_target() {
+  local target
+  target="$(git ls-remote --tags origin "refs/tags/v$VERSION^{}" 2>/dev/null | awk 'NR==1 {print $1}' || true)"
+  if [ -z "$target" ]; then
+    target="$(git ls-remote --tags origin "refs/tags/v$VERSION" 2>/dev/null | awk 'NR==1 {print $1}' || true)"
+  fi
+  printf '%s' "$target"
+}
+
+github_release_exists() {
+  command -v gh >/dev/null 2>&1 \
+    && gh release view "v$VERSION" --repo "$GITHUB_REPO_SLUG" >/dev/null 2>&1
+}
+
+resume_release() {
+  local tag_target local_target
+  [ -n "$RELEASE_SHA" ] || die "无法确定 release commit，请使用原发布工作区续传"
+  PHASE="publish"
+  PUBLISH_STARTED=1
+  BUILD_DATE="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+  write_release_state
+
+  step "检查并续传 Docker 镜像"
+  if docker_tag_exists "$IMAGE" "v$VERSION"; then
+    DOCKER_PUBLISHED=1
+    ok "Docker ${IMAGE}:v${VERSION} 已存在，跳过"
+  else
+    ensure_builder
+    run_bake push
+    if [ "$DRY_RUN" = "0" ]; then
+      docker buildx imagetools inspect "${IMAGE}:v${VERSION}" >/dev/null
+    fi
+    DOCKER_PUBLISHED=1
+  fi
+  write_release_state
+
+  if [ "$DO_GIT_PUSH" = "1" ]; then
+    step "检查并续传 release commit"
+    if remote_commit_contains_release; then
+      GIT_COMMIT_PUBLISHED=1
+      ok "origin/$DEFAULT_BRANCH 已包含 $RELEASE_SHA，跳过"
+    else
+      run git push origin "HEAD:$DEFAULT_BRANCH"
+      GIT_COMMIT_PUBLISHED=1
+    fi
+    write_release_state
+  fi
+
+  if [ "$DO_GIT_TAG" = "1" ]; then
+    step "检查并续传 Git Tag"
+    tag_target="$(remote_tag_target)"
+    if [ -n "$tag_target" ]; then
+      [ "$tag_target" = "$RELEASE_SHA" ] \
+        || die "远端 Tag v$VERSION 指向 $tag_target，与 release commit $RELEASE_SHA 冲突"
+      GIT_TAG_PUBLISHED=1
+      ok "远端 Tag v$VERSION 已存在且指向正确 commit，跳过"
+    else
+      if git rev-parse "v$VERSION" >/dev/null 2>&1; then
+        local_target="$(git rev-list -n 1 "v$VERSION")"
+        [ "$local_target" = "$RELEASE_SHA" ] \
+          || die "本地 Tag v$VERSION 指向 $local_target，与 release commit $RELEASE_SHA 冲突"
+      else
+        run git tag -a "v$VERSION" -m "Release v$VERSION"
+      fi
+      [ "$DO_GIT_PUSH" = "1" ] && run git push origin "v$VERSION"
+      GIT_TAG_PUBLISHED=1
+    fi
+    write_release_state
+  fi
+
+  if [ "$GITHUB_RELEASE_MODE" != "off" ] && [ "$DO_GIT_PUSH" = "1" ] && [ "$DO_GIT_TAG" = "1" ]; then
+    step "检查并续传 GitHub Release"
+    if github_release_exists; then
+      GITHUB_RELEASE_PUBLISHED=1
+      ok "GitHub Release v$VERSION 已存在，跳过"
+    else
+      create_github_release
+      GITHUB_RELEASE_PUBLISHED=1
+    fi
+    write_release_state
+  fi
+
+  RELEASE_SUCCEEDED=1
+  remove_release_state
+  step "续传完成"
+  ok "v$VERSION 的远端发布产物已补齐"
+}
+
 step "发布环境检查"
 if [ "$QUICK_MODE" = "1" ]; then
   echo
@@ -496,6 +644,10 @@ if [ "$DO_GIT_PUSH" = "1" ]; then
   fi
 fi
 
+if [ "$RESUME_MODE" = "1" ]; then
+  load_release_state
+fi
+
 SUGGESTED_VERSION="$(suggest_next_version)"
 if [ -z "$VERSION" ]; then
   if [ "$ASSUME_YES" = "1" ] || [ "$QUICK_MODE" = "1" ]; then
@@ -514,6 +666,11 @@ if [[ "$VERSION" == *-* ]]; then
   if [ "$LATEST_EXPLICIT" = "0" ]; then
     DO_LATEST=0
   fi
+fi
+
+if [ "$RESUME_MODE" = "1" ]; then
+  resume_release
+  exit 0
 fi
 
 if git rev-parse "v$VERSION" >/dev/null 2>&1 || remote_tag_exists "$VERSION"; then
@@ -588,13 +745,6 @@ run_bake build
 PHASE="publish"
 PUBLISH_STARTED=1
 write_release_state
-if [ "$DO_GIT_PUSH" = "1" ]; then
-  step "推送发布提交"
-  run git push origin "HEAD:$DEFAULT_BRANCH"
-  GIT_COMMIT_PUBLISHED=1
-  write_release_state
-fi
-
 step "推送 Docker 镜像"
 run_bake push
 DOCKER_PUBLISHED=1
@@ -604,6 +754,13 @@ if [ "$DRY_RUN" = "0" ]; then
   docker buildx imagetools inspect "${IMAGE}:v${VERSION}" >/dev/null
 fi
 ok "Docker 镜像已发布"
+
+if [ "$DO_GIT_PUSH" = "1" ]; then
+  step "推送发布提交"
+  run git push origin "HEAD:$DEFAULT_BRANCH"
+  GIT_COMMIT_PUBLISHED=1
+  write_release_state
+fi
 
 if [ "$DO_GIT_TAG" = "1" ]; then
   step "创建 Git Tag"

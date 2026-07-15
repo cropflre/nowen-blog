@@ -21,7 +21,14 @@ case "${1:-} ${2:-}" in
   "branch --show-current") echo main ;;
   "status --porcelain") ;;
   "tag -l") ;;
-  "ls-remote "*) exit 2 ;;
+  "ls-remote "*)
+    if [[ "$*" == *"refs/tags/v1.0.5"* ]] && [ -n "${FAKE_REMOTE_TAG_TARGET:-}" ]; then
+      printf '%s\trefs/tags/v1.0.5\n' "$FAKE_REMOTE_TAG_TARGET"
+      exit 0
+    fi
+    exit 2
+    ;;
+  "merge-base --is-ancestor") [ "${FAKE_REMOTE_COMMIT:-0}" = "1" ] ;;
   "rev-parse HEAD") cat "$HEAD_FILE" ;;
   "rev-parse "*) exit 1 ;;
   "diff --cached") exit 1 ;;
@@ -49,6 +56,9 @@ cat >"$FAKE_BIN/gh" <<'EOF'
 #!/usr/bin/env bash
 printf 'gh %s\n' "$*" >>"$CALL_LOG"
 if [ "${1:-} ${2:-}" = "release view" ]; then
+  if [ "${FAKE_GH_RELEASE_EXISTS:-0}" = "1" ]; then
+    exit 0
+  fi
   exit 1
 fi
 exit 0
@@ -58,7 +68,13 @@ cat >"$FAKE_BIN/curl" <<'EOF'
 #!/usr/bin/env bash
 case "$*" in
   *'tags?page_size='*) printf '{"results":[]}' ;;
-  *) printf '404' ;;
+  *)
+    if [ "${FAKE_DOCKER_TAG_EXISTS:-0}" = "1" ]; then
+      printf '200'
+    else
+      printf '404'
+    fi
+    ;;
 esac
 EOF
 
@@ -87,12 +103,23 @@ run_quick_release() {
   printf '\n' | bash scripts/release-docker.sh 2>&1
 }
 
+run_resume_release() {
+  cd "$TEST_ROOT"
+  export PATH="$FAKE_BIN:$PATH" CALL_LOG HEAD_FILE
+  export FAKE_DOCKER_TAG_EXISTS FAKE_REMOTE_COMMIT FAKE_GH_RELEASE_EXISTS FAKE_REMOTE_TAG_TARGET
+  bash scripts/release-docker.sh --resume --version 1.0.5 --yes 2>&1
+}
+
 prepare_case
 output="$(run_quick_release)"
 
 printf '%s' "$output" | grep -Fq 'NOWEN Blog 快速发布向导'
 printf '%s' "$output" | grep -Fq '架构:          multi (linux/amd64,linux/arm64)'
 printf '%s' "$output" | grep -Fq 'GitHub Release: on'
+
+docker_push_line="$(grep -n 'docker buildx bake .*--push' "$CALL_LOG" | head -n 1 | cut -d: -f1)"
+git_push_line="$(grep -n 'git push origin HEAD:main' "$CALL_LOG" | head -n 1 | cut -d: -f1)"
+[ "$docker_push_line" -lt "$git_push_line" ]
 
 prepare_case
 set +e
@@ -116,5 +143,80 @@ if grep -Fq 'git reset --mixed' "$CALL_LOG"; then
 fi
 [ -f "$TEST_ROOT/.tmp/release-docker-state.json" ]
 printf '%s' "$push_failure_output" | grep -Fq 'pnpm release:docker -- --resume -v 1.0.5'
+
+prepare_case
+printf 'release-head' >"$HEAD_FILE"
+mkdir -p "$TEST_ROOT/.tmp"
+cat >"$TEST_ROOT/.tmp/release-docker-state.json" <<'EOF'
+{
+  "schemaVersion": 1,
+  "version": "1.0.5",
+  "image": "cropflre/nowen-blog",
+  "arch": "multi",
+  "latest": true,
+  "releaseSha": "release-head",
+  "originalHead": "original-head",
+  "completed": {
+    "docker": true,
+    "gitCommit": true,
+    "gitTag": false,
+    "githubRelease": false
+  }
+}
+EOF
+resume_output="$(
+  FAKE_DOCKER_TAG_EXISTS=1 \
+  FAKE_REMOTE_COMMIT=1 \
+  FAKE_GH_RELEASE_EXISTS=0 \
+    run_resume_release
+)"
+if grep -Fq 'docker buildx bake' "$CALL_LOG"; then
+  echo '续传不应重新推送已存在的 Docker 镜像。' >&2
+  exit 1
+fi
+if grep -Fq 'git push origin HEAD:main' "$CALL_LOG"; then
+  echo '续传不应重新推送已存在的 release commit。' >&2
+  exit 1
+fi
+grep -Fq 'git push origin v1.0.5' "$CALL_LOG"
+grep -Fq 'gh release create v1.0.5' "$CALL_LOG"
+printf '%s' "$resume_output" | grep -Fq '续传完成'
+
+prepare_case
+printf 'release-head' >"$HEAD_FILE"
+mkdir -p "$TEST_ROOT/.tmp"
+cat >"$TEST_ROOT/.tmp/release-docker-state.json" <<'EOF'
+{
+  "schemaVersion": 1,
+  "version": "1.0.5",
+  "image": "cropflre/nowen-blog",
+  "arch": "multi",
+  "latest": true,
+  "releaseSha": "release-head",
+  "originalHead": "original-head",
+  "completed": {
+    "docker": true,
+    "gitCommit": true,
+    "gitTag": false,
+    "githubRelease": false
+  }
+}
+EOF
+set +e
+conflict_output="$(
+  FAKE_DOCKER_TAG_EXISTS=1 \
+  FAKE_REMOTE_COMMIT=1 \
+  FAKE_GH_RELEASE_EXISTS=0 \
+  FAKE_REMOTE_TAG_TARGET=other-release-head \
+    run_resume_release
+)"
+conflict_status=$?
+set -e
+[ "$conflict_status" -ne 0 ]
+printf '%s' "$conflict_output" | grep -Fq '冲突'
+if grep -Fq 'gh release create' "$CALL_LOG"; then
+  echo 'Tag 冲突时不得创建 GitHub Release。' >&2
+  exit 1
+fi
 
 echo 'Docker release quick wizard passed.'

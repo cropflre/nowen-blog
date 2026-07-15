@@ -49,6 +49,8 @@ RELEASE_PRERELEASE=0
 PACKAGE_BACKUP=""
 PACKAGE_CHANGED=0
 RELEASE_COMMITTED=0
+ORIGINAL_ARGC=$#
+QUICK_MODE=0
 
 if [ -t 1 ] && command -v tput >/dev/null 2>&1 && [ "$(tput colors 2>/dev/null || echo 0)" -ge 8 ]; then
   C_RED="$(tput setaf 1)"
@@ -131,6 +133,12 @@ while [ $# -gt 0 ]; do
     *) die "未知参数: $1（使用 --help 查看帮助）" ;;
   esac
 done
+
+if [ "$ORIGINAL_ARGC" = "0" ]; then
+  QUICK_MODE=1
+  ARCH="multi"
+  GITHUB_RELEASE_MODE="on"
+fi
 
 case "$ARCH" in
   amd64) PLATFORMS="linux/amd64" ;;
@@ -254,6 +262,31 @@ NODE
   PACKAGE_CHANGED=1
 }
 
+validate_compose_files() {
+  validate_compose_file docker compose config --quiet
+  validate_compose_file docker compose -f docker-compose.release.yml config --quiet
+}
+
+validate_compose_file() {
+  local validation_secret validation_password validation_version
+  validation_secret="${SESSION_SECRET:-release-validation-session-secret-at-least-32-characters}"
+  validation_password="${ADMIN_PASSWORD:-release-validation-admin-password}"
+  validation_version="${NOWEN_BLOG_VERSION:-latest}"
+
+  print_command env \
+    SESSION_SECRET="release-validation-session-secret-at-least-32-characters" \
+    ADMIN_PASSWORD="release-validation-admin-password" \
+    NOWEN_BLOG_VERSION="$validation_version" \
+    "$@"
+  if [ "$DRY_RUN" = "0" ]; then
+    env \
+      SESSION_SECRET="$validation_secret" \
+      ADMIN_PASSWORD="$validation_password" \
+      NOWEN_BLOG_VERSION="$validation_version" \
+      "$@"
+  fi
+}
+
 ensure_builder() {
   step "准备 Docker Buildx"
   if docker buildx inspect "$BUILDX_BUILDER" >/dev/null 2>&1; then
@@ -336,6 +369,12 @@ create_github_release() {
 }
 
 step "发布环境检查"
+if [ "$QUICK_MODE" = "1" ]; then
+  echo
+  echo "${C_BOLD}${C_CYAN}╔══════════════════════════════════════╗${C_RESET}"
+  echo "${C_BOLD}${C_CYAN}║       NOWEN Blog 快速发布向导        ║${C_RESET}"
+  echo "${C_BOLD}${C_CYAN}╚══════════════════════════════════════╝${C_RESET}"
+fi
 require_command git
 require_command node
 require_command pnpm
@@ -373,7 +412,7 @@ fi
 
 SUGGESTED_VERSION="$(suggest_next_version)"
 if [ -z "$VERSION" ]; then
-  if [ "$ASSUME_YES" = "1" ]; then
+  if [ "$ASSUME_YES" = "1" ] || [ "$QUICK_MODE" = "1" ]; then
     VERSION="$SUGGESTED_VERSION"
   else
     echo
@@ -409,8 +448,13 @@ echo "GitHub Release: $GITHUB_RELEASE_MODE"
 
 if [ "$ASSUME_YES" = "0" ] && [ "$DRY_RUN" = "0" ]; then
   echo
-  read -r -p "确认开始发布？[y/N] " confirm
-  [[ "$confirm" =~ ^[Yy]$ ]] || die "已取消"
+  if [ "$QUICK_MODE" = "1" ]; then
+    read -r -p "确认开始发布？[Y/n] " confirm
+    [[ -z "$confirm" || "$confirm" =~ ^[Yy]$ ]] || die "已取消"
+  else
+    read -r -p "确认开始发布？[y/N] " confirm
+    [[ "$confirm" =~ ^[Yy]$ ]] || die "已取消"
+  fi
 fi
 
 PACKAGE_BACKUP="$(mktemp)"
@@ -422,8 +466,7 @@ if [ "$SKIP_CHECKS" = "0" ]; then
   run pnpm install --frozen-lockfile
   run pnpm typecheck
   run pnpm test
-  run docker compose config --quiet
-  run docker compose -f docker-compose.release.yml config --quiet
+  validate_compose_files
 else
   warn "已跳过质量检查"
 fi

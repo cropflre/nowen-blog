@@ -14,15 +14,14 @@ NOWEN 官方项目帮助中心与技术博客。系统采用 **React + TypeScrip
 ## 项目结构
 
 ```text
-apps/web            前台 + 管理后台
-apps/server         Hono API + SQLite
-packages/shared     通用类型
-packages/config     共享 TypeScript 配置
-apps/server/drizzle 数据库迁移
-scripts/ops         生产验收和备份工具
-scripts/release-docker.sh  Docker 一键发版
-tests/e2e           Playwright 浏览器测试
-data/               SQLite 数据库和上传文件
+apps/web                    前台 + 管理后台
+apps/server                 Hono API + SQLite
+packages/shared             通用类型
+packages/config             共享 TypeScript 配置
+apps/server/drizzle         数据库迁移
+scripts/ops                 生产验收和备份工具
+scripts/release-docker.sh   Docker 一键发版
+Dockerfile                  前端 + API + Nginx 单镜像
 ```
 
 ## 本地启动
@@ -179,7 +178,29 @@ pnpm exec playwright install chromium
 - AI Agent 生成、审核和草稿应用；
 - 前台帮助中心和项目展示；
 - 后台手动创建完整流程；
-- 生产构建、静态预渲染、备份和恢复。
+- 单容器生产构建、静态预渲染、备份和恢复。
+
+## Docker 架构
+
+NOWEN Blog 只发布和运行一个容器：
+
+```text
+cropflre/nowen-blog:vX.Y.Z
+```
+
+单个镜像内部由 Supervisor 同时管理：
+
+```text
+Nginx :80
+├── React 前台与管理后台
+├── /uploads 静态文件
+└── /api → 127.0.0.1:8787
+
+Hono API :8787
+└── SQLite、文档、AI Agent、备份工具
+```
+
+对外只需要映射一个端口，不再使用 `nowen-blog-api` 和 `nowen-blog-web` 两张镜像。
 
 ## Docker Compose 本地构建部署
 
@@ -194,24 +215,24 @@ docker compose ps
 pnpm ops:verify-production -- --base-url http://127.0.0.1:8080 --allow-http
 ```
 
+Compose 中只有一个服务：
+
+```text
+blog
+```
+
 默认包含：
 
+- Nginx 静态前端和反向代理；
 - Hono API；
-- Nginx 静态前端与反向代理；
 - SQLite 与上传文件持久化；
-- API 和 Web 健康检查；
-- 上传文件只读直出；
+- 前台和 API 联合健康检查；
 - SPA 路由回退；
 - 宿主机备份目录。
 
 ## Docker 已发布镜像部署
 
-适合 NAS、服务器和不希望本机编译源码的用户。发布版由两张同版本镜像组成：
-
-```text
-cropflre/nowen-blog-api:vX.Y.Z
-cropflre/nowen-blog-web:vX.Y.Z
-```
+适合 NAS、服务器和不希望本机编译源码的用户。
 
 首次部署：
 
@@ -224,10 +245,17 @@ docker compose -f docker-compose.release.yml up -d
 docker compose -f docker-compose.release.yml ps
 ```
 
-`.env` 默认使用 `latest`。生产环境建议固定版本：
+默认镜像：
 
 ```env
-NOWEN_BLOG_VERSION=v0.2.0
+DOCKER_IMAGE=cropflre/nowen-blog
+NOWEN_BLOG_VERSION=latest
+```
+
+生产环境建议固定版本：
+
+```env
+NOWEN_BLOG_VERSION=v1.0.5
 ```
 
 升级固定版本：
@@ -238,7 +266,7 @@ docker compose -f docker-compose.release.yml pull
 docker compose -f docker-compose.release.yml up -d
 ```
 
-数据保存在具名卷 `nowen-blog-data` 中，更新镜像不会删除数据。不要执行带 `--volumes` 的 down 命令，除非明确需要删除全部数据。
+数据保存在具名卷 `nowen-blog-data` 中，更新镜像不会删除数据库、上传文件和帮助文档。不要执行带 `--volumes` 的 `docker compose down`，除非明确需要删除全部数据。
 
 ## Docker 一键发版
 
@@ -261,13 +289,14 @@ pnpm release:docker
 脚本会自动：
 
 1. 检查 main 分支和干净工作区；
-2. 参考 package.json、本地/远端 Git Tag 和 Docker Hub Tag 建议下一版本；
-3. 更新 package.json；
-4. 执行冻结依赖安装、类型检查、测试和 Compose 校验；
-5. 先完整构建 API 与 Web 两张镜像；
-6. 两张都成功后推送 `vX.Y.Z` 和 `latest`；
-7. 推送 release commit 和 Git Tag；
-8. 在 gh 可用时创建 GitHub Release。
+2. 在修改版本前执行 GitHub 推送权限预检；
+3. 参考 package.json、本地/远端 Git Tag 和 `cropflre/nowen-blog` Docker Hub Tag 建议下一版本；
+4. 更新 package.json；
+5. 执行冻结依赖安装、类型检查、测试和 Compose 校验；
+6. 预构建包含前端、API、Nginx 的单体镜像；
+7. 构建成功后推送 `vX.Y.Z` 和 `latest`；
+8. 推送 release commit 和 Git Tag；
+9. 在 gh 可用时创建 GitHub Release。
 
 常用命令：
 
@@ -276,16 +305,16 @@ pnpm release:docker
 pnpm release:docker
 
 # 指定版本并跳过确认
-pnpm release:docker -- -v 0.2.0 -y
+pnpm release:docker -- -v 1.0.5 -y
 
 # 同时发布 amd64 + arm64
-pnpm release:docker -- -v 0.2.0 --arch multi -y
+pnpm release:docker -- -v 1.0.5 --arch multi -y
 
 # 预发布版本默认不会覆盖 latest
-pnpm release:docker -- -v 0.2.0-rc.1
+pnpm release:docker -- -v 1.0.5-rc.1
 
 # 只查看执行计划
-pnpm release:docker -- -v 0.2.0 --dry-run
+pnpm release:docker -- -v 1.0.5 --dry-run
 ```
 
 完整参数：
@@ -296,16 +325,18 @@ pnpm release:docker -- --help
 
 ### 备份和恢复演练
 
+本地构建部署：
+
 ```bash
-docker compose exec -T api pnpm --filter @blog/server ops:backup
-docker compose exec -T api pnpm --filter @blog/server ops:rehearse-backup
+docker compose exec -T blog pnpm --filter @blog/server ops:backup
+docker compose exec -T blog pnpm --filter @blog/server ops:rehearse-backup
 ```
 
-使用已发布镜像时，把 Compose 文件替换为：
+已发布镜像部署：
 
 ```bash
-docker compose -f docker-compose.release.yml exec -T api pnpm --filter @blog/server ops:backup
-docker compose -f docker-compose.release.yml exec -T api pnpm --filter @blog/server ops:rehearse-backup
+docker compose -f docker-compose.release.yml exec -T blog pnpm --filter @blog/server ops:backup
+docker compose -f docker-compose.release.yml exec -T blog pnpm --filter @blog/server ops:rehearse-backup
 ```
 
 ## 主要入口

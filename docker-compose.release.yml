@@ -1,8 +1,9 @@
 name: nowen-blog
 
 services:
-  api:
-    image: ${DOCKER_API_IMAGE:-cropflre/nowen-blog-api}:${NOWEN_BLOG_VERSION:-latest}
+  blog:
+    image: "${DOCKER_IMAGE:-cropflre/nowen-blog}:${NOWEN_BLOG_VERSION:-latest}"
+    container_name: nowen-blog
     pull_policy: always
     restart: unless-stopped
     init: true
@@ -12,59 +13,33 @@ services:
     environment:
       NODE_ENV: production
       PORT: 8787
-      BASE_URL: ${BASE_URL:-http://localhost:8080}
+      BASE_URL: "${BASE_URL:-http://localhost:8080}"
       DATABASE_PATH: /app/data/blog.sqlite
       UPLOAD_DIR: /app/data/uploads
       BACKUP_DIR: /app/backups
-      MAX_UPLOAD_SIZE: ${MAX_UPLOAD_SIZE:-10485760}
-      SESSION_SECRET: ${SESSION_SECRET:?SESSION_SECRET is required}
-      ADMIN_USERNAME: ${ADMIN_USERNAME:-NOWEN}
-      ADMIN_EMAIL: ${ADMIN_EMAIL:-hi@example.com}
-      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?ADMIN_PASSWORD is required}
-      RESEND_API_KEY: ${RESEND_API_KEY:-}
-      NEWSLETTER_FROM_EMAIL: ${NEWSLETTER_FROM_EMAIL:-}
-      NEWSLETTER_REPLY_TO: ${NEWSLETTER_REPLY_TO:-}
+      MAX_UPLOAD_SIZE: "${MAX_UPLOAD_SIZE:-10485760}"
+      SESSION_SECRET: "${SESSION_SECRET}"
+      ADMIN_USERNAME: "${ADMIN_USERNAME:-NOWEN}"
+      ADMIN_EMAIL: "${ADMIN_EMAIL:-hi@example.com}"
+      ADMIN_PASSWORD: "${ADMIN_PASSWORD}"
+      RESEND_API_KEY: "${RESEND_API_KEY:-}"
+      NEWSLETTER_FROM_EMAIL: "${NEWSLETTER_FROM_EMAIL:-}"
+      NEWSLETTER_REPLY_TO: "${NEWSLETTER_REPLY_TO:-}"
+    ports:
+      - "${HTTP_PORT:-8080}:80"
     volumes:
       - blog-data:/app/data
-      - ${BACKUP_HOST_DIR:-./backups}:/app/backups
-    expose:
-      - "8787"
+      - "${BACKUP_HOST_DIR:-./backups}:/app/backups"
     healthcheck:
       test:
         - CMD
         - node
         - -e
-        - "fetch('http://127.0.0.1:8787/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"
+        - "Promise.all([fetch('http://127.0.0.1/healthz'),fetch('http://127.0.0.1/api/health')]).then(rs=>{if(rs.some(r=>!r.ok))process.exit(1)}).catch(()=>process.exit(1))"
       interval: 15s
-      timeout: 5s
+      timeout: 8s
       retries: 5
-      start_period: 20s
-    logging:
-      options:
-        max-size: "10m"
-        max-file: "3"
-
-  web:
-    image: ${DOCKER_WEB_IMAGE:-cropflre/nowen-blog-web}:${NOWEN_BLOG_VERSION:-latest}
-    pull_policy: always
-    restart: unless-stopped
-    init: true
-    stop_grace_period: 15s
-    security_opt:
-      - no-new-privileges:true
-    depends_on:
-      api:
-        condition: service_healthy
-    ports:
-      - "${HTTP_PORT:-8080}:80"
-    volumes:
-      - blog-data:/data:ro
-    healthcheck:
-      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1/healthz"]
-      interval: 15s
-      timeout: 5s
-      retries: 5
-      start_period: 10s
+      start_period: 25s
     logging:
       options:
         max-size: "10m"
@@ -72,4 +47,4 @@ services:
 
 volumes:
   blog-data:
-    name: ${DATA_VOLUME_NAME:-nowen-blog-data}
+    name: "${DATA_VOLUME_NAME:-nowen-blog-data}"

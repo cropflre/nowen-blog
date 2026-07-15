@@ -14,37 +14,23 @@ variable "PLATFORM" {
   default = "linux/amd64"
 }
 
-variable "API_TAGS" {
-  default = "nowen-blog-api:local"
-}
-
-variable "WEB_TAGS" {
-  default = "nowen-blog-web:local"
+variable "IMAGE_TAGS" {
+  default = "nowen-blog:local"
 }
 
 group "release" {
-  targets = ["api", "web"]
+  targets = ["app"]
 }
 
-target "common" {
+target "app" {
   context    = "."
   dockerfile = "Dockerfile"
+  target     = "app"
   platforms  = split(",", PLATFORM)
+  tags       = split(",", IMAGE_TAGS)
   args = {
     APP_VERSION = APP_VERSION
     VCS_REF     = VCS_REF
     BUILD_DATE  = BUILD_DATE
   }
-}
-
-target "api" {
-  inherits = ["common"]
-  target   = "api"
-  tags     = split(",", API_TAGS)
-}
-
-target "web" {
-  inherits = ["common"]
-  target   = "web"
-  tags     = split(",", WEB_TAGS)
 }

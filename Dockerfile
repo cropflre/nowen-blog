@@ -21,21 +21,23 @@ RUN pnpm install --frozen-lockfile
 
 COPY . .
 
-FROM workspace AS web-build
+FROM workspace AS build
+
 ENV NODE_ENV=production
+
 RUN pnpm --filter @blog/shared typecheck \
   && pnpm --filter @blog/server typecheck \
   && pnpm --filter @blog/web typecheck \
   && pnpm --filter @blog/web exec vite build
 
-FROM workspace AS api
+FROM workspace AS app
 
 ARG APP_VERSION=dev
 ARG VCS_REF=unknown
 ARG BUILD_DATE=unknown
 
-LABEL org.opencontainers.image.title="NOWEN Blog API" \
-      org.opencontainers.image.description="Hono API and SQLite service for NOWEN Blog" \
+LABEL org.opencontainers.image.title="NOWEN Blog" \
+      org.opencontainers.image.description="Integrated NOWEN Blog help center, web application, Hono API and SQLite runtime" \
       org.opencontainers.image.source="https://github.com/cropflre/nowen-blog" \
       org.opencontainers.image.version="$APP_VERSION" \
       org.opencontainers.image.revision="$VCS_REF" \
@@ -47,34 +49,25 @@ ENV DATABASE_PATH=/app/data/blog.sqlite
 ENV UPLOAD_DIR=/app/data/uploads
 ENV BACKUP_DIR=/app/backups
 
-RUN mkdir -p /app/data/uploads /app/backups \
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends nginx supervisor ca-certificates \
+  && rm -rf /var/lib/apt/lists/* \
+  && rm -f /etc/nginx/sites-enabled/default /etc/nginx/conf.d/default.conf \
+  && mkdir -p /app/data/uploads /app/backups /run/nginx /var/log/supervisor \
   && chown -R node:node /app/data /app/backups
 
-USER node
-EXPOSE 8787
+COPY --from=build /app/apps/web/dist /usr/share/nginx/html
+COPY deploy/nginx/default.conf /etc/nginx/conf.d/nowen-blog.conf
+COPY deploy/supervisor/nowen-blog.conf /etc/supervisor/conf.d/nowen-blog.conf
+COPY deploy/docker-entrypoint.sh /usr/local/bin/nowen-blog-entrypoint
 
-HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
-  CMD node -e "fetch('http://127.0.0.1:8787/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"
-
-CMD ["pnpm", "--filter", "@blog/server", "start"]
-
-FROM nginx:1.27-alpine AS web
-
-ARG APP_VERSION=dev
-ARG VCS_REF=unknown
-ARG BUILD_DATE=unknown
-
-LABEL org.opencontainers.image.title="NOWEN Blog Web" \
-      org.opencontainers.image.description="Nginx-served web and admin application for NOWEN Blog" \
-      org.opencontainers.image.source="https://github.com/cropflre/nowen-blog" \
-      org.opencontainers.image.version="$APP_VERSION" \
-      org.opencontainers.image.revision="$VCS_REF" \
-      org.opencontainers.image.created="$BUILD_DATE"
-
-COPY deploy/nginx/default.conf /etc/nginx/conf.d/default.conf
-COPY --from=web-build /app/apps/web/dist /usr/share/nginx/html
+RUN chmod +x /usr/local/bin/nowen-blog-entrypoint
 
 EXPOSE 80
+STOPSIGNAL SIGTERM
 
-HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
-  CMD wget -q -O /dev/null http://127.0.0.1/healthz || exit 1
+HEALTHCHECK --interval=30s --timeout=8s --start-period=20s --retries=5 \
+  CMD node -e "Promise.all([fetch('http://127.0.0.1/healthz'),fetch('http://127.0.0.1/api/health')]).then(rs=>{if(rs.some(r=>!r.ok))process.exit(1)}).catch(()=>process.exit(1))"
+
+ENTRYPOINT ["/usr/local/bin/nowen-blog-entrypoint"]
+CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/supervisord.conf", "-n"]

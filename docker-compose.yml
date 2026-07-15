@@ -1,11 +1,12 @@
 name: nowen-blog
 
 services:
-  api:
+  blog:
     build:
       context: .
-      target: api
-    image: nowen-blog-api:local
+      target: app
+    image: nowen-blog:local
+    container_name: nowen-blog
     restart: unless-stopped
     init: true
     stop_grace_period: 30s
@@ -26,49 +27,21 @@ services:
       RESEND_API_KEY: ${RESEND_API_KEY:-}
       NEWSLETTER_FROM_EMAIL: ${NEWSLETTER_FROM_EMAIL:-}
       NEWSLETTER_REPLY_TO: ${NEWSLETTER_REPLY_TO:-}
+    ports:
+      - "${HTTP_PORT:-8080}:80"
     volumes:
       - blog-data:/app/data
       - ${BACKUP_HOST_DIR:-./backups}:/app/backups
-    expose:
-      - "8787"
     healthcheck:
       test:
         - CMD
         - node
         - -e
-        - "fetch('http://127.0.0.1:8787/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"
+        - "Promise.all([fetch('http://127.0.0.1/healthz'),fetch('http://127.0.0.1/api/health')]).then(rs=>{if(rs.some(r=>!r.ok))process.exit(1)}).catch(()=>process.exit(1))"
       interval: 15s
-      timeout: 5s
+      timeout: 8s
       retries: 5
-      start_period: 20s
-    logging:
-      options:
-        max-size: "10m"
-        max-file: "3"
-
-  web:
-    build:
-      context: .
-      target: web
-    image: nowen-blog-web:local
-    restart: unless-stopped
-    init: true
-    stop_grace_period: 15s
-    security_opt:
-      - no-new-privileges:true
-    depends_on:
-      api:
-        condition: service_healthy
-    ports:
-      - "${HTTP_PORT:-8080}:80"
-    volumes:
-      - blog-data:/data:ro
-    healthcheck:
-      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1/healthz"]
-      interval: 15s
-      timeout: 5s
-      retries: 5
-      start_period: 10s
+      start_period: 25s
     logging:
       options:
         max-size: "10m"

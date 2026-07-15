@@ -3,22 +3,20 @@
 # NOWEN Blog Docker 一键发布脚本
 #
 # 发布内容：
-#   - cropflre/nowen-blog-api:vX.Y.Z / latest
-#   - cropflre/nowen-blog-web:vX.Y.Z / latest
+#   - cropflre/nowen-blog:vX.Y.Z
+#   - cropflre/nowen-blog:latest（正式版本默认更新）
 #
-# 默认流程：
-#   1. 检查 main 分支和干净工作区，并执行 git pull --ff-only
-#   2. 根据 package.json、本地/远端 Git Tag、Docker Hub Tag 建议下一版本
-#   3. 更新 package.json 版本并运行类型检查、测试、Compose 校验
-#   4. 先完整构建 API + Web，全部成功后再统一推送 Docker Hub
-#   5. 推送 release commit、Git Tag，并在可用时创建 GitHub Release
+# 单个镜像内同时包含：
+#   - Nginx 前台与反向代理
+#   - Hono API
+#   - SQLite、上传文件和备份工具
 #
 # 常用示例：
 #   pnpm release:docker
-#   pnpm release:docker -- -v 0.2.0 -y
-#   pnpm release:docker -- -v 0.2.0 --arch multi -y
-#   pnpm release:docker -- -v 0.2.0-rc.1 --arch amd64
-#   pnpm release:docker -- -v 0.2.0 --dry-run
+#   pnpm release:docker -- -v 1.0.5 -y
+#   pnpm release:docker -- -v 1.0.5 --arch multi -y
+#   pnpm release:docker -- -v 1.0.5-rc.1
+#   pnpm release:docker -- -v 1.0.5 --dry-run
 # =============================================================================
 
 set -Eeuo pipefail
@@ -26,14 +24,14 @@ set -Eeuo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT_DIR"
 
-DEFAULT_IMAGE_PREFIX="${NOWEN_BLOG_IMAGE_PREFIX:-cropflre/nowen-blog}"
+DEFAULT_IMAGE="${NOWEN_BLOG_IMAGE:-cropflre/nowen-blog}"
 DEFAULT_BRANCH="main"
 GITHUB_REPO_SLUG="cropflre/nowen-blog"
 BUILDX_BUILDER="nowen-blog-builder"
 
 VERSION=""
 ARCH="amd64"
-IMAGE_PREFIX="$DEFAULT_IMAGE_PREFIX"
+IMAGE="$DEFAULT_IMAGE"
 ASSUME_YES=0
 DO_PULL=1
 DO_LATEST=1
@@ -71,15 +69,14 @@ die() { echo "${C_RED}[✗]${C_RESET} $*" >&2; exit 1; }
 step() { echo; echo "${C_BOLD}${C_CYAN}==== $* ====${C_RESET}"; }
 
 usage() {
-  cat <<EOF
-用法: $0 [选项]
+  cat <<'EOF'
+用法: scripts/release-docker.sh [选项]
 
 发布选项:
-  -v, --version VERSION     指定版本，例如 0.2.0 或 v0.2.0
+  -v, --version VERSION     指定版本，例如 1.0.5 或 v1.0.5
   -y, --yes                 跳过交互确认；未指定版本时采用自动建议版本
       --arch ARCH           amd64（默认）/ arm64 / multi
-      --image-prefix NAME   镜像前缀，默认 cropflre/nowen-blog
-                            最终发布 NAME-api 与 NAME-web
+      --image NAME          镜像名，默认 cropflre/nowen-blog
       --latest              即使是预发布版本也更新 latest
       --no-latest           不更新 latest
       --no-pull             不执行 git pull
@@ -97,16 +94,16 @@ usage() {
   -h, --help                显示帮助
 
 示例:
-  $0
-  $0 -v 0.2.0 -y
-  $0 -v 0.2.0 --arch multi -y
-  $0 -v 0.2.0-rc.1 --arch amd64
-  $0 -v 0.2.0 --no-github-release
-  $0 -v 0.2.0 --dry-run
+  pnpm release:docker
+  pnpm release:docker -- -v 1.0.5 -y
+  pnpm release:docker -- -v 1.0.5 --arch multi -y
+  pnpm release:docker -- -v 1.0.5-rc.1
+  pnpm release:docker -- -v 1.0.5 --no-github-release
+  pnpm release:docker -- -v 1.0.5 --dry-run
 
 发布后的部署方式:
-  NOWEN_BLOG_VERSION=v0.2.0 docker compose -f docker-compose.release.yml pull
-  NOWEN_BLOG_VERSION=v0.2.0 docker compose -f docker-compose.release.yml up -d
+  NOWEN_BLOG_VERSION=v1.0.5 docker compose -f docker-compose.release.yml pull
+  NOWEN_BLOG_VERSION=v1.0.5 docker compose -f docker-compose.release.yml up -d
 EOF
 }
 
@@ -115,7 +112,7 @@ while [ $# -gt 0 ]; do
     -v|--version) VERSION="${2:-}"; shift 2 ;;
     -y|--yes) ASSUME_YES=1; shift ;;
     --arch) ARCH="${2:-}"; shift 2 ;;
-    --image-prefix) IMAGE_PREFIX="${2:-}"; shift 2 ;;
+    --image) IMAGE="${2:-}"; shift 2 ;;
     --latest) DO_LATEST=1; LATEST_EXPLICIT=1; shift ;;
     --no-latest) DO_LATEST=0; LATEST_EXPLICIT=1; shift ;;
     --no-pull) DO_PULL=0; shift ;;
@@ -142,14 +139,11 @@ case "$ARCH" in
   *) die "不支持的架构: $ARCH（可选 amd64 / arm64 / multi）" ;;
 esac
 
-[ -n "$IMAGE_PREFIX" ] || die "镜像前缀不能为空"
-[[ "$IMAGE_PREFIX" =~ ^[A-Za-z0-9._/-]+$ ]] || die "镜像前缀格式不正确: $IMAGE_PREFIX"
-
-API_IMAGE="${IMAGE_PREFIX}-api"
-WEB_IMAGE="${IMAGE_PREFIX}-web"
+[ -n "$IMAGE" ] || die "镜像名不能为空"
+[[ "$IMAGE" =~ ^[A-Za-z0-9._/-]+$ ]] || die "镜像名格式不正确: $IMAGE"
 
 print_command() {
-  printf "  ${C_CYAN}\$${C_RESET}"
+  printf '  %s$%s' "$C_CYAN" "$C_RESET"
   printf ' %q' "$@"
   printf '\n'
 }
@@ -192,7 +186,7 @@ package_version() {
 }
 
 is_docker_hub_repository() {
-  [[ "$1" =~ ^[A-Za-z0-9._-]+/[A-Za-z0-9._-]+$ ]]
+  [[ "$1" =~ ^[^./][^/]*/[^/]+$ ]]
 }
 
 dockerhub_versions() {
@@ -212,16 +206,15 @@ latest_stable_version() {
     git tag -l 'v*' 2>/dev/null | sed 's/^v//' || true
     git ls-remote --tags origin 'refs/tags/v*' 2>/dev/null \
       | awk -F/ '{print $NF}' | sed 's/\^{}$//' | sed 's/^v//' || true
-    dockerhub_versions "$API_IMAGE"
-    dockerhub_versions "$WEB_IMAGE"
-  } | node -e "let body='';process.stdin.on('data',c=>body+=c).on('end',()=>{const versions=[...new Set(body.split(/\\s+/).filter(v=>/^\\d+\\.\\d+\\.\\d+$/.test(v)))];versions.sort((a,b)=>{const aa=a.split('.').map(Number),bb=b.split('.').map(Number);for(let i=0;i<3;i++){if(aa[i]!==bb[i])return aa[i]-bb[i]}return 0});if(versions.length)process.stdout.write(versions.at(-1))})"
+    dockerhub_versions "$IMAGE"
+  } | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' | sort -Vu | tail -n 1
 }
 
 suggest_next_version() {
   local latest major minor patch
   latest="$(latest_stable_version)"
   if [ -z "$latest" ]; then
-    echo "0.1.0"
+    echo "1.0.0"
     return
   fi
   IFS=. read -r major minor patch <<<"$latest"
@@ -261,22 +254,6 @@ NODE
   PACKAGE_CHANGED=1
 }
 
-validate_compose_files() {
-  local validation_secret validation_password
-  validation_secret="${SESSION_SECRET:-release-validation-session-secret-at-least-32-characters}"
-  validation_password="${ADMIN_PASSWORD:-release-validation-admin-password}"
-  run env \
-    SESSION_SECRET="$validation_secret" \
-    ADMIN_PASSWORD="$validation_password" \
-    NOWEN_BLOG_VERSION="latest" \
-    docker compose config --quiet
-  run env \
-    SESSION_SECRET="$validation_secret" \
-    ADMIN_PASSWORD="$validation_password" \
-    NOWEN_BLOG_VERSION="latest" \
-    docker compose -f docker-compose.release.yml config --quiet
-}
-
 ensure_builder() {
   step "准备 Docker Buildx"
   if docker buildx inspect "$BUILDX_BUILDER" >/dev/null 2>&1; then
@@ -298,11 +275,9 @@ ensure_builder() {
 
 run_bake() {
   local mode="$1"
-  local api_tags="${API_IMAGE}:v${VERSION}"
-  local web_tags="${WEB_IMAGE}:v${VERSION}"
+  local image_tags="${IMAGE}:v${VERSION}"
   if [ "$DO_LATEST" = "1" ]; then
-    api_tags="${api_tags},${API_IMAGE}:latest"
-    web_tags="${web_tags},${WEB_IMAGE}:latest"
+    image_tags="${image_tags},${IMAGE}:latest"
   fi
 
   local args=(docker buildx bake -f docker-bake.hcl release --builder "$BUILDX_BUILDER")
@@ -310,16 +285,14 @@ run_bake() {
     args+=(--push)
   fi
 
-  echo "  ${C_CYAN}\$${C_RESET} APP_VERSION=$(printf '%q' "$VERSION") VCS_REF=$(printf '%q' "$RELEASE_SHA") BUILD_DATE=$(printf '%q' "$BUILD_DATE") PLATFORM=$(printf '%q' "$PLATFORMS") API_TAGS=$(printf '%q' "$api_tags") WEB_TAGS=$(printf '%q' "$web_tags")" \
-    "$(printf '%q ' "${args[@]}")"
+  echo "  ${C_CYAN}\$${C_RESET} APP_VERSION=$(printf '%q' "$VERSION") VCS_REF=$(printf '%q' "$RELEASE_SHA") BUILD_DATE=$(printf '%q' "$BUILD_DATE") PLATFORM=$(printf '%q' "$PLATFORMS") IMAGE_TAGS=$(printf '%q' "$image_tags") $(printf '%q ' "${args[@]}")"
 
   if [ "$DRY_RUN" = "0" ]; then
     APP_VERSION="$VERSION" \
     VCS_REF="$RELEASE_SHA" \
     BUILD_DATE="$BUILD_DATE" \
     PLATFORM="$PLATFORMS" \
-    API_TAGS="$api_tags" \
-    WEB_TAGS="$web_tags" \
+    IMAGE_TAGS="$image_tags" \
       "${args[@]}"
   fi
 }
@@ -368,11 +341,12 @@ require_command node
 require_command pnpm
 require_command docker
 
-docker info >/dev/null 2>&1 || die "Docker daemon 未运行"
+if [ "$DRY_RUN" = "0" ]; then
+  docker info >/dev/null 2>&1 || die "Docker daemon 未运行"
+fi
 docker buildx version >/dev/null 2>&1 || die "当前 Docker 不支持 buildx"
 [ -f package.json ] || die "请在 nowen-blog 仓库中运行脚本"
 [ -f docker-bake.hcl ] || die "缺少 docker-bake.hcl"
-[ -f docker-compose.release.yml ] || die "缺少 docker-compose.release.yml"
 
 CURRENT_BRANCH="$(git branch --show-current)"
 [ "$CURRENT_BRANCH" = "$DEFAULT_BRANCH" ] || die "请切换到 $DEFAULT_BRANCH 分支后发布，当前为 ${CURRENT_BRANCH:-detached}"
@@ -386,6 +360,17 @@ if [ "$DO_PULL" = "1" ]; then
 fi
 run git fetch --tags origin
 
+if [ "$DO_GIT_PUSH" = "1" ]; then
+  step "检查 GitHub 推送权限"
+  if [ "$DRY_RUN" = "0" ]; then
+    git push --dry-run origin "HEAD:$DEFAULT_BRANCH" >/dev/null \
+      || die "无法推送到 GitHub。请修复 origin 凭据或改用 SSH 后再发版"
+    ok "GitHub 推送权限正常"
+  else
+    print_command git push --dry-run origin "HEAD:$DEFAULT_BRANCH"
+  fi
+fi
+
 SUGGESTED_VERSION="$(suggest_next_version)"
 if [ -z "$VERSION" ]; then
   if [ "$ASSUME_YES" = "1" ]; then
@@ -397,7 +382,7 @@ if [ -z "$VERSION" ]; then
   fi
 fi
 VERSION="$(normalize_version "$VERSION")"
-validate_version "$VERSION" || die "版本号格式错误: $VERSION（示例 0.2.0 或 0.2.0-rc.1）"
+validate_version "$VERSION" || die "版本号格式错误: $VERSION（示例 1.0.5 或 1.0.5-rc.1）"
 
 if [[ "$VERSION" == *-* ]]; then
   RELEASE_PRERELEASE=1
@@ -409,15 +394,14 @@ fi
 if git rev-parse "v$VERSION" >/dev/null 2>&1 || remote_tag_exists "$VERSION"; then
   die "Git Tag v$VERSION 已存在，请使用更高版本"
 fi
-if docker_tag_exists "$API_IMAGE" "v$VERSION" || docker_tag_exists "$WEB_IMAGE" "v$VERSION"; then
-  die "Docker Hub 已存在 v$VERSION，为避免覆盖不可变版本，请使用更高版本"
+if docker_tag_exists "$IMAGE" "v$VERSION"; then
+  die "Docker Hub 已存在 ${IMAGE}:v${VERSION}，请使用更高版本"
 fi
 
 step "发布计划"
 echo "版本:          v$VERSION"
 echo "架构:          $ARCH ($PLATFORMS)"
-echo "API 镜像:      ${API_IMAGE}:v${VERSION}"
-echo "Web 镜像:      ${WEB_IMAGE}:v${VERSION}"
+echo "Docker 镜像:   ${IMAGE}:v${VERSION}"
 echo "更新 latest:   $([ "$DO_LATEST" = "1" ] && echo 是 || echo 否)"
 echo "推送源码:      $([ "$DO_GIT_PUSH" = "1" ] && echo 是 || echo 否)"
 echo "创建 Git Tag:  $([ "$DO_GIT_TAG" = "1" ] && echo 是 || echo 否)"
@@ -438,7 +422,8 @@ if [ "$SKIP_CHECKS" = "0" ]; then
   run pnpm install --frozen-lockfile
   run pnpm typecheck
   run pnpm test
-  validate_compose_files
+  run docker compose config --quiet
+  run docker compose -f docker-compose.release.yml config --quiet
 else
   warn "已跳过质量检查"
 fi
@@ -462,8 +447,8 @@ BUILD_DATE="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
 
 ensure_builder
 
-step "预构建 API 与 Web（不推送）"
-info "先验证两个镜像都能完整构建；任一失败都不会发布版本 Tag"
+step "预构建单体镜像（不推送）"
+info "先验证前端、API、Nginx 和运行时能够在同一镜像完整构建"
 run_bake build
 
 if [ "$DO_GIT_PUSH" = "1" ]; then
@@ -475,10 +460,9 @@ step "推送 Docker 镜像"
 run_bake push
 
 if [ "$DRY_RUN" = "0" ]; then
-  docker buildx imagetools inspect "${API_IMAGE}:v${VERSION}" >/dev/null
-  docker buildx imagetools inspect "${WEB_IMAGE}:v${VERSION}" >/dev/null
+  docker buildx imagetools inspect "${IMAGE}:v${VERSION}" >/dev/null
 fi
-ok "两张 Docker 镜像均已发布"
+ok "Docker 镜像已发布"
 
 if [ "$DO_GIT_TAG" = "1" ]; then
   step "创建 Git Tag"
@@ -488,18 +472,17 @@ if [ "$DO_GIT_TAG" = "1" ]; then
   fi
 fi
 
-if [ "$DO_GIT_TAG" = "0" ] && [ "$GITHUB_RELEASE_MODE" != "off" ]; then
-  warn "未创建 Git Tag，自动跳过 GitHub Release"
-elif [ "$DO_GIT_PUSH" = "0" ] && [ "$GITHUB_RELEASE_MODE" != "off" ]; then
-  warn "未推送 Git Tag，自动跳过 GitHub Release"
+if [ "$DO_GIT_PUSH" = "0" ] || [ "$DO_GIT_TAG" = "0" ]; then
+  if [ "$GITHUB_RELEASE_MODE" != "off" ]; then
+    warn "Git Tag 未推送，跳过 GitHub Release"
+  fi
 else
   step "创建 GitHub Release"
   create_github_release
 fi
 
 step "发布完成"
-echo "${C_GREEN}API:${C_RESET} ${API_IMAGE}:v${VERSION}"
-echo "${C_GREEN}Web:${C_RESET} ${WEB_IMAGE}:v${VERSION}"
+echo "${C_GREEN}Docker:${C_RESET} ${IMAGE}:v${VERSION}"
 [ "$DO_LATEST" = "1" ] && echo "${C_GREEN}latest:${C_RESET} 已同步更新"
 echo
 echo "固定版本部署："

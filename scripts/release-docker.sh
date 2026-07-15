@@ -550,8 +550,17 @@ try {
 NODE
 }
 
+require_github_auth() {
+  [ "$GITHUB_RELEASE_MODE" = "on" ] || return 0
+  command -v gh >/dev/null 2>&1 \
+    || die "发布需要 GitHub CLI，请安装 gh 后运行 gh auth login"
+  gh auth status >/dev/null 2>&1 \
+    || die "GitHub CLI 尚未登录，请先执行 gh auth login"
+  ok "GitHub CLI 已登录"
+}
+
 resume_release() {
-  local tag_target local_target
+  local tag_target local_target current_head
   [ -n "$RELEASE_SHA" ] || die "无法确定 release commit，请使用原发布工作区续传"
   PHASE="publish"
   PUBLISH_STARTED=1
@@ -578,7 +587,10 @@ resume_release() {
       GIT_COMMIT_PUBLISHED=1
       ok "origin/$DEFAULT_BRANCH 已包含 $RELEASE_SHA，跳过"
     else
-      run git push origin "HEAD:$DEFAULT_BRANCH"
+      current_head="$(git rev-parse HEAD)"
+      [ "$current_head" = "$RELEASE_SHA" ] \
+        || die "当前 HEAD 为 $current_head，与待续传的 release commit $RELEASE_SHA 不一致，请切回原发布提交后重试"
+      run git push origin "$RELEASE_SHA:$DEFAULT_BRANCH"
       GIT_COMMIT_PUBLISHED=1
     fi
     write_release_state
@@ -598,7 +610,7 @@ resume_release() {
         [ "$local_target" = "$RELEASE_SHA" ] \
           || die "本地 Tag v$VERSION 指向 $local_target，与 release commit $RELEASE_SHA 冲突"
       else
-        run git tag -a "v$VERSION" -m "Release v$VERSION"
+        run git tag -a "v$VERSION" "$RELEASE_SHA" -m "Release v$VERSION"
       fi
       [ "$DO_GIT_PUSH" = "1" ] && run git push origin "v$VERSION"
       GIT_TAG_PUBLISHED=1
@@ -645,13 +657,7 @@ if [ "$QUICK_MODE" = "1" ] && is_docker_hub_repository "$IMAGE"; then
     || die "未检测到 Docker Hub 登录凭据，请先执行 docker login"
   ok "Docker Hub 登录凭据可用"
 fi
-[ "$GITHUB_RELEASE_MODE" != "on" ] || command -v gh >/dev/null 2>&1 \
-  || die "快速发布需要 GitHub CLI，请安装 gh 后运行 gh auth login"
-if [ "$GITHUB_RELEASE_MODE" = "on" ]; then
-  gh auth status >/dev/null 2>&1 \
-    || die "GitHub CLI 尚未登录，请先执行 gh auth login"
-  ok "GitHub CLI 已登录"
-fi
+require_github_auth
 [ -f package.json ] || die "请在 nowen-blog 仓库中运行脚本"
 [ -f docker-bake.hcl ] || die "缺少 docker-bake.hcl"
 
@@ -680,6 +686,7 @@ fi
 
 if [ "$RESUME_MODE" = "1" ]; then
   load_release_state
+  require_github_auth
 fi
 
 SUGGESTED_VERSION="$(suggest_next_version)"

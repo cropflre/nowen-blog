@@ -113,7 +113,7 @@ run_quick_release() {
 
 run_resume_release() {
   cd "$TEST_ROOT"
-  export PATH="$FAKE_BIN:$PATH" CALL_LOG HEAD_FILE
+  export PATH="$FAKE_BIN:$PATH" CALL_LOG HEAD_FILE FAKE_GH_AUTH_FAIL
   export DOCKER_CONFIG="$DOCKER_CONFIG_PATH"
   export FAKE_DOCKER_TAG_EXISTS FAKE_REMOTE_COMMIT FAKE_GH_RELEASE_EXISTS FAKE_REMOTE_TAG_TARGET
   bash scripts/release-docker.sh --resume --version 1.0.5 --yes 2>&1
@@ -188,8 +188,87 @@ if grep -Fq 'git push origin HEAD:main' "$CALL_LOG"; then
   exit 1
 fi
 grep -Fq 'git push origin v1.0.5' "$CALL_LOG"
+grep -Fq 'git tag -a v1.0.5 release-head -m Release v1.0.5' "$CALL_LOG"
 grep -Fq 'gh release create v1.0.5' "$CALL_LOG"
 printf '%s' "$resume_output" | grep -Fq '续传完成'
+
+prepare_case
+printf 'newer-local-head' >"$HEAD_FILE"
+mkdir -p "$TEST_ROOT/.tmp"
+cat >"$TEST_ROOT/.tmp/release-docker-state.json" <<'EOF'
+{
+  "schemaVersion": 1,
+  "version": "1.0.5",
+  "image": "cropflre/nowen-blog",
+  "arch": "multi",
+  "latest": true,
+  "releaseSha": "release-head",
+  "originalHead": "original-head",
+  "completed": {
+    "docker": true,
+    "gitCommit": false,
+    "gitTag": false,
+    "githubRelease": false
+  }
+}
+EOF
+set +e
+head_mismatch_output="$(
+  FAKE_DOCKER_TAG_EXISTS=1 \
+  FAKE_REMOTE_COMMIT=0 \
+  FAKE_GH_RELEASE_EXISTS=0 \
+    run_resume_release
+)"
+head_mismatch_status=$?
+set -e
+[ "$head_mismatch_status" -ne 0 ]
+printf '%s' "$head_mismatch_output" | grep -Fq '当前 HEAD'
+if grep -Fq 'git push origin' "$CALL_LOG"; then
+  echo '当前 HEAD 与 release commit 不一致时不得推送 Git。' >&2
+  exit 1
+fi
+
+prepare_case
+printf 'release-head' >"$HEAD_FILE"
+mkdir -p "$TEST_ROOT/.tmp"
+cat >"$TEST_ROOT/.tmp/release-docker-state.json" <<'EOF'
+{
+  "schemaVersion": 1,
+  "version": "1.0.5",
+  "image": "cropflre/nowen-blog",
+  "arch": "multi",
+  "latest": true,
+  "releaseSha": "release-head",
+  "originalHead": "original-head",
+  "enabled": {
+    "gitPush": true,
+    "gitTag": true,
+    "githubRelease": true
+  },
+  "completed": {
+    "docker": false,
+    "gitCommit": false,
+    "gitTag": false,
+    "githubRelease": false
+  }
+}
+EOF
+set +e
+resume_auth_output="$(
+  FAKE_GH_AUTH_FAIL=1 \
+  FAKE_DOCKER_TAG_EXISTS=0 \
+  FAKE_REMOTE_COMMIT=0 \
+  FAKE_GH_RELEASE_EXISTS=0 \
+    run_resume_release
+)"
+resume_auth_status=$?
+set -e
+[ "$resume_auth_status" -ne 0 ]
+printf '%s' "$resume_auth_output" | grep -Fq 'gh auth login'
+if grep -Fq 'docker buildx bake' "$CALL_LOG"; then
+  echo '续传所需的 GitHub 认证失败时不得开始 Docker 推送。' >&2
+  exit 1
+fi
 
 prepare_case
 printf 'release-head' >"$HEAD_FILE"

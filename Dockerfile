@@ -30,6 +30,17 @@ RUN pnpm --filter @blog/shared typecheck \
 
 FROM workspace AS api
 
+ARG APP_VERSION=dev
+ARG VCS_REF=unknown
+ARG BUILD_DATE=unknown
+
+LABEL org.opencontainers.image.title="NOWEN Blog API" \
+      org.opencontainers.image.description="Hono API and SQLite service for NOWEN Blog" \
+      org.opencontainers.image.source="https://github.com/cropflre/nowen-blog" \
+      org.opencontainers.image.version="$APP_VERSION" \
+      org.opencontainers.image.revision="$VCS_REF" \
+      org.opencontainers.image.created="$BUILD_DATE"
+
 ENV NODE_ENV=production
 ENV PORT=8787
 ENV DATABASE_PATH=/app/data/blog.sqlite
@@ -48,6 +59,17 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
 CMD ["pnpm", "--filter", "@blog/server", "start"]
 
 FROM nginx:1.27-alpine AS web
+
+ARG APP_VERSION=dev
+ARG VCS_REF=unknown
+ARG BUILD_DATE=unknown
+
+LABEL org.opencontainers.image.title="NOWEN Blog Web" \
+      org.opencontainers.image.description="Nginx-served web and admin application for NOWEN Blog" \
+      org.opencontainers.image.source="https://github.com/cropflre/nowen-blog" \
+      org.opencontainers.image.version="$APP_VERSION" \
+      org.opencontainers.image.revision="$VCS_REF" \
+      org.opencontainers.image.created="$BUILD_DATE"
 
 COPY deploy/nginx/default.conf /etc/nginx/conf.d/default.conf
 COPY --from=web-build /app/apps/web/dist /usr/share/nginx/html

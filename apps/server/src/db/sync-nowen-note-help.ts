@@ -30,6 +30,8 @@ export function synchronizeNowenNoteHelpDocs(): void {
     .get(SPACE_SLUG) as { id: string; defaultVersionId: string | null } | undefined;
   if (!space?.defaultVersionId) return;
 
+  const spaceId = space.id;
+  const versionId = space.defaultVersionId;
   const now = nowIso();
   const sync = sqlite.transaction(() => {
     let inserted = 0;
@@ -71,16 +73,16 @@ export function synchronizeNowenNoteHelpDocs(): void {
            WHERE id = ? AND space_id = ?
            LIMIT 1`,
         )
-        .get(document.id, space.id) as ExistingDocument | undefined;
+        .get(document.id, spaceId) as ExistingDocument | undefined;
 
-      const path = resolvePath(document, space.id);
+      const path = resolvePath(document, spaceId);
       const depth = document.parentId ? 1 : 0;
 
       if (!existing) {
         insertStatement.run(
           document.id,
-          space.id,
-          space.defaultVersionId,
+          spaceId,
+          versionId,
           document.parentId ?? null,
           document.title,
           document.slug,
@@ -136,13 +138,13 @@ export function synchronizeNowenNoteHelpDocs(): void {
         now,
         now,
         document.id,
-        space.id,
+        spaceId,
       );
       updated += 1;
     }
 
     if (inserted > 0 || updated > 0) {
-      sqlite.prepare('UPDATE doc_spaces SET updated_at = ? WHERE id = ?').run(now, space.id);
+      sqlite.prepare('UPDATE doc_spaces SET updated_at = ? WHERE id = ?').run(now, spaceId);
     }
 
     return { inserted, updated, preserved };
